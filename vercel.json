@@ -5,6 +5,7 @@
       "destination": "/index.html"
     }
   ],
-  "buildCommand": "flutter build web --release",
+  "installCommand": "if cd flutter; then git pull && cd .. ; else git clone https://github.com/flutter/flutter.git; fi && export PATH=$PATH:$PWD/flutter/bin && flutter/bin/flutter doctor && flutter/bin/flutter config --enable-web && flutter/bin/flutter clean",
+  "buildCommand": "flutter/bin/flutter build web --release",
   "outputDirectory": "build/web"
 }
