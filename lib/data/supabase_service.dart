@@ -1,38 +1,42 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Serviço responsável por interagir com o banco de dados do Supabase.
 class SupabaseService {
-  SupabaseService._privateConstructor();
 
-  static final SupabaseService instance = SupabaseService._privateConstructor();
+  static final SupabaseClient client = SupabaseClient(
+    'https://dzazwpgjncowkudkdhca.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6YXp3cGdqbmNvd2t1ZGtkaGNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MDIyODAsImV4cCI6MjA4ODM3ODI4MH0.mQBxjBlgPQpxb5-QyFNhgitM_WOnWlkEzFStYZPr5Pk',
+  );
 
-  final SupabaseClient _client = Supabase.instance.client;
+  static final SupabaseService instance = SupabaseService();
 
-  /// Insere um registro de entrada na tabela 'entries'.
-  Future<void> addEntry(Map<String, dynamic> entry) async {
-    await _client.from('entries').insert(entry);
+  /// ---------- ENTRADAS ----------
+
+  Future<void> addEntry(Map<String, dynamic> data) async {
+    await client.from('entries').insert(data);
   }
 
-  /// Busca as entradas ordenadas pela data de criação (mais recentes primeiro).
-  Future<List<Map<String, dynamic>>> fetchEntries() async {
-    final List data = await _client
+  Future<List<dynamic>> getEntries() async {
+    final response = await client
         .from('entries')
         .select()
-        .order('created_at', ascending: false);
-    return data.map((e) => Map<String, dynamic>.from(e)).toList();
+        .order('date', ascending: false);
+
+    return response;
   }
 
-  /// Insere um registro de despesa na tabela 'expenses'.
-  Future<void> addExpense(Map<String, dynamic> expense) async {
-    await _client.from('expenses').insert(expense);
+  /// ---------- DESPESAS ----------
+
+  Future<void> addExpense(Map<String, dynamic> data) async {
+    await client.from('expenses').insert(data);
   }
 
-  /// Busca as despesas ordenadas pela data de criação (mais recentes primeiro).
-  Future<List<Map<String, dynamic>>> fetchExpenses() async {
-    final List data = await _client
+  Future<List<dynamic>> getExpenses() async {
+    final response = await client
         .from('expenses')
         .select()
-        .order('created_at', ascending: false);
-    return data.map((e) => Map<String, dynamic>.from(e)).toList();
+        .order('date', ascending: false);
+
+    return response;
   }
+
 }
