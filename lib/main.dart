@@ -7,11 +7,12 @@ import 'pages/home_page.dart';
 /// Ponto de entrada do aplicativo. Configura a internacionalização,
 /// temas e define a `HomePage` como tela inicial.
 void main() {
-  runApp(const MyApp());
+  // Use a non-const constructor here so the widget can hold mutable state.
+  runApp(MyApp());
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   State<MyApp> createState() => _MyAppState();
