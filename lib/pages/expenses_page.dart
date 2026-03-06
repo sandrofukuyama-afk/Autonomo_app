@@ -56,14 +56,47 @@ class _ExpensesPageState extends State<ExpensesPage> {
   Future<void> _pickReceipt() async {
     final ImagePicker picker = ImagePicker();
 
-    final XFile? pickedImage = await picker.pickImage(
-      source: ImageSource.gallery,
+    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Câmera'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Galeria'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
+          ),
+        );
+      },
     );
 
-    if (pickedImage != null) {
-      setState(() {
-        _receiptFile = pickedImage;
-      });
+    if (source == null) return;
+
+    try {
+      final XFile? pickedImage = await picker.pickImage(
+        source: source,
+        imageQuality: 85,
+      );
+
+      if (pickedImage != null) {
+        setState(() {
+          _receiptFile = pickedImage;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao selecionar recibo: $e')),
+      );
     }
   }
 
@@ -83,8 +116,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
       return;
     }
 
-    final double? amount = double.tryParse(
-      _valueController.text.replaceAll(',', '.'),
+    final int? amount = int.tryParse(
+      _valueController.text.replaceAll(',', '').trim(),
     );
 
     if (amount == null) {
@@ -159,7 +192,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
           const SizedBox(height: 16),
           TextField(
             controller: _valueController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: TextInputType.number,
             decoration: InputDecoration(
               labelText: localizations.translate('value'),
             ),
