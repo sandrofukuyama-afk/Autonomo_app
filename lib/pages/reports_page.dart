@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/supabase_service.dart';
+import '../l10n/app_localizations.dart';
 
 /// Página de relatórios que exibe totais mensais e anuais de entradas e saídas, incluindo detalhamento por categoria.
 class ReportsPage extends StatefulWidget {
@@ -19,6 +20,26 @@ class _ReportsPageState extends State<ReportsPage> {
   // Mapas de categoria para despesas por mês e ano
   Map<String, Map<String, double>> _monthlyCategoryExpense = {};
   Map<int, Map<String, double>> _annualCategoryExpense = {};
+
+  /// Mapeamento das categorias salvas no banco (ou chaves) para suas
+  /// correspondentes chaves de tradução. Isso permite que tanto as
+  /// categorias armazenadas diretamente em português quanto as novas
+  /// chaves (como `category_food`) sejam traduzidas corretamente.
+  static const Map<String, String> _categoryKeyMapping = {
+    'Alimentação': 'category_food',
+    'Transporte': 'category_transport',
+    'Moradia': 'category_housing',
+    'Entretenimento': 'category_entertainment',
+    'Saúde': 'category_health',
+    'Outros': 'category_other',
+    // Se já estiverem salvas como chaves, mapeie para elas mesmas
+    'category_food': 'category_food',
+    'category_transport': 'category_transport',
+    'category_housing': 'category_housing',
+    'category_entertainment': 'category_entertainment',
+    'category_health': 'category_health',
+    'category_other': 'category_other',
+  };
 
   @override
   void initState() {
@@ -78,6 +99,8 @@ class _ReportsPageState extends State<ReportsPage> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final AppLocalizations localizations = AppLocalizations.of(context);
+
     final List<String> allMonths = {
       ..._monthlyIncome.keys,
       ..._monthlyExpense.keys,
@@ -94,9 +117,9 @@ class _ReportsPageState extends State<ReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Relatório Mensal',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            localizations.translate('monthly_report'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           ...allMonths.map((String month) {
@@ -111,9 +134,9 @@ class _ReportsPageState extends State<ReportsPage> {
                 subtitle: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Entradas: ${income.toStringAsFixed(2)}'),
-                    Text('Saídas: ${expense.toStringAsFixed(2)}'),
-                    Text('Saldo: ${balance.toStringAsFixed(2)}'),
+                    Text('${localizations.translate('income')}: ${income.toStringAsFixed(2)}'),
+                    Text('${localizations.translate('expenses')}: ${expense.toStringAsFixed(2)}'),
+                    Text('${localizations.translate('balance')}: ${balance.toStringAsFixed(2)}'),
                   ],
                 ),
                 children: [
@@ -123,10 +146,14 @@ class _ReportsPageState extends State<ReportsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: categoryMap.entries.map((entry) {
+                          final String categoryKey =
+                              _categoryKeyMapping[entry.key] ?? entry.key;
+                          final String categoryLabel =
+                              localizations.translate(categoryKey);
                           return Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(entry.key),
+                              Text(categoryLabel),
                               Text(entry.value.toStringAsFixed(2)),
                             ],
                           );
@@ -138,9 +165,9 @@ class _ReportsPageState extends State<ReportsPage> {
             );
           }),
           const SizedBox(height: 16),
-          const Text(
-            'Relatório Anual',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            localizations.translate('annual_report'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           ...allYears.map((int year) {
@@ -155,9 +182,9 @@ class _ReportsPageState extends State<ReportsPage> {
                 subtitle: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Entradas: ${income.toStringAsFixed(2)}'),
-                    Text('Saídas: ${expense.toStringAsFixed(2)}'),
-                    Text('Saldo: ${balance.toStringAsFixed(2)}'),
+                    Text('${localizations.translate('income')}: ${income.toStringAsFixed(2)}'),
+                    Text('${localizations.translate('expenses')}: ${expense.toStringAsFixed(2)}'),
+                    Text('${localizations.translate('balance')}: ${balance.toStringAsFixed(2)}'),
                   ],
                 ),
                 children: [
@@ -167,10 +194,14 @@ class _ReportsPageState extends State<ReportsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: categoryMap.entries.map((entry) {
+                          final String categoryKey =
+                              _categoryKeyMapping[entry.key] ?? entry.key;
+                          final String categoryLabel =
+                              localizations.translate(categoryKey);
                           return Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(entry.key),
+                              Text(categoryLabel),
                               Text(entry.value.toStringAsFixed(2)),
                             ],
                           );
