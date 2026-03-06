@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 
@@ -21,6 +23,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
   DateTime? _selectedDate;
   String? _selectedCategory;
   XFile? _receiptFile;
+  String? _uploadedReceiptUrl;
+  bool _ocrLoading = false;
 
   final List<String> _categoryKeys = const [
     'category_food',
@@ -63,6 +67,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const ListTile(
+                title: Text('Selecionar origem'),
+              ),
               ListTile(
                 leading: const Icon(Icons.photo_camera_outlined),
                 title: const Text('Câmera'),
@@ -87,15 +94,82 @@ class _ExpensesPageState extends State<ExpensesPage> {
         imageQuality: 85,
       );
 
-      if (pickedImage != null) {
-        setState(() {
-          _receiptFile = pickedImage;
-        });
+      if (pickedImage == null) return;
+
+      setState(() {
+        _receiptFile = pickedImage;
+        _ocrLoading = true;
+      });
+
+      final Uint8List bytes = await pickedImage.readAsBytes();
+      final String fileName = path.basename(pickedImage.name);
+
+      final String uploadedUrl = await SupabaseService.instance.uploadReceipt(
+        bytes,
+        fileName,
+      );
+
+      final Uri endpoint = Uri.parse('${Uri.base.origin}/api/receipt-ocr');
+
+      final response = await http.post(
+        endpoint,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'imageUrl': uploadedUrl}),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('OCR HTTP ${response.statusCode}: ${response.body}');
       }
-    } catch (e) {
+
+      final Map<String, dynamic> data =
+          Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+
+      if (data['success'] != true) {
+        throw Exception((data['error'] ?? 'Erro no OCR').toString());
+      }
+
+      final dynamic amount = data['amount'];
+      final dynamic date = data['date'];
+      final dynamic store = data['store'];
+
+      setState(() {
+        _uploadedReceiptUrl = uploadedUrl;
+
+        if (amount != null) {
+          _valueController.text = amount.toString();
+        }
+
+        if (date != null && date.toString().trim().isNotEmpty) {
+          _selectedDate = DateTime.tryParse(date.toString()) ?? _selectedDate;
+        }
+
+        if (_descController.text.trim().isEmpty &&
+            store != null &&
+            store.toString().trim().isNotEmpty) {
+          _descController.text = store.toString().trim();
+        }
+
+        _ocrLoading = false;
+      });
+
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao selecionar recibo: $e')),
+        const SnackBar(
+          content: Text('Recibo lido com OCR com sucesso'),
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _ocrLoading = false;
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao processar recibo: $e'),
+        ),
       );
     }
   }
@@ -131,24 +205,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
       return;
     }
 
-    String? uploadedReceiptUrl;
-
-    if (_receiptFile != null) {
-      final Uint8List bytes = await _receiptFile!.readAsBytes();
-      final String fileName = path.basename(_receiptFile!.name);
-
-      uploadedReceiptUrl = await SupabaseService.instance.uploadReceipt(
-        bytes,
-        fileName,
-      );
-    }
-
     final Map<String, dynamic> expense = {
       'description': _descController.text.trim(),
       'amount': amount,
       'date': _selectedDate!.toIso8601String().split('T').first,
       'category': _selectedCategory,
-      'receipt_url': uploadedReceiptUrl,
+      'receipt_url': _uploadedReceiptUrl,
       'created_at': DateTime.now().toIso8601String(),
     };
 
@@ -161,6 +223,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
       _selectedDate = null;
       _selectedCategory = null;
       _receiptFile = null;
+      _uploadedReceiptUrl = null;
+      _ocrLoading = false;
     });
 
     if (!mounted) return;
@@ -244,14 +308,18 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       ),
               ),
               ElevatedButton(
-                onPressed: _pickReceipt,
-                child: Text(localizations.translate('select_receipt')),
+                onPressed: _ocrLoading ? null : _pickReceipt,
+                child: Text(
+                  _ocrLoading
+                      ? 'Lendo...'
+                      : localizations.translate('select_receipt'),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _saveExpense,
+            onPressed: _ocrLoading ? null : _saveExpense,
             child: Text(localizations.translate('save')),
           ),
         ],
