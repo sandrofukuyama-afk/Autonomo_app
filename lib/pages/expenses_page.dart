@@ -1,14 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
 
-/// Tela para registrar saídas ou despesas.
 class ExpensesPage extends StatefulWidget {
   const ExpensesPage({super.key});
 
@@ -19,12 +15,11 @@ class ExpensesPage extends StatefulWidget {
 class _ExpensesPageState extends State<ExpensesPage> {
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _valueController = TextEditingController();
+
   DateTime? _selectedDate;
   String? _selectedCategory;
   XFile? _receiptFile;
 
-  // Lista de chaves de categorias para tradução. Cada chave será traduzida
-  // via AppLocalizations no build.
   final List<String> _categoryKeys = const [
     'category_food',
     'category_transport',
@@ -48,6 +43,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
     );
+
     if (pickedDate != null) {
       setState(() {
         _selectedDate = pickedDate;
@@ -57,21 +53,14 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
   Future<void> _pickReceipt() async {
     final ImagePicker picker = ImagePicker();
-    // Tenta capturar pela câmera; se não for possível, usa a galeria como fallback.
-    XFile? pickedImage;
-    try {
-      pickedImage = await picker.pickImage(source: ImageSource.camera);
-    } catch (_) {
-      pickedImage = await picker.pickImage(source: ImageSource.gallery);
-    }
+
+    final XFile? pickedImage = await picker.pickImage(
+      source: ImageSource.gallery,
+    );
+
     if (pickedImage != null) {
-      // Copia o arquivo para o diretório de documentos do aplicativo para persistência.
-      final Directory appDir = await getApplicationDocumentsDirectory();
-      final String fileName = path.basename(pickedImage.path);
-      final File savedImage =
-          await File(pickedImage.path).copy('${appDir.path}/$fileName');
       setState(() {
-        _receiptFile = XFile(savedImage.path);
+        _receiptFile = pickedImage;
       });
     }
   }
@@ -91,7 +80,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
       );
       return;
     }
-    final double? amount = double.tryParse(_valueController.text);
+
+    final double? amount = double.tryParse(
+      _valueController.text.replaceAll(',', '.'),
+    );
+
     if (amount == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -102,22 +95,27 @@ class _ExpensesPageState extends State<ExpensesPage> {
       );
       return;
     }
+
     final Map<String, dynamic> expense = {
-      'description': _descController.text,
+      'description': _descController.text.trim(),
       'amount': amount,
-      'date': _selectedDate!.toIso8601String(),
+      'date': _selectedDate!.toIso8601String().split('T').first,
       'category': _selectedCategory,
-      'receipt_path': _receiptFile?.path,
+      'receipt_url': _receiptFile?.path,
       'created_at': DateTime.now().toIso8601String(),
     };
+
     await SupabaseService.instance.addExpense(expense);
+
     _descController.clear();
     _valueController.clear();
+
     setState(() {
       _selectedDate = null;
       _selectedCategory = null;
       _receiptFile = null;
     });
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -130,6 +128,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations localizations = AppLocalizations.of(context);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -144,7 +143,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
           const SizedBox(height: 16),
           TextField(
             controller: _valueController,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: localizations.translate('value'),
             ),
@@ -156,10 +155,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
               labelText: localizations.translate('category'),
             ),
             items: _categoryKeys
-                .map((key) => DropdownMenuItem<String>(
-                      value: key,
-                      child: Text(localizations.translate(key)),
-                    ))
+                .map(
+                  (key) => DropdownMenuItem<String>(
+                    value: key,
+                    child: Text(localizations.translate(key)),
+                  ),
+                )
                 .toList(),
             onChanged: (value) {
               setState(() {
@@ -174,7 +175,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 child: Text(
                   _selectedDate == null
                       ? localizations.translate('no_date_selected')
-                      : '${localizations.translate('date')}: \${_selectedDate!.toLocal().toString().split(' ')[0]}',
+                      : '${localizations.translate('date')}: ${_selectedDate!.toLocal().toString().split(' ')[0]}',
                 ),
               ),
               ElevatedButton(
@@ -189,7 +190,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
               Expanded(
                 child: _receiptFile == null
                     ? Text(localizations.translate('no_receipt_selected'))
-                    : Text('${localizations.translate('receipt')}: \${path.basename(_receiptFile!.path)}'),
+                    : Text(
+                        '${localizations.translate('receipt')}: ${path.basename(_receiptFile!.path)}',
+                      ),
               ),
               ElevatedButton(
                 onPressed: _pickReceipt,
