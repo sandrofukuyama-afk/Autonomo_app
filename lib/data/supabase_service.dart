@@ -1,11 +1,8 @@
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
-
-  static final SupabaseClient client = SupabaseClient(
-    'https://dzazwpgjncowkudkdhca.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6YXp3cGdqbmNvd2t1ZGtkaGNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MDIyODAsImV4cCI6MjA4ODM3ODI4MH0.mQBxjBlgPQpxb5-QyFNhgitM_WOnWlkEzFStYZPr5Pk',
-  );
+  static final SupabaseClient client = Supabase.instance.client;
 
   static final SupabaseService instance = SupabaseService();
 
@@ -16,10 +13,8 @@ class SupabaseService {
   }
 
   Future<List<dynamic>> getEntries() async {
-    final response = await client
-        .from('entries')
-        .select()
-        .order('date', ascending: false);
+    final response =
+        await client.from('entries').select().order('date', ascending: false);
 
     return response;
   }
@@ -31,12 +26,21 @@ class SupabaseService {
   }
 
   Future<List<dynamic>> getExpenses() async {
-    final response = await client
-        .from('expenses')
-        .select()
-        .order('date', ascending: false);
+    final response =
+        await client.from('expenses').select().order('date', ascending: false);
 
     return response;
   }
 
+  /// ---------- UPLOAD RECIBO ----------
+
+  Future<String> uploadReceipt(Uint8List fileBytes, String fileName) async {
+    final path = 'receipt_${DateTime.now().millisecondsSinceEpoch}_$fileName';
+
+    await client.storage.from('receipts').uploadBinary(path, fileBytes);
+
+    final url = client.storage.from('receipts').getPublicUrl(path);
+
+    return url;
+  }
 }
