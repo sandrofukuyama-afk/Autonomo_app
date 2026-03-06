@@ -1,29 +1,72 @@
 import 'package:flutter/material.dart';
+import '../data/supabase_service.dart';
 
-/// Tela para registrar entradas de receita.
-class EntriesPage extends StatelessWidget {
+/// Página para registrar entradas de receita.
+class EntriesPage extends StatefulWidget {
   const EntriesPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.add_circle_outline, size: 80.0),
-          SizedBox(height: 16.0),
-          Text('Registrar entrada', style: TextStyle(fontSize: 18.0)),
-        ],
-      ),
-    );
-  }
+  State<EntriesPage> createState() => _EntriesPageState();
 }
+
+class _EntriesPageState extends State<EntriesPage> {
+  final TextEditingController _descController = TextEditingController();
+  final TextEditingController _valueController = TextEditingController();
+  DateTime? _selectedDate;
+
+  @override
+  void dispose() {
+    _descController.dispose();
+    _valueController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectDate() async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (pickedDate != null) {
+      setState(() {
+        _selectedDate = pickedDate;
+      });
+    }
+  }
+
+  Future<void> _saveEntry() async {
+    if (_selectedDate == null ||
+        _descController.text.isEmpty ||
+        _valueController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preencha todos os campos')),);
+      return;
+    }
+    final double? amount = double.tryParse(_valueController.text);
+    if (amount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Valor inválido')),);
+      return;
+    }
+    final Map<String, dynamic> entry = {
+      'description': _descController.text,
+      'amount': amount,
+      'date': _selectedDate!.toIso8601String(),
+      'created_at': DateTime.now().toIso8601String(),
+    };
+    await SupabaseService.instance.addEntry(entry);
+    _descController.clear();
+    _valueController.clear();
+    setState(() {
+      _selectedDate = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Entrada adicionada!')),);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final String dateText = _selectedDate == null
-        ? 'Nenhuma data selecionada'
-        : 'Data: ' + _selectedDate!.toLocal().toString().split(' ')[0];
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -43,7 +86,11 @@ class EntriesPage extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(dateText),
+                child: Text(
+                  _selectedDate == null
+                      ? 'Nenhuma data selecionada'
+                      : 'Data: \${_selectedDate!.toLocal().toString().split(' ')[0]}',
+                ),
               ),
               ElevatedButton(
                 onPressed: _selectDate,

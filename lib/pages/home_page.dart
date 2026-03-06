@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'entries_page.dart';
 import 'expenses_page.dart';
+import 'reports_page.dart';
 
 /// Página inicial com navegação entre telas de entradas e saídas.
 class HomePage extends StatefulWidget {
@@ -17,6 +18,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = const [
     EntriesPage(),
     ExpensesPage(),
+    ReportsPage(),
   ];
 
   void _onItemTapped(int index) {
@@ -43,6 +45,10 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.money_off),
             label: 'Saídas',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart),
+            label: 'Relatórios',
           ),
         ],
       ),
