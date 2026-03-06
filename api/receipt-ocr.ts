@@ -52,12 +52,74 @@ function parseAmount(text: string): number | null {
   return Math.max(...candidates);
 }
 
+function buildIsoDate(year: number, month: number, day: number): string | null {
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return null;
+  }
+
+  return `${year.toString().padStart(4, "0")}-${month
+    .toString()
+    .padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+}
+
+function parseJapaneseEraDate(text: string): string | null {
+  const normalized = normalizeText(text);
+
+  const eraPatterns = [
+    /令和\s*(\d{1,2}|元)\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/,
+    /平成\s*(\d{1,2}|元)\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/,
+  ];
+
+  for (const pattern of eraPatterns) {
+    const match = normalized.match(pattern);
+    if (!match) continue;
+
+    const eraYearRaw = match[1];
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+
+    const eraYear = eraYearRaw === "元" ? 1 : Number(eraYearRaw);
+
+    let gregorianYear: number | null = null;
+
+    if (pattern.source.startsWith("令和")) {
+      gregorianYear = 2018 + eraYear;
+    } else if (pattern.source.startsWith("平成")) {
+      gregorianYear = 1988 + eraYear;
+    }
+
+    if (gregorianYear) {
+      const iso = buildIsoDate(gregorianYear, month, day);
+      if (iso) return iso;
+    }
+  }
+
+  return null;
+}
+
 function parseDate(text: string): string | null {
   const normalized = normalizeText(text);
 
-  const patterns = [
-    /(\d{4})[\/\-\.年](\d{1,2})[\/\-\.月](\d{1,2})日?/,
-    /(\d{2})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/,
+  const eraDate = parseJapaneseEraDate(normalized);
+  if (eraDate) return eraDate;
+
+  const patterns: RegExp[] = [
+    // 2026年03月07日 / 2026年3月7日(土)
+    /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/,
+    // 2026/03/07 or 2026-03-07 or 2026.03.07
+    /(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/,
+    // 26/03/07 or 26-03-07
+    /(?<!\d)(\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?!\d)/,
+    // 20260307
+    /(?<!\d)(20\d{2})(\d{2})(\d{2})(?!\d)/,
   ];
 
   for (const pattern of patterns) {
@@ -68,23 +130,12 @@ function parseDate(text: string): string | null {
     const month = Number(match[2]);
     const day = Number(match[3]);
 
-    if (year < 100) {
+    if (pattern === patterns[2]) {
       year += 2000;
     }
 
-    if (
-      Number.isFinite(year) &&
-      Number.isFinite(month) &&
-      Number.isFinite(day) &&
-      month >= 1 &&
-      month <= 12 &&
-      day >= 1 &&
-      day <= 31
-    ) {
-      return `${year.toString().padStart(4, "0")}-${month
-        .toString()
-        .padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
-    }
+    const iso = buildIsoDate(year, month, day);
+    if (iso) return iso;
   }
 
   return null;
