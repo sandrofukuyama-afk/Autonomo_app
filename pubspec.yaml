@@ -1,0 +1,22 @@
+name: autonomo_app
+description: Aplicativo de controle financeiro para autônomos.
+publish_to: "none"
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  supabase_flutter: ^2.0.0
+  intl: ^0.18.0
+  image_picker: ^1.0.4
+  path_provider: ^2.0.11
+  flutter_localizations:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
