@@ -260,9 +260,14 @@ class _DashboardPageState extends State<_DashboardPage> {
     );
   }
 
-  String _yen(double value) {
-    return '¥ ${value.toStringAsFixed(2)}';
-  }
+ String _yen(num value) {
+  final formatted = value.toInt().toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (match) => ',',
+  );
+
+  return '¥ $formatted';
+}
 
   @override
   Widget build(BuildContext context) {
