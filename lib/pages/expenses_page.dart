@@ -26,6 +26,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
   String? _uploadedReceiptUrl;
   bool _ocrLoading = false;
 
+  ExpenseInputMode? _mode;
+
   final List<String> _categoryKeys = const [
     'category_food',
     'category_transport',
@@ -40,6 +42,91 @@ class _ExpensesPageState extends State<ExpensesPage> {
     _descController.dispose();
     _valueController.dispose();
     super.dispose();
+  }
+
+  String _uiText(BuildContext context, String key) {
+    final lang = Localizations.localeOf(context).languageCode;
+
+    const pt = {
+      'title': 'Adicionar despesa',
+      'subtitle':
+          'Escolha como deseja registrar a despesa. O ideal é escanear o recibo para preencher automaticamente.',
+      'scan_title': 'Escanear recibo',
+      'scan_subtitle': 'Tire foto ou escolha uma imagem para preencher dados automaticamente.',
+      'manual_title': 'Inserir manualmente',
+      'manual_subtitle': 'Preencha os campos manualmente sem usar OCR.',
+      'ocr_success': 'Recibo lido com OCR com sucesso',
+      'ocr_error': 'Erro ao processar recibo',
+      'receipt_source': 'Selecionar origem',
+      'camera': 'Câmera',
+      'gallery': 'Galeria',
+      'processing': 'Lendo recibo...',
+      'form_title': 'Dados da despesa',
+      'save': 'Salvar despesa',
+    };
+
+    const en = {
+      'title': 'Add expense',
+      'subtitle':
+          'Choose how you want to register the expense. The best option is scanning the receipt for auto-fill.',
+      'scan_title': 'Scan receipt',
+      'scan_subtitle': 'Take a photo or choose an image to auto-fill the fields.',
+      'manual_title': 'Enter manually',
+      'manual_subtitle': 'Fill the fields manually without OCR.',
+      'ocr_success': 'Receipt processed successfully with OCR',
+      'ocr_error': 'Error processing receipt',
+      'receipt_source': 'Select source',
+      'camera': 'Camera',
+      'gallery': 'Gallery',
+      'processing': 'Reading receipt...',
+      'form_title': 'Expense details',
+      'save': 'Save expense',
+    };
+
+    const ja = {
+      'title': '経費を追加',
+      'subtitle':
+          '登録方法を選択してください。自動入力のため、領収書スキャンがおすすめです。',
+      'scan_title': '領収書をスキャン',
+      'scan_subtitle': '写真を撮るか画像を選んで自動入力します。',
+      'manual_title': '手動入力',
+      'manual_subtitle': 'OCRを使わず手動で入力します。',
+      'ocr_success': 'OCRで領収書を正常に読み取りました',
+      'ocr_error': '領収書の処理エラー',
+      'receipt_source': '取得方法を選択',
+      'camera': 'カメラ',
+      'gallery': 'ギャラリー',
+      'processing': '領収書を読み取り中...',
+      'form_title': '経費データ',
+      'save': '経費を保存',
+    };
+
+    const es = {
+      'title': 'Agregar gasto',
+      'subtitle':
+          'Elige cómo deseas registrar el gasto. Lo ideal es escanear el recibo para completar automáticamente.',
+      'scan_title': 'Escanear recibo',
+      'scan_subtitle': 'Toma una foto o elige una imagen para completar automáticamente.',
+      'manual_title': 'Ingresar manualmente',
+      'manual_subtitle': 'Completa los campos manualmente sin OCR.',
+      'ocr_success': 'Recibo leído correctamente con OCR',
+      'ocr_error': 'Error al procesar el recibo',
+      'receipt_source': 'Seleccionar origen',
+      'camera': 'Cámara',
+      'gallery': 'Galería',
+      'processing': 'Leyendo recibo...',
+      'form_title': 'Datos del gasto',
+      'save': 'Guardar gasto',
+    };
+
+    final map = switch (lang) {
+      'en' => en,
+      'ja' => ja,
+      'es' => es,
+      _ => pt,
+    };
+
+    return map[key] ?? key;
   }
 
   Future<void> _pickDate() async {
@@ -57,7 +144,17 @@ class _ExpensesPageState extends State<ExpensesPage> {
     }
   }
 
-  Future<void> _pickReceipt() async {
+  Future<void> _startManualMode() async {
+    setState(() {
+      _mode = ExpenseInputMode.manual;
+    });
+  }
+
+  Future<void> _startReceiptScan() async {
+    setState(() {
+      _mode = ExpenseInputMode.scan;
+    });
+
     final ImagePicker picker = ImagePicker();
 
     final ImageSource? source = await showModalBottomSheet<ImageSource>(
@@ -67,17 +164,17 @@ class _ExpensesPageState extends State<ExpensesPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const ListTile(
-                title: Text('Selecionar origem'),
+              ListTile(
+                title: Text(_uiText(context, 'receipt_source')),
               ),
               ListTile(
                 leading: const Icon(Icons.photo_camera_outlined),
-                title: const Text('Câmera'),
+                title: Text(_uiText(context, 'camera')),
                 onTap: () => Navigator.pop(context, ImageSource.camera),
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library_outlined),
-                title: const Text('Galeria'),
+                title: Text(_uiText(context, 'gallery')),
                 onTap: () => Navigator.pop(context, ImageSource.gallery),
               ),
             ],
@@ -155,8 +252,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Recibo lido com OCR com sucesso'),
+        SnackBar(
+          content: Text(_uiText(context, 'ocr_success')),
         ),
       );
     } catch (e) {
@@ -168,7 +265,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro ao processar recibo: $e'),
+          content: Text('${_uiText(context, 'ocr_error')}: $e'),
         ),
       );
     }
@@ -225,6 +322,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
       _receiptFile = null;
       _uploadedReceiptUrl = null;
       _ocrLoading = false;
+      _mode = null;
     });
 
     if (!mounted) return;
@@ -247,82 +345,246 @@ class _ExpensesPageState extends State<ExpensesPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
-            controller: _descController,
-            decoration: InputDecoration(
-              labelText: localizations.translate('description'),
+          Text(
+            _uiText(context, 'title'),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _valueController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: localizations.translate('value'),
+          const SizedBox(height: 8),
+          Text(
+            _uiText(context, 'subtitle'),
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black54,
+              height: 1.4,
             ),
           ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: _selectedCategory,
-            decoration: InputDecoration(
-              labelText: localizations.translate('category'),
-            ),
-            items: _categoryKeys
-                .map(
-                  (key) => DropdownMenuItem<String>(
-                    value: key,
-                    child: Text(localizations.translate(key)),
+          const SizedBox(height: 18),
+          _ModeCard(
+            icon: Icons.document_scanner_outlined,
+            title: _uiText(context, 'scan_title'),
+            subtitle: _uiText(context, 'scan_subtitle'),
+            isActive: _mode == ExpenseInputMode.scan,
+            onTap: _ocrLoading ? null : _startReceiptScan,
+          ),
+          const SizedBox(height: 12),
+          _ModeCard(
+            icon: Icons.edit_note_outlined,
+            title: _uiText(context, 'manual_title'),
+            subtitle: _uiText(context, 'manual_subtitle'),
+            isActive: _mode == ExpenseInputMode.manual,
+            onTap: _ocrLoading ? null : _startManualMode,
+          ),
+          const SizedBox(height: 20),
+          if (_ocrLoading)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F0FE),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
                   ),
-                )
-                .toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedCategory = value;
-              });
-            },
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _selectedDate == null
-                      ? localizations.translate('no_date_selected')
-                      : '${localizations.translate('date')}: ${_selectedDate!.toLocal().toString().split(' ')[0]}',
-                ),
-              ),
-              ElevatedButton(
-                onPressed: _pickDate,
-                child: Text(localizations.translate('select_date')),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _receiptFile == null
-                    ? Text(localizations.translate('no_receipt_selected'))
-                    : Text(
-                        '${localizations.translate('receipt')}: ${path.basename(_receiptFile!.name)}',
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _uiText(context, 'processing'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
                       ),
+                    ),
+                  ),
+                ],
               ),
-              ElevatedButton(
-                onPressed: _ocrLoading ? null : _pickReceipt,
-                child: Text(
-                  _ocrLoading
-                      ? 'Lendo...'
-                      : localizations.translate('select_receipt'),
+            ),
+          if (_mode != null) ...[
+            const SizedBox(height: 20),
+            Text(
+              _uiText(context, 'form_title'),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _descController,
+              decoration: InputDecoration(
+                labelText: localizations.translate('description'),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _valueController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: localizations.translate('value'),
+              ),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _selectedCategory,
+              decoration: InputDecoration(
+                labelText: localizations.translate('category'),
+              ),
+              items: _categoryKeys
+                  .map(
+                    (key) => DropdownMenuItem<String>(
+                      value: key,
+                      child: Text(localizations.translate(key)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedCategory = value;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _selectedDate == null
+                        ? localizations.translate('no_date_selected')
+                        : '${localizations.translate('date')}: ${_selectedDate!.toLocal().toString().split(' ')[0]}',
+                  ),
                 ),
+                ElevatedButton(
+                  onPressed: _pickDate,
+                  child: Text(localizations.translate('select_date')),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_receiptFile != null)
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: Text(
+                  '${localizations.translate('receipt')}: ${path.basename(_receiptFile!.name)}',
+                ),
+              ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _ocrLoading ? null : _saveExpense,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: Text(_uiText(context, 'save')),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+enum ExpenseInputMode {
+  scan,
+  manual,
+}
+
+class _ModeCard extends StatelessWidget {
+  const _ModeCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool isActive;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor =
+        isActive ? const Color(0xFF2563EB) : const Color(0xFFE5E7EB);
+    final backgroundColor =
+        isActive ? const Color(0xFFEFF6FF) : Colors.white;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: borderColor,
+              width: isActive ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                height: 52,
+                width: 52,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDBEAFE),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  icon,
+                  color: const Color(0xFF1D4ED8),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black54,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                isActive
+                    ? Icons.check_circle
+                    : Icons.arrow_forward_ios_rounded,
+                size: isActive ? 24 : 18,
+                color: isActive
+                    ? const Color(0xFF2563EB)
+                    : const Color(0xFF9CA3AF),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _ocrLoading ? null : _saveExpense,
-            child: Text(localizations.translate('save')),
-          ),
-        ],
+        ),
       ),
     );
   }
