@@ -10,14 +10,31 @@ void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  /// The currently selected locale for the application. When null,
+  /// the system locale will be used.
+  Locale? _locale;
+
+  /// Updates the application locale and rebuilds the widget tree.
+  void _setLocale(Locale locale) {
+    setState(() {
+      _locale = locale;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Autonomo App',
       debugShowCheckedModeBanner: false,
+      locale: _locale,
       supportedLocales: const [
         Locale('pt'),
         Locale('en'),
@@ -34,7 +51,8 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
-      home: const HomePage(),
+      // Pass the callback to HomePage so it can request locale changes.
+      home: HomePage(onLocaleChanged: _setLocale),
     );
   }
 }
