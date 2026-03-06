@@ -53,6 +53,19 @@ class AppLocalizations {
       'income': 'Entradas',
       'expenses': 'Saídas',
       'balance': 'Saldo',
+
+      // Navigation bar labels
+      'nav_home': 'Início',
+      'nav_entries': 'Entradas',
+      'nav_expenses': 'Saídas',
+      'nav_reports': 'Relatórios',
+
+      // Language selection and names
+      'select_language': 'Idioma',
+      'lang_pt': 'Português',
+      'lang_en': 'Inglês',
+      'lang_ja': 'Japonês',
+      'lang_es': 'Espanhol',
     },
     'en': {
       'description': 'Description',
@@ -87,6 +100,19 @@ class AppLocalizations {
       'income': 'Income',
       'expenses': 'Expenses',
       'balance': 'Balance',
+
+      // Navigation bar labels
+      'nav_home': 'Home',
+      'nav_entries': 'Income',
+      'nav_expenses': 'Expenses',
+      'nav_reports': 'Reports',
+
+      // Language selection and names
+      'select_language': 'Language',
+      'lang_pt': 'Portuguese',
+      'lang_en': 'English',
+      'lang_ja': 'Japanese',
+      'lang_es': 'Spanish',
     },
     'ja': {
       'description': '説明',
@@ -121,6 +147,19 @@ class AppLocalizations {
       'income': '収入',
       'expenses': '支出',
       'balance': '残高',
+
+      // Navigation bar labels
+      'nav_home': 'ホーム',
+      'nav_entries': '収入',
+      'nav_expenses': '支出',
+      'nav_reports': 'レポート',
+
+      // Language selection and names
+      'select_language': '言語',
+      'lang_pt': 'ポルトガル語',
+      'lang_en': '英語',
+      'lang_ja': '日本語',
+      'lang_es': 'スペイン語',
     },
     'es': {
       'description': 'Descripción',
@@ -155,6 +194,19 @@ class AppLocalizations {
       'income': 'Ingresos',
       'expenses': 'Gastos',
       'balance': 'Saldo',
+
+      // Navigation bar labels
+      'nav_home': 'Inicio',
+      'nav_entries': 'Ingresos',
+      'nav_expenses': 'Gastos',
+      'nav_reports': 'Informes',
+
+      // Language selection and names
+      'select_language': 'Idioma',
+      'lang_pt': 'Portugués',
+      'lang_en': 'Inglés',
+      'lang_ja': 'Japonés',
+      'lang_es': 'Español',
     },
   };
 
