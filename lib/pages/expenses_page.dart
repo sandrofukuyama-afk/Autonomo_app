@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
@@ -96,12 +98,24 @@ class _ExpensesPageState extends State<ExpensesPage> {
       return;
     }
 
+    String? uploadedReceiptUrl;
+
+    if (_receiptFile != null) {
+      final Uint8List bytes = await _receiptFile!.readAsBytes();
+      final String fileName = path.basename(_receiptFile!.name);
+
+      uploadedReceiptUrl = await SupabaseService.instance.uploadReceipt(
+        bytes,
+        fileName,
+      );
+    }
+
     final Map<String, dynamic> expense = {
       'description': _descController.text.trim(),
       'amount': amount,
       'date': _selectedDate!.toIso8601String().split('T').first,
       'category': _selectedCategory,
-      'receipt_url': _receiptFile?.path,
+      'receipt_url': uploadedReceiptUrl,
       'created_at': DateTime.now().toIso8601String(),
     };
 
@@ -115,6 +129,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
       _selectedCategory = null;
       _receiptFile = null;
     });
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -191,7 +207,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 child: _receiptFile == null
                     ? Text(localizations.translate('no_receipt_selected'))
                     : Text(
-                        '${localizations.translate('receipt')}: ${path.basename(_receiptFile!.path)}',
+                        '${localizations.translate('receipt')}: ${path.basename(_receiptFile!.name)}',
                       ),
               ),
               ElevatedButton(
