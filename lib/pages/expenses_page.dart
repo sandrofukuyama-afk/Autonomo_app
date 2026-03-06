@@ -6,6 +6,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../data/supabase_service.dart';
+import '../l10n/app_localizations.dart';
 
 /// Tela para registrar saídas ou despesas.
 class ExpensesPage extends StatefulWidget {
@@ -22,13 +23,15 @@ class _ExpensesPageState extends State<ExpensesPage> {
   String? _selectedCategory;
   XFile? _receiptFile;
 
-  final List<String> _categories = const [
-    'Alimentação',
-    'Transporte',
-    'Moradia',
-    'Entretenimento',
-    'Saúde',
-    'Outros',
+  // Lista de chaves de categorias para tradução. Cada chave será traduzida
+  // via AppLocalizations no build.
+  final List<String> _categoryKeys = const [
+    'category_food',
+    'category_transport',
+    'category_housing',
+    'category_entertainment',
+    'category_health',
+    'category_other',
   ];
 
   @override
@@ -79,14 +82,23 @@ class _ExpensesPageState extends State<ExpensesPage> {
         _valueController.text.isEmpty ||
         _selectedCategory == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha todos os campos obrigatórios')),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)
+                .translate('error_fill_mandatory_fields'),
+          ),
+        ),
       );
       return;
     }
     final double? amount = double.tryParse(_valueController.text);
     if (amount == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Valor inválido')),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context).translate('error_invalid_value'),
+          ),
+        ),
       );
       return;
     }
@@ -107,12 +119,17 @@ class _ExpensesPageState extends State<ExpensesPage> {
       _receiptFile = null;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Despesa adicionada!')),
+      SnackBar(
+        content: Text(
+          AppLocalizations.of(context).translate('expense_added'),
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations localizations = AppLocalizations.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -120,22 +137,28 @@ class _ExpensesPageState extends State<ExpensesPage> {
         children: [
           TextField(
             controller: _descController,
-            decoration: const InputDecoration(labelText: 'Descrição'),
+            decoration: InputDecoration(
+              labelText: localizations.translate('description'),
+            ),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _valueController,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Valor'),
+            decoration: InputDecoration(
+              labelText: localizations.translate('value'),
+            ),
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             value: _selectedCategory,
-            decoration: const InputDecoration(labelText: 'Categoria'),
-            items: _categories
-                .map((c) => DropdownMenuItem<String>(
-                      value: c,
-                      child: Text(c),
+            decoration: InputDecoration(
+              labelText: localizations.translate('category'),
+            ),
+            items: _categoryKeys
+                .map((key) => DropdownMenuItem<String>(
+                      value: key,
+                      child: Text(localizations.translate(key)),
                     ))
                 .toList(),
             onChanged: (value) {
@@ -150,13 +173,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
               Expanded(
                 child: Text(
                   _selectedDate == null
-                      ? 'Nenhuma data selecionada'
-                      : 'Data: \${_selectedDate!.toLocal().toString().split(' ')[0]}',
+                      ? localizations.translate('no_date_selected')
+                      : '${localizations.translate('date')}: \${_selectedDate!.toLocal().toString().split(' ')[0]}',
                 ),
               ),
               ElevatedButton(
                 onPressed: _pickDate,
-                child: const Text('Selecionar data'),
+                child: Text(localizations.translate('select_date')),
               ),
             ],
           ),
@@ -165,19 +188,19 @@ class _ExpensesPageState extends State<ExpensesPage> {
             children: [
               Expanded(
                 child: _receiptFile == null
-                    ? const Text('Nenhum recibo selecionado')
-                    : Text('Recibo: \${path.basename(_receiptFile!.path)}'),
+                    ? Text(localizations.translate('no_receipt_selected'))
+                    : Text('${localizations.translate('receipt')}: \${path.basename(_receiptFile!.path)}'),
               ),
               ElevatedButton(
                 onPressed: _pickReceipt,
-                child: const Text('Selecionar recibo'),
+                child: Text(localizations.translate('select_receipt')),
               ),
             ],
           ),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: _saveExpense,
-            child: const Text('Salvar'),
+            child: Text(localizations.translate('save')),
           ),
         ],
       ),
