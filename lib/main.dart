@@ -1,31 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'l10n/app_localizations.dart';
 import 'pages/home_page.dart';
 
-/// Ponto de entrada da aplicação.
-///
-/// Esta função inicializa o Supabase e, em seguida, executa o aplicativo.
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  // TODO: Substitua com suas credenciais do Supabase.
-  await Supabase.initialize(
-    url: 'YOUR_SUPABASE_URL',
-    anonKey: 'YOUR_SUPABASE_ANON_KEY',
-  );
-  runApp(const AutonomoApp());
+/// Ponto de entrada do aplicativo. Configura a internacionalização,
+/// temas e define a `HomePage` como tela inicial.
+void main() {
+  runApp(const MyApp());
 }
 
-/// Widget raiz do aplicativo.
-class AutonomoApp extends StatelessWidget {
-  const AutonomoApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Autônomo App',
+      title: 'Autonomo App',
+      debugShowCheckedModeBanner: false,
+      supportedLocales: const [
+        Locale('pt'),
+        Locale('en'),
+        Locale('ja'),
+        Locale('es'),
+      ],
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
       home: const HomePage(),
     );
