@@ -58,6 +58,14 @@ function formatDate(value: string | null | undefined): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+
+function monthLabel(value: string | null | undefined, fallbackYear: number): string {
+  if (!value) return `Sem data/${fallbackYear}`;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return `Sem data/${fallbackYear}`;
+  const mm = `${parsed.getMonth() + 1}`.padStart(2, '0');
+  return `${mm}/${parsed.getFullYear()}`;
+}
 function monthKey(value: string | null | undefined): string {
   if (!value) return '';
   const parsed = new Date(value);
@@ -462,58 +470,111 @@ async function buildPdf(entries: EntryRow[], expenses: ExpenseRow[], year: numbe
     y += 24;
   }
 
-  // Anexos de recibos
+  // Anexos de recibos agrupados por mês (6 por página)
   const receiptExpenses = expenses.filter((item) => sanitizeText(item.receipt_url, '').length > 0);
   if (receiptExpenses.length > 0) {
+    const receiptGroups = new Map<string, ExpenseRow[]>();
+    const orderedReceipts = [...receiptExpenses].sort((a, b) => formatDate(a.date).localeCompare(formatDate(b.date)));
+
+    for (const expense of orderedReceipts) {
+      const key = monthKey(expense.date) || 'sem-data';
+      const group = receiptGroups.get(key) ?? [];
+      group.push(expense);
+      receiptGroups.set(key, group);
+    }
+
     doc.addPage({ size: 'A4', margin: PAGE_MARGIN });
     pageState.page += 1;
     pageHeader(doc, 'Anexos de Recibos', year, pageState.page);
 
-    let attachmentY = 90;
-    for (let index = 0; index < receiptExpenses.length; index += 1) {
-      const expense = receiptExpenses[index];
-      if (attachmentY > 420) {
-        doc.addPage({ size: 'A4', margin: PAGE_MARGIN });
-        pageState.page += 1;
-        pageHeader(doc, 'Anexos de Recibos', year, pageState.page);
-        attachmentY = 90;
+    const gridCols = 2;
+    const gapX = 12;
+    const gapY = 12;
+    const cardWidth = (CONTENT_WIDTH - gapX) / gridCols;
+    const cardHeight = 215;
+    const imageTopOffset = 52;
+    const imageHeight = 130;
+    const rowsPerPage = 3;
+    const sectionTop = 90;
+    const monthTitleHeight = 24;
+
+    let attachmentY = sectionTop;
+    let receiptIndex = 0;
+
+    const startReceiptPage = () => {
+      doc.addPage({ size: 'A4', margin: PAGE_MARGIN });
+      pageState.page += 1;
+      pageHeader(doc, 'Anexos de Recibos', year, pageState.page);
+      attachmentY = sectionTop;
+    };
+
+    for (const [groupKey, groupItems] of receiptGroups.entries()) {
+      const title = monthLabel(groupItems[0]?.date, year);
+
+      if (attachmentY + monthTitleHeight + cardHeight > A4.height - 60) {
+        startReceiptPage();
       }
 
-      const top = attachmentY;
-      doc.roundedRect(PAGE_MARGIN, top, CONTENT_WIDTH, 320, 10).strokeColor('#D1D5DB').stroke();
-      const ref = `EXP-${String(index + 1).padStart(4, '0')}`;
-      doc.font('Helvetica-Bold').fontSize(10).fillColor('#111827');
-      doc.text(ref, PAGE_MARGIN + 12, top + 12);
-      doc.font('Helvetica').fontSize(9);
-      doc.text(`Data: ${formatDate(expense.date)}`, PAGE_MARGIN + 12, top + 30);
-      doc.text(`Descrição: ${sanitizeText(expense.description, 'Sem descrição')}`, PAGE_MARGIN + 12, top + 46, { width: 260 });
-      doc.text(`Categoria: ${sanitizeText(expense.category, 'Outros')}`, PAGE_MARGIN + 12, top + 62, { width: 220 });
-      doc.text(`Valor: ${formatYen(toInt(expense.amount))}`, PAGE_MARGIN + 300, top + 30, { width: 140 });
-      doc.text(`Imposto: ${toInt(expense.tax) > 0 ? formatYen(toInt(expense.tax)) : '-'}`, PAGE_MARGIN + 300, top + 46, { width: 140 });
-      doc.text(`Tipo: ${normalizeTaxType(expense.tax_type) || '-'}`, PAGE_MARGIN + 300, top + 62, { width: 140 });
+      doc.font('Helvetica-Bold').fontSize(12).fillColor('#111827');
+      doc.text(title, PAGE_MARGIN, attachmentY, { width: CONTENT_WIDTH });
+      attachmentY += monthTitleHeight;
 
-      const receiptData = await fetchReceiptBuffer(String(expense.receipt_url));
-      if (receiptData) {
-        try {
-          doc.image(receiptData, PAGE_MARGIN + 12, top + 90, {
-            fit: [CONTENT_WIDTH - 24, 210],
-            align: 'center',
-            valign: 'center',
-          });
-        } catch {
-          doc.font('Helvetica').fontSize(10).fillColor('#6B7280').text('Recibo não disponível para anexação', PAGE_MARGIN + 12, top + 160, {
-            width: CONTENT_WIDTH - 24,
+      for (let index = 0; index < groupItems.length; index += 1) {
+        const localIndex = index % (gridCols * rowsPerPage);
+        if (index > 0 && localIndex === 0) {
+          startReceiptPage();
+          doc.font('Helvetica-Bold').fontSize(12).fillColor('#111827');
+          doc.text(title, PAGE_MARGIN, attachmentY, { width: CONTENT_WIDTH });
+          attachmentY += monthTitleHeight;
+        }
+
+        const row = Math.floor(localIndex / gridCols);
+        const col = localIndex % gridCols;
+        const top = attachmentY + row * (cardHeight + gapY);
+        const left = PAGE_MARGIN + col * (cardWidth + gapX);
+        const expense = groupItems[index];
+        receiptIndex += 1;
+        const ref = `EXP-${String(receiptIndex).padStart(4, '0')}`;
+
+        doc.roundedRect(left, top, cardWidth, cardHeight, 8).strokeColor('#D1D5DB').stroke();
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#111827');
+        doc.text(ref, left + 8, top + 8, { width: cardWidth - 16 });
+        doc.font('Helvetica').fontSize(7).fillColor('#374151');
+        doc.text(formatDate(expense.date), left + 8, top + 20, { width: 70 });
+        doc.text(formatYen(toInt(expense.amount)), left + cardWidth - 88, top + 20, { width: 80, align: 'right' });
+        doc.text(sanitizeText(expense.description, 'Sem descrição'), left + 8, top + 32, {
+          width: cardWidth - 16
+        });
+
+        const receiptData = await fetchReceiptBuffer(String(expense.receipt_url));
+        if (receiptData) {
+          try {
+            doc.image(Buffer.from(receiptData), left + 8, top + imageTopOffset, {
+              fit: [cardWidth - 16, imageHeight],
+              align: 'center',
+              valign: 'center',
+            });
+          } catch {
+            doc.font('Helvetica').fontSize(8).fillColor('#6B7280').text('Recibo não disponível', left + 8, top + 105, {
+              width: cardWidth - 16,
+              align: 'center',
+            });
+          }
+        } else {
+          doc.font('Helvetica').fontSize(8).fillColor('#6B7280').text('Recibo não disponível', left + 8, top + 105, {
+            width: cardWidth - 16,
             align: 'center',
           });
         }
-      } else {
-        doc.font('Helvetica').fontSize(10).fillColor('#6B7280').text('Recibo não disponível para anexação', PAGE_MARGIN + 12, top + 160, {
-          width: CONTENT_WIDTH - 24,
-          align: 'center',
+
+        doc.font('Helvetica').fontSize(7).fillColor('#4B5563');
+        doc.text(`Cat: ${sanitizeText(expense.category, 'Outros')}`, left + 8, top + cardHeight - 22, {
+          width: cardWidth - 16
         });
       }
 
-      attachmentY += 340;
+      const usedRows = Math.ceil(groupItems.length / gridCols);
+      attachmentY += usedRows * (cardHeight + gapY) + 8;
     }
   }
 
