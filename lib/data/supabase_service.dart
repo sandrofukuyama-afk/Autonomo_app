@@ -2,45 +2,40 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
-  static final SupabaseClient client = Supabase.instance.client;
+  SupabaseService._private();
 
-  static final SupabaseService instance = SupabaseService();
+  static final SupabaseService instance = SupabaseService._private();
 
-  /// ---------- ENTRADAS ----------
-
-  Future<void> addEntry(Map<String, dynamic> data) async {
-    await client.from('entries').insert(data);
-  }
+  final SupabaseClient _client = Supabase.instance.client;
 
   Future<List<dynamic>> getEntries() async {
-    final response =
-        await client.from('entries').select().order('date', ascending: false);
-
+    final response = await _client.from('entries').select();
     return response;
-  }
-
-  /// ---------- DESPESAS ----------
-
-  Future<void> addExpense(Map<String, dynamic> data) async {
-    await client.from('expenses').insert(data);
   }
 
   Future<List<dynamic>> getExpenses() async {
-    final response =
-        await client.from('expenses').select().order('date', ascending: false);
-
+    final response = await _client.from('expenses').select();
     return response;
   }
 
-  /// ---------- UPLOAD RECIBO ----------
+  Future<void> addExpense(Map<String, dynamic> data) async {
+    await _client.from('expenses').insert(data);
+  }
 
   Future<String> uploadReceipt(Uint8List fileBytes, String fileName) async {
-    final path = 'receipt_${DateTime.now().millisecondsSinceEpoch}_$fileName';
+    final String path = 'receipts/$fileName';
 
-    await client.storage.from('receipts').uploadBinary(path, fileBytes);
+    await _client.storage.from('receipts').uploadBinary(
+          fileName,
+          fileBytes,
+          fileOptions: const FileOptions(
+            upsert: true,
+          ),
+        );
 
-    final url = client.storage.from('receipts').getPublicUrl(path);
+    final String publicUrl =
+        _client.storage.from('receipts').getPublicUrl(fileName);
 
-    return url;
+    return publicUrl;
   }
 }
