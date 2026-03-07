@@ -4,6 +4,9 @@ type OcrResult = {
   amount?: number | null;
   date?: string | null;
   store?: string | null;
+  tax?: number | null;
+  taxType?: "tax_included" | "tax_excluded" | "unknown";
+  suggestedCategory?: string | null;
   error?: string;
 };
 
@@ -26,11 +29,29 @@ function normalizeText(input: string): string {
     .trim();
 }
 
+function buildIsoDate(year: number, month: number, day: number): string | null {
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return null;
+  }
+
+  return `${year.toString().padStart(4, "0")}-${month
+    .toString()
+    .padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+}
+
 function parseAmount(text: string): number | null {
   const normalized = normalizeText(text);
 
   const patterns = [
-    /(?:合計|税込合計|ご請求額|お買上金額|お支払金額|総合計)\s*[:：]?\s*[¥￥]?\s*([\d,]+)/gi,
+    /(?:合計|税込合計|ご請求額|お買上金額|お支払金額|総合計|現計)\s*[:：]?\s*[¥￥]?\s*([\d,]+)/gi,
     /[¥￥]\s*([\d,]+)/g,
   ];
 
@@ -56,19 +77,10 @@ function parseDate(text: string): string | null {
   const normalized = normalizeText(text);
 
   const patterns = [
-    // 2026年03月07日
     /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/,
-
-    // 2026/03/07
-    /(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/,
-
-    // 26/03/07
-    /(?<!\d)(\d{2})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})(?!\d)/,
-
-    // 令和6年3月7日
+    /(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/,
+    /(?<!\d)(\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?!\d)/,
     /令和\s*(\d{1,2}|元)\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/,
-
-    // 平成31年4月1日
     /平成\s*(\d{1,2}|元)\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/,
   ];
 
@@ -76,24 +88,20 @@ function parseDate(text: string): string | null {
     const match = normalized.match(pattern);
     if (!match) continue;
 
-    // Reiwa era
     if (pattern.source.includes("令和")) {
       const eraYear = match[1] === "元" ? 1 : Number(match[1]);
       const year = 2018 + eraYear;
       const month = Number(match[2]);
       const day = Number(match[3]);
-
-      return `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+      return buildIsoDate(year, month, day);
     }
 
-    // Heisei era
     if (pattern.source.includes("平成")) {
       const eraYear = match[1] === "元" ? 1 : Number(match[1]);
       const year = 1988 + eraYear;
       const month = Number(match[2]);
       const day = Number(match[3]);
-
-      return `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+      return buildIsoDate(year, month, day);
     }
 
     let year = Number(match[1]);
@@ -104,7 +112,7 @@ function parseDate(text: string): string | null {
       year += 2000;
     }
 
-    return `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+    return buildIsoDate(year, month, day);
   }
 
   return null;
@@ -130,9 +138,11 @@ function parseStore(text: string): string | null {
     "お釣り",
     "ありがとう",
     "ありがとうございます",
+    "消費税",
+    "税額",
   ];
 
-  for (const line of lines.slice(0, 6)) {
+  for (const line of lines.slice(0, 8)) {
     const isBlacklisted = blacklist.some((word) => line.includes(word));
     const hasDigit = /\d/.test(line);
 
@@ -142,6 +152,149 @@ function parseStore(text: string): string | null {
   }
 
   return lines[0] || null;
+}
+
+function parseTax(text: string): { tax: number | null; taxType: "tax_included" | "tax_excluded" | "unknown" } {
+  const normalized = normalizeText(text);
+
+  let taxType: "tax_included" | "tax_excluded" | "unknown" = "unknown";
+
+  if (
+    /(?:税込|内税|税[込含]|\(内税\))/i.test(normalized)
+  ) {
+    taxType = "tax_included";
+  } else if (
+    /(?:税抜|外税|\(外税\)|税別)/i.test(normalized)
+  ) {
+    taxType = "tax_excluded";
+  }
+
+  const taxPatterns = [
+    /(?:消費税|税額|内消費税等|内税|外税)\s*[:：]?\s*[¥￥]?\s*([\d,]+)/gi,
+    /10%\s*対象.*?[¥￥]?\s*([\d,]+).*?(?:消費税|税)\s*[¥￥]?\s*([\d,]+)/gi,
+    /8%\s*対象.*?[¥￥]?\s*([\d,]+).*?(?:消費税|税)\s*[¥￥]?\s*([\d,]+)/gi,
+  ];
+
+  const candidates: number[] = [];
+
+  for (const pattern of taxPatterns) {
+    for (const match of normalized.matchAll(pattern)) {
+      const raw =
+        match[2]?.replace(/,/g, "") ??
+        match[1]?.replace(/,/g, "");
+
+      if (!raw) continue;
+
+      const value = Number(raw);
+      if (Number.isFinite(value) && value >= 0) {
+        candidates.push(value);
+      }
+    }
+  }
+
+  return {
+    tax: candidates.length > 0 ? Math.max(...candidates) : null,
+    taxType,
+  };
+}
+
+function suggestCategory(text: string, store: string | null): string | null {
+  const normalized = normalizeText(text).toLowerCase();
+  const storeNormalized = (store ?? "").toLowerCase();
+
+  const hasAny = (values: string[]) =>
+    values.some((value) => normalized.includes(value) || storeNormalized.includes(value));
+
+  if (
+    hasAny([
+      "7-eleven",
+      "seven eleven",
+      "lawson",
+      "familymart",
+      "mini stop",
+      "ministop",
+      "beisia",
+      "trial",
+      "aeon",
+      "maxvalu",
+      "maruetsu",
+      "seiyu",
+      "donki",
+      "don quijote",
+      "ベイシア",
+      "ローソン",
+      "ファミリーマート",
+      "セブン",
+      "イオン",
+      "スーパー",
+      "食品",
+    ])
+  ) {
+    return "category_food";
+  }
+
+  if (
+    hasAny([
+      "eneos",
+      "cosmo",
+      "idemitsu",
+      "apollostation",
+      "shell",
+      "出光",
+      "ガソリン",
+      "燃料",
+      "高速",
+      "駐車",
+      "parking",
+      "park",
+      "jr",
+      "suica",
+      "pasmo",
+      "タクシー",
+      "電車",
+      "駅",
+    ])
+  ) {
+    return "category_transport";
+  }
+
+  if (
+    hasAny([
+      "hospital",
+      "clinic",
+      "pharmacy",
+      "drug",
+      "welcia",
+      "sundrug",
+      "matsukiyo",
+      "マツキヨ",
+      "病院",
+      "医院",
+      "クリニック",
+      "薬局",
+      "ドラッグ",
+    ])
+  ) {
+    return "category_health";
+  }
+
+  if (
+    hasAny([
+      "cinema",
+      "movie",
+      "netflix",
+      "spotify",
+      "カラオケ",
+      "映画",
+      "ゲーム",
+      "bookoff",
+      "tsutaya",
+    ])
+  ) {
+    return "category_entertainment";
+  }
+
+  return null;
 }
 
 async function runVision(imageUrl: string, apiKey: string): Promise<string> {
@@ -215,13 +368,18 @@ export default {
       }
 
       const rawText = await runVision(imageUrl, apiKey);
+      const store = parseStore(rawText);
+      const taxInfo = parseTax(rawText);
 
       const result: OcrResult = {
         success: true,
         rawText,
         amount: parseAmount(rawText),
         date: parseDate(rawText),
-        store: parseStore(rawText),
+        store,
+        tax: taxInfo.tax,
+        taxType: taxInfo.taxType,
+        suggestedCategory: suggestCategory(rawText, store),
       };
 
       return json(result, 200);
