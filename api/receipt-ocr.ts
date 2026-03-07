@@ -50,27 +50,48 @@ function buildIsoDate(year: number, month: number, day: number): string | null {
 function parseAmount(text: string): number | null {
   const normalized = normalizeText(text);
 
-  const patterns = [
-    /(?:合計|税込合計|ご請求額|お買上金額|お支払金額|総合計|現計)\s*[:：]?\s*[¥￥]?\s*([\d,]+)/gi,
-    /[¥￥]\s*([\d,]+)/g,
+  const priorityPatterns = [
+    /(?:^|\n|\s)合計\s*[:：]?\s*[¥￥]?\s*([\d,]+)/i,
+    /(?:^|\n|\s)税込合計\s*[:：]?\s*[¥￥]?\s*([\d,]+)/i,
+    /(?:^|\n|\s)お買上金額\s*[:：]?\s*[¥￥]?\s*([\d,]+)/i,
+    /(?:^|\n|\s)ご請求額\s*[:：]?\s*[¥￥]?\s*([\d,]+)/i,
+    /(?:^|\n|\s)総合計\s*[:：]?\s*[¥￥]?\s*([\d,]+)/i,
+    /(?:^|\n|\s)現計\s*[:：]?\s*[¥￥]?\s*([\d,]+)/i,
   ];
 
-  const candidates: number[] = [];
-
-  for (const pattern of patterns) {
-    for (const match of normalized.matchAll(pattern)) {
-      const raw = match[1]?.replace(/,/g, "");
-      if (!raw) continue;
-      const value = Number(raw);
+  for (const pattern of priorityPatterns) {
+    const match = normalized.match(pattern);
+    if (match?.[1]) {
+      const value = Number(match[1].replace(/,/g, ""));
       if (Number.isFinite(value) && value > 0) {
-        candidates.push(value);
+        return value;
       }
     }
-    if (candidates.length > 0) break;
   }
 
-  if (candidates.length === 0) return null;
-  return Math.max(...candidates);
+  const yenMatches = [...normalized.matchAll(/[¥￥]\s*([\d,]+)/g)];
+  if (yenMatches.length > 0) {
+    const values = yenMatches
+      .map((m) => Number(m[1].replace(/,/g, "")))
+      .filter((v) => Number.isFinite(v) && v > 0);
+
+    if (values.length > 0) {
+      return Math.max(...values);
+    }
+  }
+
+  const numberMatches = [...normalized.matchAll(/(?:^|\D)(\d{3,})(?!\d)/g)];
+  if (numberMatches.length > 0) {
+    const values = numberMatches
+      .map((m) => Number(m[1].replace(/,/g, "")))
+      .filter((v) => Number.isFinite(v) && v > 0);
+
+    if (values.length > 0) {
+      return Math.max(...values);
+    }
+  }
+
+  return null;
 }
 
 function parseDate(text: string): string | null {
@@ -154,18 +175,19 @@ function parseStore(text: string): string | null {
   return lines[0] || null;
 }
 
-function parseTax(text: string): { tax: number | null; taxType: "tax_included" | "tax_excluded" | "unknown" } {
+function parseTax(
+  text: string
+): {
+  tax: number | null;
+  taxType: "tax_included" | "tax_excluded" | "unknown";
+} {
   const normalized = normalizeText(text);
 
   let taxType: "tax_included" | "tax_excluded" | "unknown" = "unknown";
 
-  if (
-    /(?:税込|内税|税[込含]|\(内税\))/i.test(normalized)
-  ) {
+  if (/(?:税込|内税|税[込含]|\(内税\))/i.test(normalized)) {
     taxType = "tax_included";
-  } else if (
-    /(?:税抜|外税|\(外税\)|税別)/i.test(normalized)
-  ) {
+  } else if (/(?:税抜|外税|\(外税\)|税別)/i.test(normalized)) {
     taxType = "tax_excluded";
   }
 
@@ -179,10 +201,7 @@ function parseTax(text: string): { tax: number | null; taxType: "tax_included" |
 
   for (const pattern of taxPatterns) {
     for (const match of normalized.matchAll(pattern)) {
-      const raw =
-        match[2]?.replace(/,/g, "") ??
-        match[1]?.replace(/,/g, "");
-
+      const raw = match[2]?.replace(/,/g, "") ?? match[1]?.replace(/,/g, "");
       if (!raw) continue;
 
       const value = Number(raw);
@@ -203,7 +222,9 @@ function suggestCategory(text: string, store: string | null): string | null {
   const storeNormalized = (store ?? "").toLowerCase();
 
   const hasAny = (values: string[]) =>
-    values.some((value) => normalized.includes(value) || storeNormalized.includes(value));
+    values.some(
+      (value) => normalized.includes(value) || storeNormalized.includes(value)
+    );
 
   if (
     hasAny([
