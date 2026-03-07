@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import sharp from 'sharp';
 
 type EntryRow = {
   id?: string | number;
@@ -197,12 +198,38 @@ function drawSimpleTable(
   return y + 16;
 }
 
+function isPdfKitSupportedImage(contentType: string | null, bytes: Uint8Array): boolean {
+  const normalized = (contentType ?? '').toLowerCase();
+  if (normalized.includes('jpeg') || normalized.includes('jpg') || normalized.includes('png')) {
+    return true;
+  }
+
+  if (bytes.length >= 4) {
+    const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+    const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[bytes.length - 2] === 0xff && bytes[bytes.length - 1] === 0xd9;
+    if (isPng || isJpeg) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 async function fetchReceiptBuffer(url: string): Promise<Uint8Array | null> {
   try {
     const response = await fetch(url);
     if (!response.ok) return null;
+
+    const contentType = response.headers.get('content-type');
     const arrayBuffer = await response.arrayBuffer();
-    return new Uint8Array(arrayBuffer);
+    const bytes = new Uint8Array(arrayBuffer);
+
+    if (isPdfKitSupportedImage(contentType, bytes)) {
+      return bytes;
+    }
+
+    const converted = await sharp(Buffer.from(bytes)).png().toBuffer();
+    return new Uint8Array(converted);
   } catch {
     return null;
   }

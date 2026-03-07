@@ -2,9 +2,10 @@
   "name": "autonomo-app-api",
   "private": true,
   "dependencies": {
-    "pdfkit": "^0.15.2"
+    "pdfkit": "^0.15.2",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
-    "@types/pdfkit": "^0.17.3"
+    "@types/pdfkit": "^0.13.8"
   }
 }
