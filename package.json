@@ -1,0 +1,10 @@
+{
+  "name": "autonomo-app-api",
+  "private": true,
+  "dependencies": {
+    "pdfkit": "^0.15.2"
+  },
+  "devDependencies": {
+    "@types/pdfkit": "^0.17.3"
+  }
+}

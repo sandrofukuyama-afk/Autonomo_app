@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
+import '../data/report_service.dart';
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
@@ -11,6 +12,8 @@ class ReportsPage extends StatefulWidget {
 
 class _ReportsPageState extends State<ReportsPage> {
   bool _loading = true;
+  bool _generatingPdf = false;
+  int? _selectedFiscalYear;
 
   Map<String, int> _monthlyIncome = {};
   Map<String, int> _monthlyExpense = {};
@@ -78,6 +81,41 @@ class _ReportsPageState extends State<ReportsPage> {
       _monthlyExpenseItems = expenseItemsByMonth;
       _loading = false;
     });
+  }
+
+
+
+  Future<void> _generateFiscalPdf() async {
+    final int? year = _selectedFiscalYear;
+    if (year == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecione o ano fiscal.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _generatingPdf = true;
+    });
+
+    try {
+      await ReportService.instance.generateAnnualFiscalPdf(year);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PDF fiscal gerado com sucesso.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao gerar PDF fiscal: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _generatingPdf = false;
+        });
+      }
+    }
   }
 
   void _showReceipt(String imageUrl) {
@@ -185,11 +223,69 @@ class _ReportsPageState extends State<ReportsPage> {
         .reversed
         .toList();
 
+    _selectedFiscalYear ??= allYears.isNotEmpty ? allYears.first : DateTime.now().year;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Relatório Fiscal Anual PDF',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    value: _selectedFiscalYear,
+                    decoration: const InputDecoration(
+                      labelText: 'Ano fiscal',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: allYears.isNotEmpty
+                        ? allYears
+                            .map((year) => DropdownMenuItem<int>(
+                                  value: year,
+                                  child: Text(year.toString()),
+                                ))
+                            .toList()
+                        : [
+                            DropdownMenuItem<int>(
+                              value: DateTime.now().year,
+                              child: Text(DateTime.now().year.toString()),
+                            ),
+                          ],
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedFiscalYear = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _generatingPdf ? null : _generateFiscalPdf,
+                      icon: _generatingPdf
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.picture_as_pdf),
+                      label: Text(_generatingPdf ? 'Gerando PDF...' : 'Gerar PDF Fiscal'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           Text(
             localizations.translate('monthly_report'),
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
