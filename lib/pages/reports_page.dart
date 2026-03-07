@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
 
@@ -18,25 +17,7 @@ class _ReportsPageState extends State<ReportsPage> {
   Map<int, int> _annualIncome = {};
   Map<int, int> _annualExpense = {};
 
-  Map<String, Map<String, int>> _monthlyCategoryExpense = {};
-  Map<int, Map<String, int>> _annualCategoryExpense = {};
-
   Map<String, List<Map<String, dynamic>>> _monthlyExpenseItems = {};
-
-  static const Map<String, String> _categoryKeyMapping = {
-    'Alimentação': 'category_food',
-    'Transporte': 'category_transport',
-    'Moradia': 'category_housing',
-    'Entretenimento': 'category_entertainment',
-    'Saúde': 'category_health',
-    'Outros': 'category_other',
-    'category_food': 'category_food',
-    'category_transport': 'category_transport',
-    'category_housing': 'category_housing',
-    'category_entertainment': 'category_entertainment',
-    'category_health': 'category_health',
-    'category_other': 'category_other',
-  };
 
   @override
   void initState() {
@@ -53,27 +34,17 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   Future<void> _loadData() async {
-    final List<dynamic> entriesRaw = await SupabaseService.instance.getEntries();
-    final List<dynamic> expensesRaw =
-        await SupabaseService.instance.getExpenses();
-
-    final List<Map<String, dynamic>> entries = entriesRaw
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .toList();
-
-    final List<Map<String, dynamic>> expenses = expensesRaw
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .toList();
+    final entries = await SupabaseService.instance.getEntries();
+    final expenses = await SupabaseService.instance.getExpenses();
 
     final Map<String, int> incomeByMonth = {};
     final Map<int, int> incomeByYear = {};
 
     for (final entry in entries) {
-      final DateTime date = DateTime.parse(entry['date'].toString());
-      final String monthKey =
-          '${date.year}-${date.month.toString().padLeft(2, '0')}';
-      final int yearKey = date.year;
-      final int amount = (entry['amount'] as num).toInt();
+      final date = DateTime.parse(entry['date']);
+      final monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+      final yearKey = date.year;
+      final amount = (entry['amount'] as num).toInt();
 
       incomeByMonth[monthKey] = (incomeByMonth[monthKey] ?? 0) + amount;
       incomeByYear[yearKey] = (incomeByYear[yearKey] ?? 0) + amount;
@@ -81,37 +52,20 @@ class _ReportsPageState extends State<ReportsPage> {
 
     final Map<String, int> expenseByMonth = {};
     final Map<int, int> expenseByYear = {};
-    final Map<String, Map<String, int>> expenseCategoryByMonth = {};
-    final Map<int, Map<String, int>> expenseCategoryByYear = {};
     final Map<String, List<Map<String, dynamic>>> expenseItemsByMonth = {};
 
     for (final expense in expenses) {
-      final DateTime date = DateTime.parse(expense['date'].toString());
-      final String monthKey =
-          '${date.year}-${date.month.toString().padLeft(2, '0')}';
-      final int yearKey = date.year;
-      final int amount = (expense['amount'] as num).toInt();
+      final date = DateTime.parse(expense['date']);
+      final monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+      final yearKey = date.year;
+      final amount = (expense['amount'] as num).toInt();
 
       expenseByMonth[monthKey] = (expenseByMonth[monthKey] ?? 0) + amount;
       expenseByYear[yearKey] = (expenseByYear[yearKey] ?? 0) + amount;
 
-      final String category = (expense['category'] ?? 'Outros').toString();
-
-      final monthMap =
-          expenseCategoryByMonth.putIfAbsent(monthKey, () => <String, int>{});
-      monthMap[category] = (monthMap[category] ?? 0) + amount;
-
-      final yearMap =
-          expenseCategoryByYear.putIfAbsent(yearKey, () => <String, int>{});
-      yearMap[category] = (yearMap[category] ?? 0) + amount;
-
       final monthItems =
-          expenseItemsByMonth.putIfAbsent(monthKey, () => <Map<String, dynamic>>[]);
+          expenseItemsByMonth.putIfAbsent(monthKey, () => []);
       monthItems.add(expense);
-    }
-
-    for (final item in expenseItemsByMonth.values) {
-      item.sort((a, b) => b['date'].toString().compareTo(a['date'].toString()));
     }
 
     if (!mounted) return;
@@ -121,8 +75,6 @@ class _ReportsPageState extends State<ReportsPage> {
       _annualIncome = incomeByYear;
       _monthlyExpense = expenseByMonth;
       _annualExpense = expenseByYear;
-      _monthlyCategoryExpense = expenseCategoryByMonth;
-      _annualCategoryExpense = expenseCategoryByYear;
       _monthlyExpenseItems = expenseItemsByMonth;
       _loading = false;
     });
@@ -138,31 +90,23 @@ class _ReportsPageState extends State<ReportsPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               AppBar(
-                automaticallyImplyLeading: false,
                 title: const Text('Recibo'),
+                automaticallyImplyLeading: false,
                 actions: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close),
-                  ),
+                    onPressed: () => Navigator.pop(context),
+                  )
                 ],
               ),
               Flexible(
                 child: InteractiveViewer(
-                  minScale: 0.5,
-                  maxScale: 4,
                   child: Image.network(
                     imageUrl,
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text('Não foi possível carregar o recibo.'),
-                      );
-                    },
                   ),
                 ),
-              ),
+              )
             ],
           ),
         );
@@ -170,21 +114,13 @@ class _ReportsPageState extends State<ReportsPage> {
     );
   }
 
-  Widget _buildExpenseItem(
-    AppLocalizations localizations,
-    Map<String, dynamic> item,
-  ) {
-    final String description =
-        (item['description'] ?? '').toString().trim().isEmpty
-            ? '-'
-            : item['description'].toString().trim();
-
-    final int amount = (item['amount'] as num).toInt();
-    final String categoryRaw = (item['category'] ?? 'Outros').toString();
-    final String categoryKey = _categoryKeyMapping[categoryRaw] ?? categoryRaw;
-    final String categoryLabel = localizations.translate(categoryKey);
-    final String date = item['date'].toString();
-    final String? receiptUrl = item['receipt_url']?.toString();
+  Widget _expenseItem(
+      AppLocalizations localizations, Map<String, dynamic> item) {
+    final description = item['description'] ?? '-';
+    final amount = (item['amount'] as num).toInt();
+    final date = item['date'];
+    final category = item['category'];
+    final receiptUrl = item['receipt_url'];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -197,40 +133,29 @@ class _ReportsPageState extends State<ReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            description,
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-            ),
-          ),
+          Text(description,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 6),
           Text(
-            '$date  •  $categoryLabel',
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.black54,
-            ),
+            '$date • $category',
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              Text(
-                _yen(amount),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                ),
-              ),
+              Text(_yen(amount),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 15)),
               const Spacer(),
-              if (receiptUrl != null && receiptUrl.isNotEmpty)
+              if (receiptUrl != null)
                 TextButton.icon(
                   onPressed: () => _showReceipt(receiptUrl),
-                  icon: const Icon(Icons.receipt_long_outlined),
+                  icon: const Icon(Icons.receipt),
                   label: const Text('Ver recibo'),
-                ),
+                )
             ],
-          ),
+          )
         ],
       ),
     );
@@ -242,21 +167,23 @@ class _ReportsPageState extends State<ReportsPage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final AppLocalizations localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context);
 
-    final List<String> allMonths = {
+    final List<String> allMonths = ({
       ..._monthlyIncome.keys,
       ..._monthlyExpense.keys,
     }.toList()
-      ..sort()
-      ..reverse();
+      ..sort())
+        .reversed
+        .toList();
 
-    final List<int> allYears = {
+    final List<int> allYears = ({
       ..._annualIncome.keys,
       ..._annualExpense.keys,
     }.toList()
-      ..sort()
-      ..reverse();
+      ..sort())
+        .reversed
+        .toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -269,13 +196,11 @@ class _ReportsPageState extends State<ReportsPage> {
           ),
           const SizedBox(height: 8),
           ...allMonths.map((month) {
-            final int income = _monthlyIncome[month] ?? 0;
-            final int expense = _monthlyExpense[month] ?? 0;
-            final int balance = income - expense;
-            final Map<String, int> categoryMap =
-                _monthlyCategoryExpense[month] ?? {};
-            final List<Map<String, dynamic>> expenseItems =
-                _monthlyExpenseItems[month] ?? [];
+            final income = _monthlyIncome[month] ?? 0;
+            final expense = _monthlyExpense[month] ?? 0;
+            final balance = income - expense;
+
+            final expenseItems = _monthlyExpenseItems[month] ?? [];
 
             return Card(
               child: ExpansionTile(
@@ -292,60 +217,15 @@ class _ReportsPageState extends State<ReportsPage> {
                   ),
                 ),
                 children: [
-                  if (categoryMap.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Categorias',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          ...categoryMap.entries.map((entry) {
-                            final String categoryKey =
-                                _categoryKeyMapping[entry.key] ?? entry.key;
-                            final String categoryLabel =
-                                localizations.translate(categoryKey);
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(categoryLabel),
-                                  Text(_yen(entry.value)),
-                                ],
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
                   if (expenseItems.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(
-                            'Despesas do mês',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          ...expenseItems.map(
-                            (item) => _buildExpenseItem(localizations, item),
-                          ),
-                        ],
+                        children: expenseItems
+                            .map((e) => _expenseItem(localizations, e))
+                            .toList(),
                       ),
-                    ),
+                    )
                 ],
               ),
             );
@@ -357,53 +237,21 @@ class _ReportsPageState extends State<ReportsPage> {
           ),
           const SizedBox(height: 8),
           ...allYears.map((year) {
-            final int income = _annualIncome[year] ?? 0;
-            final int expense = _annualExpense[year] ?? 0;
-            final int balance = income - expense;
-            final Map<String, int> categoryMap =
-                _annualCategoryExpense[year] ?? {};
+            final income = _annualIncome[year] ?? 0;
+            final expense = _annualExpense[year] ?? 0;
+            final balance = income - expense;
 
             return Card(
-              child: ExpansionTile(
+              child: ListTile(
                 title: Text(year.toString()),
-                subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${localizations.translate('income')}: ${_yen(income)}'),
-                      Text('${localizations.translate('expenses')}: ${_yen(expense)}'),
-                      Text('${localizations.translate('balance')}: ${_yen(balance)}'),
-                    ],
-                  ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${localizations.translate('income')}: ${_yen(income)}'),
+                    Text('${localizations.translate('expenses')}: ${_yen(expense)}'),
+                    Text('${localizations.translate('balance')}: ${_yen(balance)}'),
+                  ],
                 ),
-                children: [
-                  if (categoryMap.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: categoryMap.entries.map((entry) {
-                          final String categoryKey =
-                              _categoryKeyMapping[entry.key] ?? entry.key;
-                          final String categoryLabel =
-                              localizations.translate(categoryKey);
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(categoryLabel),
-                                Text(_yen(entry.value)),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                ],
               ),
             );
           }),
