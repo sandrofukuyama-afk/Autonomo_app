@@ -8,13 +8,16 @@ class SupabaseService {
 
   final SupabaseClient _client = Supabase.instance.client;
 
-  Future<List<dynamic>> getEntries() async {
-    final response = await _client.from('entries').select();
-    return response;
+  Future<void> addEntry(Map<String, dynamic> data) async {
+    await _client.from('entries').insert(data);
   }
 
-  Future<List<dynamic>> getExpenses() async {
-    final response = await _client.from('expenses').select();
+  Future<List<dynamic>> getEntries() async {
+    final response = await _client
+        .from('entries')
+        .select()
+        .order('date', ascending: false);
+
     return response;
   }
 
@@ -22,16 +25,21 @@ class SupabaseService {
     await _client.from('expenses').insert(data);
   }
 
-  Future<String> uploadReceipt(Uint8List fileBytes, String fileName) async {
-    final String path = 'receipts/$fileName';
+  Future<List<dynamic>> getExpenses() async {
+    final response = await _client
+        .from('expenses')
+        .select()
+        .order('date', ascending: false);
 
+    return response;
+  }
+
+  Future<String> uploadReceipt(Uint8List fileBytes, String fileName) async {
     await _client.storage.from('receipts').uploadBinary(
-          fileName,
-          fileBytes,
-          fileOptions: const FileOptions(
-            upsert: true,
-          ),
-        );
+      fileName,
+      fileBytes,
+      fileOptions: const FileOptions(upsert: true),
+    );
 
     final String publicUrl =
         _client.storage.from('receipts').getPublicUrl(fileName);
