@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import 'auth_service.dart';
+
 class ReportService {
   ReportService._();
 
@@ -10,11 +12,12 @@ class ReportService {
 
   Future<void> generateAnnualFiscalPdf(int year) async {
     final Uri endpoint = Uri.parse('${Uri.base.origin}/api/fiscal-report');
+    final companyId = await AuthService.instance.getCurrentCompanyId();
 
     final response = await http.post(
       endpoint,
       headers: const {'Content-Type': 'application/json'},
-      body: '{"year":$year,"reportMode":"complete"}',
+      body: '{"year":$year,"reportMode":"complete","companyId":"$companyId"}',
     );
 
     if (response.statusCode != 200) {

@@ -24,6 +24,7 @@ type ExpenseRow = {
 type ReportBody = {
   year?: number;
   reportMode?: string;
+  companyId?: string;
 };
 
 const SUPABASE_URL = 'https://dzazwpgjncowkudkdhca.supabase.co';
@@ -96,10 +97,11 @@ function normalizeTaxType(value: unknown): string {
   return '';
 }
 
-async function fetchSupabaseRows<T>(table: string, year: number): Promise<T[]> {
+async function fetchSupabaseRows<T>(table: string, year: number, companyId: string): Promise<T[]> {
   const start = `${year}-01-01`;
   const end = `${year}-12-31`;
-  const url = `${SUPABASE_URL}/rest/v1/${table}?select=*&date=gte.${encodeURIComponent(start)}&date=lte.${encodeURIComponent(end)}&order=date.asc`;
+  const dateColumn = table === 'entries_v2' ? 'entry_date' : 'expense_date';
+  const url = `${SUPABASE_URL}/rest/v1/${table}?select=*&company_id=eq.${companyId}&${dateColumn}=gte.${encodeURIComponent(start)}&${dateColumn}=lte.${encodeURIComponent(end)}&order=${dateColumn}.asc`;
 
   const response = await fetch(url, {
     headers: {
@@ -274,10 +276,10 @@ async function buildPdf(entries: EntryRow[], expenses: ExpenseRow[], year: numbe
     const month = index + 1;
     const key = `${year}-${`${month}`.padStart(2, '0')}`;
     const income = entries
-      .filter((item) => monthKey(item.date) === key)
+      .filter((item) => monthKey(item.date ?? (item as any).entry_date) === key)
       .reduce((sum, item) => sum + toInt(item.amount), 0);
     const expense = expenses
-      .filter((item) => monthKey(item.date) === key)
+      .filter((item) => monthKey(item.date ?? (item as any).entry_date) === key)
       .reduce((sum, item) => sum + toInt(item.amount), 0);
 
     return {
@@ -393,7 +395,7 @@ async function buildPdf(entries: EntryRow[], expenses: ExpenseRow[], year: numbe
     ],
     entries.length > 0
       ? entries.map((item) => [
-          formatDate(item.date),
+          formatDate(item.date ?? (item as any).entry_date),
           sanitizeText(item.description, 'Sem descrição'),
           sanitizeText(item.category, '-'),
           formatYen(toInt(item.amount)),
@@ -440,7 +442,7 @@ async function buildPdf(entries: EntryRow[], expenses: ExpenseRow[], year: numbe
     ],
     expenses.length > 0
       ? expenses.map((item) => [
-          formatDate(item.date),
+          formatDate(item.date ?? (item as any).entry_date),
           sanitizeText(item.description, 'Sem descrição'),
           sanitizeText(item.category, 'Outros'),
           formatYen(toInt(item.amount)),
@@ -471,13 +473,13 @@ async function buildPdf(entries: EntryRow[], expenses: ExpenseRow[], year: numbe
   }
 
   // Anexos de recibos agrupados por mês (6 por página)
-  const receiptExpenses = expenses.filter((item) => sanitizeText(item.receipt_url, '').length > 0);
+  const receiptExpenses = expenses.filter((item) => sanitizeText((item as any).receipt_url ?? '', '').length > 0);
   if (receiptExpenses.length > 0) {
     const receiptGroups = new Map<string, ExpenseRow[]>();
     const orderedReceipts = [...receiptExpenses].sort((a, b) => formatDate(a.date).localeCompare(formatDate(b.date)));
 
     for (const expense of orderedReceipts) {
-      const key = monthKey(expense.date) || 'sem-data';
+      const key = monthKey(expense.date ?? (expense as any).expense_date) || 'sem-data';
       const group = receiptGroups.get(key) ?? [];
       group.push(expense);
       receiptGroups.set(key, group);
@@ -540,7 +542,7 @@ async function buildPdf(entries: EntryRow[], expenses: ExpenseRow[], year: numbe
         doc.font('Helvetica-Bold').fontSize(8).fillColor('#111827');
         doc.text(ref, left + 8, top + 8, { width: cardWidth - 16 });
         doc.font('Helvetica').fontSize(7).fillColor('#374151');
-        doc.text(formatDate(expense.date), left + 8, top + 20, { width: 70 });
+        doc.text(formatDate(expense.date ?? (expense as any).expense_date), left + 8, top + 20, { width: 70 });
         doc.text(formatYen(toInt(expense.amount)), left + cardWidth - 88, top + 20, { width: 80, align: 'right' });
         doc.text(sanitizeText(expense.description, 'Sem descrição'), left + 8, top + 32, {
           width: cardWidth - 16
@@ -592,6 +594,7 @@ export default {
       const body = (await request.json()) as ReportBody;
       const year = Number(body.year);
       const reportMode = String(body.reportMode ?? '');
+      const companyId = String(body.companyId ?? '');
 
       if (!Number.isInteger(year) || year < 2000 || year > 2100) {
         return json({ success: false, error: 'Ano inválido.' }, 400);
@@ -601,9 +604,13 @@ export default {
         return json({ success: false, error: 'Modo de relatório inválido.' }, 400);
       }
 
+      if (companyId.trim().isEmpty) {
+        return json({ success: false, error: 'companyId obrigatório.' }, 400);
+      }
+
       const [entries, expenses] = await Promise.all([
-        fetchSupabaseRows<EntryRow>('entries', year),
-        fetchSupabaseRows<ExpenseRow>('expenses', year),
+        fetchSupabaseRows<EntryRow>('entries_v2', year, companyId),
+        fetchSupabaseRows<ExpenseRow>('expenses_v2', year, companyId),
       ]);
 
       if (entries.length === 0 && expenses.length === 0) {

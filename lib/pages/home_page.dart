@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/auth_service.dart';
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
 import 'entries_page.dart';
@@ -143,7 +144,11 @@ class _HomePageState extends State<HomePage> {
           PopupMenuButton<String>(
             tooltip: localizations.translate('select_language'),
             icon: const Icon(Icons.language),
-            onSelected: (String languageCode) {
+            onSelected: (String languageCode) async {
+              if (languageCode == 'logout') {
+                await AuthService.instance.signOut();
+                return;
+              }
               widget.onLocaleChanged(Locale(languageCode));
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -162,6 +167,11 @@ class _HomePageState extends State<HomePage> {
               PopupMenuItem<String>(
                 value: 'es',
                 child: Text(localizations.translate('lang_es')),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem<String>(
+                value: 'logout',
+                child: Text('Logout'),
               ),
             ],
           ),
@@ -239,7 +249,7 @@ class _DashboardPageState extends State<_DashboardPage> {
 
     for (final item in entriesRaw) {
       final map = Map<String, dynamic>.from(item as Map);
-      final date = DateTime.parse(map['date'].toString());
+      final date = DateTime.parse((map['date'] ?? map['entry_date']).toString());
       if (date.year == now.year && date.month == now.month) {
         income += (map['amount'] as num).toDouble();
       }
@@ -247,7 +257,7 @@ class _DashboardPageState extends State<_DashboardPage> {
 
     for (final item in expensesRaw) {
       final map = Map<String, dynamic>.from(item as Map);
-      final date = DateTime.parse(map['date'].toString());
+      final date = DateTime.parse((map['date'] ?? map['expense_date']).toString());
       if (date.year == now.year && date.month == now.month) {
         expense += (map['amount'] as num).toDouble();
       }

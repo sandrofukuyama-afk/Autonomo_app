@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'data/auth_service.dart';
 import 'l10n/app_localizations.dart';
+import 'pages/auth_page.dart';
 import 'pages/home_page.dart';
 
 Future<void> main() async {
@@ -54,7 +56,16 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
-      home: HomePage(onLocaleChanged: _setLocale),
+      home: StreamBuilder<AuthState>(
+        stream: AuthService.instance.authStateChanges,
+        builder: (context, snapshot) {
+          final user = Supabase.instance.client.auth.currentUser;
+          if (user == null) {
+            return const AuthPage();
+          }
+          return HomePage(onLocaleChanged: _setLocale);
+        },
+      ),
     );
   }
 }
