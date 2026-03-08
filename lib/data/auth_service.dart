@@ -1,5 +1,15 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+class SignUpResult {
+  final bool requiresEmailConfirmation;
+  final String message;
+
+  const SignUpResult({
+    required this.requiresEmailConfirmation,
+    required this.message,
+  });
+}
+
 class AuthService {
   AuthService._private();
 
@@ -16,23 +26,27 @@ class AuthService {
     required String password,
   }) async {
     await _client.auth.signInWithPassword(
-      email: email,
+      email: email.trim(),
       password: password,
     );
   }
 
-  Future<void> signUp({
+  Future<SignUpResult> signUp({
     required String fullName,
     required String businessName,
     required String email,
     required String password,
   }) async {
+    final String cleanFullName = fullName.trim();
+    final String cleanBusinessName = businessName.trim();
+    final String cleanEmail = email.trim().toLowerCase();
+
     final AuthResponse response = await _client.auth.signUp(
-      email: email,
+      email: cleanEmail,
       password: password,
       data: {
-        'full_name': fullName.trim(),
-        'business_name': businessName.trim(),
+        'full_name': cleanFullName,
+        'business_name': cleanBusinessName,
       },
     );
 
@@ -40,6 +54,21 @@ class AuthService {
     if (user == null) {
       throw Exception('Não foi possível criar o usuário.');
     }
+
+    final bool requiresEmailConfirmation = response.session == null;
+
+    if (requiresEmailConfirmation) {
+      return const SignUpResult(
+        requiresEmailConfirmation: true,
+        message:
+            'Cadastro realizado com sucesso. Verifique seu e-mail para confirmar a conta antes de entrar.',
+      );
+    }
+
+    return const SignUpResult(
+      requiresEmailConfirmation: false,
+      message: 'Cadastro realizado com sucesso.',
+    );
   }
 
   Future<String> getCurrentCompanyId() async {
