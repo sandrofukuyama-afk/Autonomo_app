@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../data/auth_service.dart';
 
 class AuthPage extends StatefulWidget {
@@ -48,14 +47,29 @@ class _AuthPageState extends State<AuthPage> {
 
     try {
       if (_isLogin) {
-        await AuthService.instance.signIn(email: email, password: password);
+        await AuthService.instance.signIn(
+          email: email,
+          password: password,
+        );
       } else {
-        await AuthService.instance.signUp(
+        final result = await AuthService.instance.signUp(
           fullName: _fullNameController.text.trim(),
           businessName: _businessNameController.text.trim(),
           email: email,
           password: password,
         );
+
+        if (result.requiresEmailConfirmation) {
+          _showMessage(result.message);
+
+          setState(() {
+            _isLogin = true;
+          });
+
+          _passwordController.clear();
+        } else {
+          _showMessage(result.message);
+        }
       }
     } catch (e) {
       _showMessage(e.toString().replaceFirst('Exception: ', ''));
@@ -95,39 +109,55 @@ class _AuthPageState extends State<AuthPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
+
                   if (!_isLogin) ...[
                     TextField(
                       controller: _fullNameController,
-                      decoration: const InputDecoration(labelText: 'Nome'),
+                      decoration: const InputDecoration(
+                        labelText: 'Nome',
+                      ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _businessNameController,
-                      decoration: const InputDecoration(labelText: 'Nome do negócio'),
+                      decoration: const InputDecoration(
+                        labelText: 'Nome do negócio',
+                      ),
                     ),
                     const SizedBox(height: 12),
                   ],
+
                   TextField(
                     controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'Email'),
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                    ),
                   ),
                   const SizedBox(height: 12),
+
                   TextField(
                     controller: _passwordController,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Senha'),
+                    decoration: const InputDecoration(
+                      labelText: 'Senha',
+                    ),
                   ),
+
                   const SizedBox(height: 20),
+
                   ElevatedButton(
                     onPressed: _loading ? null : _submit,
                     child: _loading
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
                           )
                         : Text(_isLogin ? 'Entrar' : 'Criar conta'),
                   ),
+
                   TextButton(
                     onPressed: _loading
                         ? null
