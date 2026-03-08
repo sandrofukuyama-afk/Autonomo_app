@@ -30,45 +30,16 @@ class AuthService {
     final AuthResponse response = await _client.auth.signUp(
       email: email,
       password: password,
+      data: {
+        'full_name': fullName.trim(),
+        'business_name': businessName.trim(),
+      },
     );
 
     final User? user = response.user;
     if (user == null) {
       throw Exception('Não foi possível criar o usuário.');
     }
-
-    await _client.from('profiles').upsert({
-      'id': user.id,
-      'email': email,
-      'full_name': fullName,
-      'preferred_language': 'pt',
-      'country': 'JP',
-      'currency': 'JPY',
-    });
-
-    final Map<String, dynamic> company = await _client
-        .from('companies')
-        .insert({
-          'user_id': user.id,
-          'business_name': businessName,
-          'owner_name': fullName,
-          'country': 'JP',
-          'fiscal_regime': 'kojin_blue',
-          'default_language': 'pt',
-          'default_currency': 'JPY',
-          'is_active': true,
-        })
-        .select()
-        .single();
-
-    await _client.from('app_settings').insert({
-      'company_id': company['id'],
-      'language': 'pt',
-      'currency': 'JPY',
-      'date_format': 'yyyy-MM-dd',
-      'theme_mode': 'system',
-      'fiscal_year_start_month': 1,
-    });
   }
 
   Future<String> getCurrentCompanyId() async {
