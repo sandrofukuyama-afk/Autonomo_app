@@ -36,15 +36,6 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _initializeDashboard() async {
     try {
-      Session? session = Supabase.instance.client.auth.currentSession;
-
-      int tries = 0;
-      while (session == null && tries < 10) {
-        await Future.delayed(const Duration(milliseconds: 300));
-        session = Supabase.instance.client.auth.currentSession;
-        tries++;
-      }
-
       final companyId =
           await AuthService.instance.getCurrentCompanyId(forceRefresh: true);
 
@@ -55,11 +46,8 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _companyId = companyId;
         _loading = false;
-        _error = null;
       });
     } catch (e) {
-      if (!mounted) return;
-
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -75,154 +63,101 @@ class _HomePageState extends State<HomePage> {
     final String startIso = monthStart.toIso8601String().split('T').first;
     final String endIso = nextMonthStart.toIso8601String().split('T').first;
 
-    final List<dynamic> entries = await _client
+    final entries = await _client
         .from('entries_v2')
-        .select('id, entry_date, description, category, amount')
+        .select('entry_date, description, amount')
         .eq('company_id', companyId)
         .gte('entry_date', startIso)
-        .lt('entry_date', endIso)
-        .order('entry_date', ascending: false);
+        .lt('entry_date', endIso);
 
-    final List<dynamic> expenses = await _client
+    final expenses = await _client
         .from('expenses_v2')
-        .select('id, expense_date, description, category, amount, store_name')
+        .select('expense_date, description, amount')
         .eq('company_id', companyId)
         .gte('expense_date', startIso)
-        .lt('expense_date', endIso)
-        .order('expense_date', ascending: false);
+        .lt('expense_date', endIso);
 
-    final List<dynamic> recentEntries = await _client
-        .from('entries_v2')
-        .select('id, entry_date, description, category, amount')
-        .eq('company_id', companyId)
-        .order('entry_date', ascending: false)
-        .limit(5);
-
-    final List<dynamic> recentExpenses = await _client
-        .from('expenses_v2')
-        .select('id, expense_date, description, category, amount, store_name')
-        .eq('company_id', companyId)
-        .order('expense_date', ascending: false)
-        .limit(5);
-
-    double entriesTotal = 0;
-    for (final item in entries) {
-      entriesTotal += _toDouble(item['amount']);
+    double entryTotal = 0;
+    for (final e in entries) {
+      entryTotal += (e['amount'] ?? 0).toDouble();
     }
 
-    double expensesTotal = 0;
-    for (final item in expenses) {
-      expensesTotal += _toDouble(item['amount']);
+    double expenseTotal = 0;
+    for (final e in expenses) {
+      expenseTotal += (e['amount'] ?? 0).toDouble();
     }
 
-    _monthEntriesTotal = entriesTotal;
-    _monthExpensesTotal = expensesTotal;
-    _monthProfit = entriesTotal - expensesTotal;
+    _monthEntriesTotal = entryTotal;
+    _monthExpensesTotal = expenseTotal;
+    _monthProfit = entryTotal - expenseTotal;
 
-    _recentEntries =
-        recentEntries.map((e) => Map<String, dynamic>.from(e)).toList();
-
-    _recentExpenses =
-        recentExpenses.map((e) => Map<String, dynamic>.from(e)).toList();
-  }
-
-  double _toDouble(dynamic value) {
-    if (value == null) return 0;
-    if (value is num) return value.toDouble();
-    return double.tryParse(value.toString()) ?? 0;
-  }
-
-  String _formatYen(double value) {
-    final bool negative = value < 0;
-    final String digits = value.abs().round().toString();
-    final StringBuffer buffer = StringBuffer();
-
-    for (int i = 0; i < digits.length; i++) {
-      buffer.write(digits[i]);
-      final int remaining = digits.length - i - 1;
-      if (remaining > 0 && remaining % 3 == 0) {
-        buffer.write(',');
-      }
-    }
-
-    return '${negative ? '-' : ''}¥${buffer.toString()}';
-  }
-
-  String _formatDate(dynamic value) {
-    if (value == null) return '-';
-    final raw = value.toString();
-    if (raw.length >= 10) {
-      return raw.substring(0, 10);
-    }
-    return raw;
-  }
-
-  Future<void> _handleLogout() async {
-    await AuthService.instance.signOut();
-  }
-
-  Future<void> _refreshDashboard() async {
-    if (_companyId == null) return;
-
-    setState(() {
-      _loading = true;
-    });
-
-    await _loadDashboard(_companyId!);
-
-    if (!mounted) return;
-
-    setState(() {
-      _loading = false;
-    });
+    _recentEntries = List<Map<String, dynamic>>.from(entries.take(5));
+    _recentExpenses = List<Map<String, dynamic>>.from(expenses.take(5));
   }
 
   Future<void> _openEntriesPage() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const EntriesPage()),
+      MaterialPageRoute(builder: (_) => const EntriesPage()),
     );
-
-    await _refreshDashboard();
+    await _initializeDashboard();
   }
 
   Future<void> _openExpensesPage() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const ExpensesPage()),
+      MaterialPageRoute(builder: (_) => const ExpensesPage()),
     );
-
-    await _refreshDashboard();
+    await _initializeDashboard();
   }
 
-  Widget _buildSummary(String title, double value, IconData icon) {
-    return Card(
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        trailing: Text(
-          _formatYen(value),
-          style: const TextStyle(fontWeight: FontWeight.bold),
+  String _yen(double value) {
+    return "¥${value.toStringAsFixed(0)}";
+  }
+
+  Widget _summaryCard(
+      String title, double value, IconData icon, Color color) {
+    return Expanded(
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: Colors.grey.shade300),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 28),
+              const SizedBox(height: 10),
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 6),
+              Text(
+                _yen(value),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildEntryItem(Map item) {
+  Widget _listItem(String title, String date, double amount, bool income) {
     return ListTile(
-      leading: const Icon(Icons.arrow_downward, color: Colors.green),
-      title: Text(item['description'] ?? ''),
-      subtitle: Text(_formatDate(item['entry_date'])),
-      trailing: Text(_formatYen(_toDouble(item['amount']))),
-    );
-  }
-
-  Widget _buildExpenseItem(Map item) {
-    return ListTile(
-      leading: const Icon(Icons.arrow_upward, color: Colors.red),
-      title: Text(item['description'] ?? ''),
-      subtitle: Text(_formatDate(item['expense_date'])),
-      trailing: Text(_formatYen(_toDouble(item['amount']))),
+      leading: Icon(
+        income ? Icons.arrow_downward : Icons.arrow_upward,
+        color: income ? Colors.green : Colors.red,
+      ),
+      title: Text(title),
+      subtitle: Text(date),
+      trailing: Text(
+        _yen(amount),
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
     );
   }
 
@@ -235,23 +170,19 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (_error != null) {
-      return Scaffold(
-        body: Center(child: Text(_error!)),
-      );
+      return Scaffold(body: Center(child: Text(_error!)));
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Autonomo App'),
+        title: const Text("Autonomo App"),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshDashboard,
-          ),
-          IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: _handleLogout,
-          ),
+            onPressed: () async {
+              await AuthService.instance.signOut();
+            },
+          )
         ],
       ),
       floatingActionButton: Column(
@@ -259,35 +190,68 @@ class _HomePageState extends State<HomePage> {
         children: [
           FloatingActionButton.extended(
             heroTag: "entry",
-            onPressed: _openEntriesPage,
             icon: const Icon(Icons.add),
-            label: const Text('Entrada'),
+            label: const Text("Entrada"),
+            onPressed: _openEntriesPage,
           ),
           const SizedBox(height: 10),
           FloatingActionButton.extended(
             heroTag: "expense",
-            onPressed: _openExpensesPage,
             icon: const Icon(Icons.receipt),
-            label: const Text('Despesa'),
+            label: const Text("Despesa"),
+            onPressed: _openExpensesPage,
           ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildSummary('Entradas do mês', _monthEntriesTotal,
-              Icons.trending_up),
-          _buildSummary('Despesas do mês', _monthExpensesTotal,
-              Icons.receipt_long),
-          _buildSummary('Resultado do mês', _monthProfit, Icons.savings),
+          const Text(
+            "Resumo do mês",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+
+          Row(
+            children: [
+              _summaryCard(
+                  "Entradas", _monthEntriesTotal, Icons.trending_up, Colors.green),
+              const SizedBox(width: 10),
+              _summaryCard("Despesas", _monthExpensesTotal,
+                  Icons.trending_down, Colors.red),
+              const SizedBox(width: 10),
+              _summaryCard("Resultado", _monthProfit, Icons.account_balance,
+                  Colors.blue),
+            ],
+          ),
+
+          const SizedBox(height: 30),
+
+          const Text(
+            "Últimas entradas",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+
+          ..._recentEntries.map((e) => _listItem(
+                e['description'] ?? '',
+                e['entry_date'] ?? '',
+                (e['amount'] ?? 0).toDouble(),
+                true,
+              )),
+
           const SizedBox(height: 20),
-          const Text('Últimas entradas',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          ..._recentEntries.map(_buildEntryItem),
-          const SizedBox(height: 20),
-          const Text('Últimas despesas',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          ..._recentExpenses.map(_buildExpenseItem),
+
+          const Text(
+            "Últimas despesas",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+
+          ..._recentExpenses.map((e) => _listItem(
+                e['description'] ?? '',
+                e['expense_date'] ?? '',
+                (e['amount'] ?? 0).toDouble(),
+                false,
+              )),
         ],
       ),
     );
