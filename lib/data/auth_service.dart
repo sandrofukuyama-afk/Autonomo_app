@@ -25,9 +25,20 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    final String cleanEmail = email.trim().toLowerCase();
+    final String cleanPassword = password.trim();
+
+    if (cleanEmail.isEmpty) {
+      throw Exception('Informe seu e-mail.');
+    }
+
+    if (cleanPassword.isEmpty) {
+      throw Exception('Informe sua senha.');
+    }
+
     await _client.auth.signInWithPassword(
-      email: email.trim(),
-      password: password,
+      email: cleanEmail,
+      password: cleanPassword,
     );
   }
 
@@ -40,10 +51,27 @@ class AuthService {
     final String cleanFullName = fullName.trim();
     final String cleanBusinessName = businessName.trim();
     final String cleanEmail = email.trim().toLowerCase();
+    final String cleanPassword = password.trim();
+
+    if (cleanFullName.isEmpty) {
+      throw Exception('Informe seu nome.');
+    }
+
+    if (cleanBusinessName.isEmpty) {
+      throw Exception('Informe o nome do negócio.');
+    }
+
+    if (cleanEmail.isEmpty) {
+      throw Exception('Informe seu e-mail.');
+    }
+
+    if (cleanPassword.isEmpty) {
+      throw Exception('Informe sua senha.');
+    }
 
     final AuthResponse response = await _client.auth.signUp(
       email: cleanEmail,
-      password: password,
+      password: cleanPassword,
       data: {
         'full_name': cleanFullName,
         'business_name': cleanBusinessName,
@@ -81,7 +109,6 @@ class AuthService {
         .from('companies')
         .select('id')
         .eq('user_id', user.id)
-        .eq('is_active', true)
         .limit(1);
 
     if (rows.isEmpty) {
