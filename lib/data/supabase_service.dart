@@ -65,6 +65,19 @@ class SupabaseService {
         .toList();
   }
 
+  Future<void> updateEntry(String id, Map<String, dynamic> data) async {
+    await _client.from('entries_v2').update({
+      'entry_date': data['entry_date'],
+      'description': data['description'],
+      'amount': data['amount'],
+      'payment_method': _normalizePaymentMethod(data['payment_method']),
+    }).eq('id', id);
+  }
+
+  Future<void> deleteEntry(String id) async {
+    await _client.from('entries_v2').delete().eq('id', id);
+  }
+
   Future<void> addExpense(Map<String, dynamic> data) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
     final receiptUrl = data['receipt_url'];
@@ -81,7 +94,8 @@ class SupabaseService {
           'tax_amount': data['tax'],
           'tax_type': data['tax_type'],
           'receipt_status': receiptUrl != null ? 'uploaded' : 'none',
-          'deductibility_status': data['deductibility_status'] ?? 'review_required',
+          'deductibility_status':
+              data['deductibility_status'] ?? 'review_required',
           'is_mixed_use': data['is_mixed_use'] ?? false,
           'business_use_percent': data['business_use_percent'] ?? 100,
           'private_use_percent': data['private_use_percent'] ?? 0,
@@ -110,7 +124,8 @@ class SupabaseService {
         'storage_path': receiptUrl,
         'public_url': receiptUrl,
         'file_name': data['file_name'],
-        'original_file_name': data['original_file_name'] ?? data['file_name'],
+        'original_file_name':
+            data['original_file_name'] ?? data['file_name'],
         'mime_type': data['mime_type'],
         'file_size_bytes': data['file_size_bytes'],
         'ocr_status': 'processed',
@@ -125,11 +140,14 @@ class SupabaseService {
         'document_type': data['document_type'] ?? 'receipt',
         'document_date': data['document_date'],
         'document_amount': data['document_amount'],
-        'document_store_name': data['document_store_name'] ?? data['store_name'],
-        'search_vendor_name': data['search_vendor_name'] ?? data['store_name'],
+        'document_store_name':
+            data['document_store_name'] ?? data['store_name'],
+        'search_vendor_name':
+            data['search_vendor_name'] ?? data['store_name'],
         'search_amount': data['search_amount'] ?? data['amount'],
         'search_date': data['search_date'] ?? data['date'],
-        'is_electronic_transaction': data['is_electronic_transaction'] ?? false,
+        'is_electronic_transaction':
+            data['is_electronic_transaction'] ?? false,
         'retention_lock_flag': data['retention_lock_flag'] ?? false,
         'review_status': data['receipt_review_status'] ?? 'pending',
         'uploaded_at': DateTime.now().toIso8601String(),
