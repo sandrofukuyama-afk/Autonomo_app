@@ -52,7 +52,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
       'subtitle':
           'Escolha como deseja registrar a despesa. O ideal é escanear o recibo para preencher automaticamente.',
       'scan_title': 'Escanear recibo',
-      'scan_subtitle': 'Tire foto ou escolha uma imagem para preencher dados automaticamente.',
+      'scan_subtitle':
+          'Tire foto ou escolha uma imagem para preencher dados automaticamente.',
       'manual_title': 'Inserir manualmente',
       'manual_subtitle': 'Preencha os campos manualmente sem usar OCR.',
       'ocr_success': 'Recibo lido com OCR com sucesso',
@@ -70,7 +71,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
       'subtitle':
           'Choose how you want to register the expense. The best option is scanning the receipt for auto-fill.',
       'scan_title': 'Scan receipt',
-      'scan_subtitle': 'Take a photo or choose an image to auto-fill the fields.',
+      'scan_subtitle':
+          'Take a photo or choose an image to auto-fill the fields.',
       'manual_title': 'Enter manually',
       'manual_subtitle': 'Fill the fields manually without OCR.',
       'ocr_success': 'Receipt processed successfully with OCR',
@@ -106,7 +108,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
       'subtitle':
           'Elige cómo deseas registrar el gasto. Lo ideal es escanear el recibo para completar automáticamente.',
       'scan_title': 'Escanear recibo',
-      'scan_subtitle': 'Toma una foto o elige una imagen para completar automáticamente.',
+      'scan_subtitle':
+          'Toma una foto o elige una imagen para completar automáticamente.',
       'manual_title': 'Ingresar manualmente',
       'manual_subtitle': 'Completa los campos manualmente sin OCR.',
       'ocr_success': 'Recibo leído correctamente con OCR',
@@ -150,6 +153,19 @@ class _ExpensesPageState extends State<ExpensesPage> {
     });
   }
 
+  String? _normalizeSuggestedCategory(dynamic value) {
+    if (value == null) return null;
+
+    final String category = value.toString().trim();
+    if (category.isEmpty) return null;
+
+    if (_categoryKeys.contains(category)) {
+      return category;
+    }
+
+    return null;
+  }
+
   Future<void> _startReceiptScan() async {
     setState(() {
       _mode = ExpenseInputMode.scan;
@@ -188,7 +204,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
     try {
       final XFile? pickedImage = await picker.pickImage(
         source: source,
-        imageQuality: 85,
+        imageQuality: 65,
+        maxWidth: 1600,
+        maxHeight: 1600,
       );
 
       if (pickedImage == null) return;
@@ -208,11 +226,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
       final Uri endpoint = Uri.parse('${Uri.base.origin}/api/receipt-ocr');
 
-      final response = await http.post(
-        endpoint,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'imageUrl': uploadedUrl}),
-      );
+      final http.Response response = await http
+          .post(
+            endpoint,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'imageUrl': uploadedUrl}),
+          )
+          .timeout(const Duration(seconds: 35));
 
       if (response.statusCode != 200) {
         throw Exception('OCR HTTP ${response.statusCode}: ${response.body}');
@@ -228,6 +248,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
       final dynamic amount = data['amount'];
       final dynamic date = data['date'];
       final dynamic store = data['store'];
+      final String? suggestedCategory =
+          _normalizeSuggestedCategory(data['suggestedCategory']);
 
       setState(() {
         _uploadedReceiptUrl = uploadedUrl;
@@ -244,6 +266,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
             store != null &&
             store.toString().trim().isNotEmpty) {
           _descController.text = store.toString().trim();
+        }
+
+        if (_selectedCategory == null && suggestedCategory != null) {
+          _selectedCategory = suggestedCategory;
         }
 
         _ocrLoading = false;
