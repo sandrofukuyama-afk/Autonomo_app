@@ -14,12 +14,8 @@ class _EntriesPageState extends State<EntriesPage> {
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _valueController = TextEditingController();
   DateTime? _selectedDate;
-  // Novo campo para armazenar o método de pagamento selecionado. A variável
-  // armazenará a chave de localização (por exemplo, 'payment_cash').
   String? _selectedPaymentMethod;
 
-  // Lista de opções de métodos de pagamento disponíveis. Estas são
-  // chaves que serão traduzidas via AppLocalizations no build.
   final List<String> _paymentMethodsKeys = const [
     'payment_cash',
     'payment_credit_card',
@@ -61,7 +57,7 @@ class _EntriesPageState extends State<EntriesPage> {
       );
       return;
     }
-    // Verifica se o método de pagamento foi selecionado.
+
     if (_selectedPaymentMethod == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -72,6 +68,7 @@ class _EntriesPageState extends State<EntriesPage> {
       );
       return;
     }
+
     final double? amount = double.tryParse(_valueController.text);
     if (amount == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -83,20 +80,28 @@ class _EntriesPageState extends State<EntriesPage> {
       );
       return;
     }
+
     final Map<String, dynamic> entry = {
-      'description': _descController.text,
+      'description': _descController.text.trim(),
       'amount': amount,
       'date': _selectedDate!.toIso8601String(),
       'created_at': DateTime.now().toIso8601String(),
       'payment_method': _selectedPaymentMethod,
+      'category': 'service',
+      'customer_name': null,
+      'notes': null,
     };
+
     await SupabaseService.instance.addEntry(entry);
+
     _descController.clear();
     _valueController.clear();
+
     setState(() {
       _selectedDate = null;
       _selectedPaymentMethod = null;
     });
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -109,6 +114,7 @@ class _EntriesPageState extends State<EntriesPage> {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations localizations = AppLocalizations.of(context);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -123,23 +129,24 @@ class _EntriesPageState extends State<EntriesPage> {
           const SizedBox(height: 16),
           TextField(
             controller: _valueController,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: localizations.translate('value'),
             ),
           ),
           const SizedBox(height: 16),
-          // Dropdown para selecionar o método de pagamento.
           DropdownButtonFormField<String>(
             value: _selectedPaymentMethod,
             decoration: InputDecoration(
               labelText: localizations.translate('payment_method'),
             ),
             items: _paymentMethodsKeys
-                .map((methodKey) => DropdownMenuItem<String>(
-                      value: methodKey,
-                      child: Text(localizations.translate(methodKey)),
-                    ))
+                .map(
+                  (methodKey) => DropdownMenuItem<String>(
+                    value: methodKey,
+                    child: Text(localizations.translate(methodKey)),
+                  ),
+                )
                 .toList(),
             onChanged: (value) {
               setState(() {
@@ -154,7 +161,7 @@ class _EntriesPageState extends State<EntriesPage> {
                 child: Text(
                   _selectedDate == null
                       ? localizations.translate('no_date_selected')
-                      : '${localizations.translate('date')}: \${_selectedDate!.toLocal().toString().split(' ')[0]}',
+                      : '${localizations.translate('date')}: ${_selectedDate!.toLocal().toString().split(' ')[0]}',
                 ),
               ),
               ElevatedButton(
