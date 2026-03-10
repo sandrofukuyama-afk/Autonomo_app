@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/supabase_service.dart';
+import '../data/tax_calculator_jp.dart';
 import '../l10n/app_localizations.dart';
 import '../data/report_service.dart';
 
@@ -12,6 +13,8 @@ class ReportsPage extends StatefulWidget {
 
 class _ReportsPageState extends State<ReportsPage> {
   bool _loading = true;
+  bool _generatingPdf = false;
+  int? _selectedFiscalYear;
 
   int _totalIncome = 0;
   int _totalDeductibleExpense = 0;
@@ -22,6 +25,9 @@ class _ReportsPageState extends State<ReportsPage> {
   Map<String, int> _monthlyExpense = {};
   Map<int, int> _annualIncome = {};
   Map<int, int> _annualExpense = {};
+  Map<String, List<Map<String, dynamic>>> _monthlyExpenseItems = {};
+
+  TaxResultJP? _taxResult;
 
   @override
   void initState() {
@@ -63,6 +69,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
     final Map<String, int> expenseByMonth = {};
     final Map<int, int> expenseByYear = {};
+    final Map<String, List<Map<String, dynamic>>> expenseItemsByMonth = {};
 
     for (final expense in expenses) {
       final date = DateTime.parse(expense['date']);
@@ -96,12 +103,18 @@ class _ReportsPageState extends State<ReportsPage> {
 
       deductibleTotal += fiscalInt;
 
-      expenseByMonth[monthKey] =
-          (expenseByMonth[monthKey] ?? 0) + fiscalInt;
+      expenseByMonth[monthKey] = (expenseByMonth[monthKey] ?? 0) + fiscalInt;
+      expenseByYear[yearKey] = (expenseByYear[yearKey] ?? 0) + fiscalInt;
 
-      expenseByYear[yearKey] =
-          (expenseByYear[yearKey] ?? 0) + fiscalInt;
+      final monthItems = expenseItemsByMonth.putIfAbsent(monthKey, () => []);
+      monthItems.add(expense);
     }
+
+    final TaxResultJP taxResult = TaxCalculatorJP.calculate(
+      totalIncome: incomeTotal,
+      deductibleExpenses: deductibleTotal,
+      blueReturn: true,
+    );
 
     if (!mounted) return;
 
@@ -115,12 +128,81 @@ class _ReportsPageState extends State<ReportsPage> {
       _monthlyExpense = expenseByMonth;
       _annualIncome = incomeByYear;
       _annualExpense = expenseByYear;
+      _monthlyExpenseItems = expenseItemsByMonth;
+      _taxResult = taxResult;
 
       _loading = false;
     });
   }
 
-  Widget _fiscalCard(String title, int value, Color color) {
+  Future<void> _generateFiscalPdf() async {
+    final int? year = _selectedFiscalYear;
+    if (year == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecione o ano fiscal.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _generatingPdf = true;
+    });
+
+    try {
+      await ReportService.instance.generateAnnualFiscalPdf(year);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PDF fiscal gerado com sucesso.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao gerar PDF fiscal: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _generatingPdf = false;
+        });
+      }
+    }
+  }
+
+  void _showReceipt(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppBar(
+                title: const Text('Recibo'),
+                automaticallyImplyLeading: false,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              Flexible(
+                child: InteractiveViewer(
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _fiscalCard(String title, String value, Color color) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -133,14 +215,17 @@ class _ReportsPageState extends State<ReportsPage> {
           children: [
             Text(
               title,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 12,
                 color: Colors.white70,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              _yen(value),
+              value,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -153,13 +238,141 @@ class _ReportsPageState extends State<ReportsPage> {
     );
   }
 
+  Widget _taxSummaryCard() {
+    final result = _taxResult;
+    if (result == null) return const SizedBox.shrink();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Resumo Fiscal (確定申告)',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 14),
+            _taxLine('Receita total', _yen(result.totalIncome)),
+            _taxLine('Despesas dedutíveis', _yen(result.deductibleExpenses)),
+            _taxLine('Lucro do negócio', _yen(result.businessProfit)),
+            const Divider(height: 24),
+            _taxLine('Dedução básica', _yen(result.basicDeduction)),
+            _taxLine('Dedução Blue Return', _yen(result.blueReturnDeduction)),
+            const Divider(height: 24),
+            _taxLine('Base tributável', _yen(result.taxableIncome)),
+            _taxLine(
+              'Imposto estimado',
+              _yen(result.estimatedTax),
+              valueColor: Colors.red,
+              bold: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _taxLine(
+    String label,
+    String value, {
+    Color? valueColor,
+    bool bold = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+              color: valueColor ?? Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _expenseItem(
+    AppLocalizations localizations,
+    Map<String, dynamic> item,
+  ) {
+    final description = item['description'] ?? '-';
+    final amount = (item['amount'] as num).toInt();
+    final date = item['date'];
+    final category = item['category'];
+    final receiptUrl = item['receipt_url'];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            description,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$date • $category',
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text(
+                _yen(amount),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+              const Spacer(),
+              if (receiptUrl != null)
+                TextButton.icon(
+                  onPressed: () => _showReceipt(receiptUrl),
+                  icon: const Icon(Icons.receipt),
+                  label: const Text('Ver recibo'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final balance = _totalIncome - _totalDeductibleExpense;
+    final localizations = AppLocalizations.of(context);
+    final int businessBalance = _totalIncome - _totalDeductibleExpense;
 
     final List<String> allMonths = ({
       ..._monthlyIncome.keys,
@@ -177,68 +390,155 @@ class _ReportsPageState extends State<ReportsPage> {
         .reversed
         .toList();
 
+    _selectedFiscalYear ??=
+        allYears.isNotEmpty ? allYears.first : DateTime.now().year;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          const SizedBox(height: 10),
-
           Row(
             children: [
-              _fiscalCard("Receita", _totalIncome, Colors.green),
-              _fiscalCard("Despesas", _totalDeductibleExpense, Colors.red),
+              _fiscalCard('Receita', _yen(_totalIncome), Colors.green),
+              _fiscalCard(
+                'Despesas',
+                _yen(_totalDeductibleExpense),
+                Colors.red,
+              ),
             ],
           ),
-
           Row(
             children: [
-              _fiscalCard("Lucro", balance, Colors.blue),
-              _fiscalCard("Pendentes", _pendingReview, Colors.orange),
+              _fiscalCard('Lucro', _yen(businessBalance), Colors.blue),
+              _fiscalCard('Pendentes', _pendingReview.toString(), Colors.orange),
             ],
           ),
-
           Row(
             children: [
-              _fiscalCard("Sem Recibo", _missingReceipt, Colors.grey),
+              _fiscalCard(
+                'Sem Recibo',
+                _missingReceipt.toString(),
+                Colors.grey,
+              ),
             ],
           ),
-
-          const SizedBox(height: 20),
-
-          const Text(
-            "Relatório Mensal",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          const SizedBox(height: 16),
+          _taxSummaryCard(),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Relatório Fiscal Anual PDF',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    value: _selectedFiscalYear,
+                    decoration: const InputDecoration(
+                      labelText: 'Ano fiscal',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: allYears.isNotEmpty
+                        ? allYears
+                            .map(
+                              (year) => DropdownMenuItem<int>(
+                                value: year,
+                                child: Text(year.toString()),
+                              ),
+                            )
+                            .toList()
+                        : [
+                            DropdownMenuItem<int>(
+                              value: DateTime.now().year,
+                              child: Text(DateTime.now().year.toString()),
+                            ),
+                          ],
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedFiscalYear = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _generatingPdf ? null : _generateFiscalPdf,
+                      icon: _generatingPdf
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.picture_as_pdf),
+                      label: Text(
+                        _generatingPdf ? 'Gerando PDF...' : 'Gerar PDF Fiscal',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-
-          const SizedBox(height: 10),
-
+          const SizedBox(height: 16),
+          Text(
+            localizations.translate('monthly_report'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
           ...allMonths.map((month) {
             final income = _monthlyIncome[month] ?? 0;
             final expense = _monthlyExpense[month] ?? 0;
             final balance = income - expense;
+            final expenseItems = _monthlyExpenseItems[month] ?? [];
 
             return Card(
-              child: ListTile(
+              child: ExpansionTile(
                 title: Text(month),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Receita: ${_yen(income)}'),
-                    Text('Despesa: ${_yen(expense)}'),
-                    Text('Resultado: ${_yen(balance)}'),
-                  ],
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${localizations.translate('income')}: ${_yen(income)}',
+                      ),
+                      Text(
+                        '${localizations.translate('expenses')}: ${_yen(expense)}',
+                      ),
+                      Text(
+                        '${localizations.translate('balance')}: ${_yen(balance)}',
+                      ),
+                    ],
+                  ),
                 ),
+                children: [
+                  if (expenseItems.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: Column(
+                        children: expenseItems
+                            .map((e) => _expenseItem(localizations, e))
+                            .toList(),
+                      ),
+                    ),
+                ],
               ),
             );
           }),
-
-          const SizedBox(height: 20),
-
-          const Text(
-            "Relatório Anual",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          const SizedBox(height: 16),
+          Text(
+            localizations.translate('annual_report'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-
+          const SizedBox(height: 8),
           ...allYears.map((year) {
             final income = _annualIncome[year] ?? 0;
             final expense = _annualExpense[year] ?? 0;
@@ -250,9 +550,15 @@ class _ReportsPageState extends State<ReportsPage> {
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Receita: ${_yen(income)}'),
-                    Text('Despesa: ${_yen(expense)}'),
-                    Text('Resultado: ${_yen(balance)}'),
+                    Text(
+                      '${localizations.translate('income')}: ${_yen(income)}',
+                    ),
+                    Text(
+                      '${localizations.translate('expenses')}: ${_yen(expense)}',
+                    ),
+                    Text(
+                      '${localizations.translate('balance')}: ${_yen(balance)}',
+                    ),
                   ],
                 ),
               ),
