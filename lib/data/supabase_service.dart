@@ -26,7 +26,8 @@ class SupabaseService {
 
   Future<List<dynamic>> getEntries() async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
-    final response = await _client
+
+    final List<dynamic> response = await _client
         .from('entries_v2')
         .select()
         .eq('company_id', companyId)
@@ -83,21 +84,23 @@ class SupabaseService {
   Future<List<dynamic>> getExpenses() async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
 
-    final expenses = await _client
+    final List<dynamic> expenses = await _client
         .from('expenses_v2')
         .select()
         .eq('company_id', companyId)
         .order('expense_date', ascending: false);
 
-    final receipts = await _client
+    final List<dynamic> receipts = await _client
         .from('expense_receipts')
         .select('expense_id, public_url')
         .eq('company_id', companyId);
 
-    final Map<String, String> receiptMap = {
-      for (final row in receipts)
-        row['expense_id'].toString(): (row['public_url'] ?? '').toString(),
-    };
+    final Map<String, String> receiptMap = {};
+
+    for (final row in receipts) {
+      receiptMap[row['expense_id'].toString()] =
+          (row['public_url'] ?? '').toString();
+    }
 
     return expenses
         .map((item) => {
@@ -110,13 +113,18 @@ class SupabaseService {
 
   Future<String> uploadReceipt(Uint8List fileBytes, String fileName) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
-    final storagePath = '$companyId/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+
+    final storagePath =
+        '$companyId/${DateTime.now().millisecondsSinceEpoch}_$fileName';
 
     await _client.storage.from('receipts').uploadBinary(
-      storagePath,
-      fileBytes,
-      fileOptions: const FileOptions(upsert: true),
-    );
+          storagePath,
+          fileBytes,
+          fileOptions: const FileOptions(
+            upsert: true,
+            contentType: 'image/jpeg',
+          ),
+        );
 
     return _client.storage.from('receipts').getPublicUrl(storagePath);
   }
