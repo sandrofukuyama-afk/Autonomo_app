@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../data/auth_service.dart';
 import 'entries_page.dart';
+import 'expenses_page.dart';
 
 class HomePage extends StatefulWidget {
   final Function(Locale) onLocaleChanged;
@@ -117,13 +119,11 @@ class _HomePageState extends State<HomePage> {
     _monthExpensesTotal = expensesTotal;
     _monthProfit = entriesTotal - expensesTotal;
 
-    _recentEntries = recentEntries
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
+    _recentEntries =
+        recentEntries.map((e) => Map<String, dynamic>.from(e)).toList();
 
-    _recentExpenses = recentExpenses
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
+    _recentExpenses =
+        recentExpenses.map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   double _toDouble(dynamic value) {
@@ -158,15 +158,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _handleLogout() async {
-    try {
-      await AuthService.instance.signOut();
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao sair: $e')),
-      );
-    }
+    await AuthService.instance.signOut();
   }
 
   Future<void> _refreshDashboard() async {
@@ -174,173 +166,63 @@ class _HomePageState extends State<HomePage> {
 
     setState(() {
       _loading = true;
-      _error = null;
     });
 
-    try {
-      await _loadDashboard(_companyId!);
+    await _loadDashboard(_companyId!);
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      setState(() {
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-    }
+    setState(() {
+      _loading = false;
+    });
   }
 
   Future<void> _openEntriesPage() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const EntriesPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const EntriesPage()),
     );
 
     await _refreshDashboard();
   }
 
-  Widget _buildSummaryCard({
-    required String title,
-    required String value,
-    required IconData icon,
-  }) {
+  Future<void> _openExpensesPage() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ExpensesPage()),
+    );
+
+    await _refreshDashboard();
+  }
+
+  Widget _buildSummary(String title, double value, IconData icon) {
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: Colors.grey.shade300),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: Colors.blue.shade100,
-              child: Icon(icon, color: Colors.blue.shade800),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.black54,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        trailing: Text(
+          _formatYen(value),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
-  Widget _buildSectionCard({
-    required String title,
-    required List<Widget> children,
-  }) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: Colors.grey.shade300),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...children,
-          ],
-        ),
-      ),
+  Widget _buildEntryItem(Map item) {
+    return ListTile(
+      leading: const Icon(Icons.arrow_downward, color: Colors.green),
+      title: Text(item['description'] ?? ''),
+      subtitle: Text(_formatDate(item['entry_date'])),
+      trailing: Text(_formatYen(_toDouble(item['amount']))),
     );
   }
 
-  Widget _buildEmptyText(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(
-        text,
-        style: const TextStyle(color: Colors.black54),
-      ),
-    );
-  }
-
-  Widget _buildRecentEntries() {
-    if (_recentEntries.isEmpty) {
-      return _buildEmptyText('Nenhuma entrada cadastrada.');
-    }
-
-    return Column(
-      children: _recentEntries.map((item) {
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.arrow_downward, color: Colors.green),
-          title: Text((item['description'] ?? 'Sem descrição').toString()),
-          subtitle: Text(
-            '${_formatDate(item['entry_date'])} • ${(item['category'] ?? 'Sem categoria').toString()}',
-          ),
-          trailing: Text(
-            _formatYen(_toDouble(item['amount'])),
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildRecentExpenses() {
-    if (_recentExpenses.isEmpty) {
-      return _buildEmptyText('Nenhuma despesa cadastrada.');
-    }
-
-    return Column(
-      children: _recentExpenses.map((item) {
-        final storeName = (item['store_name'] ?? '').toString().trim();
-        final description = (item['description'] ?? 'Sem descrição').toString();
-
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.arrow_upward, color: Colors.red),
-          title: Text(description),
-          subtitle: Text(
-            '${_formatDate(item['expense_date'])} • ${storeName.isNotEmpty ? storeName : (item['category'] ?? 'Sem categoria').toString()}',
-          ),
-          trailing: Text(
-            _formatYen(_toDouble(item['amount'])),
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        );
-      }).toList(),
+  Widget _buildExpenseItem(Map item) {
+    return ListTile(
+      leading: const Icon(Icons.arrow_upward, color: Colors.red),
+      title: Text(item['description'] ?? ''),
+      subtitle: Text(_formatDate(item['expense_date'])),
+      trailing: Text(_formatYen(_toDouble(item['amount']))),
     );
   }
 
@@ -348,51 +230,13 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Autonomo App'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: _handleLogout,
-            ),
-          ],
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline, size: 48),
-                const SizedBox(height: 16),
-                Text(
-                  'Erro ao carregar dashboard\n$_error',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: _handleLogout,
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Sair'),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _refreshDashboard,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Tentar novamente'),
-                ),
-              ],
-            ),
-          ),
-        ),
+        body: Center(child: Text(_error!)),
       );
     }
 
@@ -410,58 +254,41 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openEntriesPage,
-        icon: const Icon(Icons.add),
-        label: const Text('Entrada'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: "entry",
+            onPressed: _openEntriesPage,
+            icon: const Icon(Icons.add),
+            label: const Text('Entrada'),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
+            heroTag: "expense",
+            onPressed: _openExpensesPage,
+            icon: const Icon(Icons.receipt),
+            label: const Text('Despesa'),
+          ),
+        ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshDashboard,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text(
-              'Dashboard',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Empresa: ${_companyId ?? '-'}',
-              style: const TextStyle(color: Colors.black54),
-            ),
-            const SizedBox(height: 16),
-            _buildSummaryCard(
-              title: 'Entradas do mês',
-              value: _formatYen(_monthEntriesTotal),
-              icon: Icons.trending_up,
-            ),
-            _buildSummaryCard(
-              title: 'Despesas do mês',
-              value: _formatYen(_monthExpensesTotal),
-              icon: Icons.receipt_long,
-            ),
-            _buildSummaryCard(
-              title: 'Resultado do mês',
-              value: _formatYen(_monthProfit),
-              icon: _monthProfit >= 0 ? Icons.savings : Icons.warning_amber,
-            ),
-            const SizedBox(height: 12),
-            _buildSectionCard(
-              title: 'Últimas entradas',
-              children: [
-                _buildRecentEntries(),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildSectionCard(
-              title: 'Últimas despesas',
-              children: [
-                _buildRecentExpenses(),
-              ],
-            ),
-            const SizedBox(height: 90),
-          ],
-        ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildSummary('Entradas do mês', _monthEntriesTotal,
+              Icons.trending_up),
+          _buildSummary('Despesas do mês', _monthExpensesTotal,
+              Icons.receipt_long),
+          _buildSummary('Resultado do mês', _monthProfit, Icons.savings),
+          const SizedBox(height: 20),
+          const Text('Últimas entradas',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          ..._recentEntries.map(_buildEntryItem),
+          const SizedBox(height: 20),
+          const Text('Últimas despesas',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          ..._recentExpenses.map(_buildExpenseItem),
+        ],
       ),
     );
   }
