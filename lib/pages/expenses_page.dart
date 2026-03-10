@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart' as path;
-
 import '../data/supabase_service.dart';
-
-enum ExpenseInputMode { scan, manual }
 
 class ExpensesPage extends StatefulWidget {
   const ExpensesPage({super.key});
@@ -14,216 +9,150 @@ class ExpensesPage extends StatefulWidget {
 }
 
 class _ExpensesPageState extends State<ExpensesPage> {
-  final TextEditingController _descController = TextEditingController();
-  final TextEditingController _valueController = TextEditingController();
-
-  DateTime? _selectedDate;
-  String? _selectedCategory;
-  ExpenseInputMode? _mode;
-
-  XFile? _receiptFile;
-  String? _uploadedReceiptUrl;
-
-  final List<String> _categoryKeys = const [
-    'Alimentação',
-    'Transporte',
-    'Moradia',
-    'Lazer',
-    'Saúde',
-    'Outros',
-  ];
+  late Future<List<dynamic>> _expensesFuture;
 
   @override
-  void dispose() {
-    _descController.dispose();
-    _valueController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadExpenses();
   }
 
-  Future<void> _selectDate() async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-    );
-
-    if (pickedDate != null) {
-      setState(() {
-        _selectedDate = pickedDate;
-      });
-    }
+  void _loadExpenses() {
+    _expensesFuture = SupabaseService.instance.getExpenses();
   }
 
-  Future<void> _saveExpense() async {
-    if (_selectedDate == null ||
-        _descController.text.isEmpty ||
-        _valueController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha todos os campos')),
-      );
-      return;
-    }
-
-    final double? amount = double.tryParse(_valueController.text);
-
-    if (amount == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Valor inválido')),
-      );
-      return;
-    }
-
-    final Map<String, dynamic> expense = {
-      'date': _selectedDate!.toIso8601String(),
-      'description': _descController.text,
-      'amount': amount,
-      'category': _selectedCategory,
-      'receipt_url': _uploadedReceiptUrl,
-      'file_name':
-          _receiptFile != null ? path.basename(_receiptFile!.path) : null,
-    };
-
-    await SupabaseService.instance.addExpense(expense);
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Despesa registrada')),
-    );
-
-    Navigator.pop(context);
+  Future<void> _refresh() async {
+    setState(() {
+      _loadExpenses();
+    });
   }
 
-  Widget _buildModeSelector() {
-    return Column(
-      children: [
-        _modeCard(
-          icon: Icons.document_scanner,
-          title: 'Escanear recibo',
-          subtitle:
-              'Tire foto ou escolha imagem para preencher automaticamente',
-          onTap: () {
-            setState(() {
-              _mode = ExpenseInputMode.scan;
-            });
-          },
-        ),
-        const SizedBox(height: 16),
-        _modeCard(
-          icon: Icons.edit_note,
-          title: 'Inserir manualmente',
-          subtitle: 'Preencher os campos manualmente',
-          onTap: () {
-            setState(() {
-              _mode = ExpenseInputMode.manual;
-            });
-          },
-        ),
-      ],
-    );
+  String _formatDate(dynamic rawDate) {
+    if (rawDate == null) return '-';
+
+    final parsed = DateTime.tryParse(rawDate.toString());
+    if (parsed == null) return rawDate.toString();
+
+    final y = parsed.year.toString().padLeft(4, '0');
+    final m = parsed.month.toString().padLeft(2, '0');
+    final d = parsed.day.toString().padLeft(2, '0');
+
+    return '$y-$m-$d';
   }
 
-  Widget _modeCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
+  String _formatYen(dynamic value) {
+    final number = value is num
+        ? value.toDouble()
+        : double.tryParse(value?.toString() ?? '0') ?? 0;
+
+    return '¥${number.toStringAsFixed(0)}';
+  }
+
+  Widget _expenseCard(Map<String, dynamic> expense) {
+    final description = (expense['description'] ?? '').toString();
+    final category = (expense['category'] ?? 'outros').toString();
+    final date = _formatDate(expense['date']);
+    final amount = _formatYen(expense['amount']);
+    final receipt = expense['receipt_url'];
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: Colors.grey.shade300),
-      ),
-      child: ListTile(
-        leading: CircleAvatar(
-          radius: 24,
-          backgroundColor: Colors.blue.shade100,
-          child: Icon(icon, color: Colors.blue.shade800),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  Widget _buildManualForm() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _formCard(
-          child: Column(
-            children: [
-              TextField(
-                controller: _descController,
-                decoration: const InputDecoration(labelText: 'Descrição'),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _valueController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Valor'),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                decoration: const InputDecoration(labelText: 'Categoria'),
-                items: _categoryKeys
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCategory = value;
-                  });
-                },
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        _formCard(
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _selectedDate == null
-                      ? 'Nenhuma data selecionada'
-                      : 'Data: ${_selectedDate!.toLocal().toString().split(' ')[0]}',
-                ),
-              ),
-              ElevatedButton(
-                onPressed: _selectDate,
-                child: const Text('Selecionar'),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        ElevatedButton.icon(
-          icon: const Icon(Icons.save),
-          label: const Text('Salvar despesa'),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.all(16),
-          ),
-          onPressed: _saveExpense,
-        ),
-      ],
-    );
-  }
-
-  Widget _formCard({required Widget child}) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: Colors.grey.shade300),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: child,
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              description.isEmpty ? 'Sem descrição' : description,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(
+              "$date • $category",
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 13,
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    amount,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+
+                if (receipt != null && receipt.toString().isNotEmpty)
+                  const Icon(
+                    Icons.receipt_long,
+                    color: Colors.green,
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_outlined,
+              size: 64,
+              color: Colors.grey.shade500,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              "Nenhuma despesa registrada",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "As despesas cadastradas aparecerão aqui.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _errorState(Object error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          "Erro ao carregar despesas:\n$error",
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }
@@ -232,13 +161,58 @@ class _ExpensesPageState extends State<ExpensesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Adicionar despesa'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          child: _mode == null ? _buildModeSelector() : _buildManualForm(),
+        title: const Text("Despesas"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              _refresh();
+            },
+          )
+        ],
+      ),
+
+      body: FutureBuilder<List<dynamic>>(
+        future: _expensesFuture,
+        builder: (context, snapshot) {
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return _errorState(snapshot.error!);
+          }
+
+          final expenses = snapshot.data ?? [];
+
+          if (expenses.isEmpty) {
+            return _emptyState();
+          }
+
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: expenses.length,
+              itemBuilder: (context, index) {
+
+                final expense = Map<String, dynamic>.from(expenses[index]);
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _expenseCard(expense),
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }
