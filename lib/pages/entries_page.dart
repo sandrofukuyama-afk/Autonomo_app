@@ -42,6 +42,26 @@ class _EntriesPageState extends State<EntriesPage> {
     }
   }
 
+  String _formatDate(dynamic rawDate) {
+    if (rawDate == null) return '-';
+
+    final parsed = DateTime.tryParse(rawDate.toString());
+    if (parsed == null) return rawDate.toString().split(' ').first;
+
+    final y = parsed.year.toString().padLeft(4, '0');
+    final m = parsed.month.toString().padLeft(2, '0');
+    final d = parsed.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  String _formatYen(dynamic value) {
+    final number = value is num
+        ? value.toDouble()
+        : double.tryParse(value?.toString() ?? '0') ?? 0;
+
+    return '¥${number.toStringAsFixed(0)}';
+  }
+
   Future<void> _deleteEntry(String id) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -61,188 +81,230 @@ class _EntriesPageState extends State<EntriesPage> {
       ),
     );
 
-    if (confirm == true) {
-      await SupabaseService.instance.deleteEntry(id);
+    if (confirm != true) return;
 
-      if (!mounted) return;
+    await SupabaseService.instance.deleteEntry(id);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entrada excluída')),
-      );
+    if (!mounted) return;
 
-      _refresh();
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Entrada excluída')),
+    );
+
+    await _refresh();
   }
 
-  Future<void> _editEntry(Map entry) async {
-    final descController =
-        TextEditingController(text: entry['description'] ?? '');
+  Future<void> _editEntry(Map<String, dynamic> entry) async {
+    final descController = TextEditingController(
+      text: (entry['description'] ?? '').toString(),
+    );
 
-    final valueController =
-        TextEditingController(text: (entry['amount'] ?? '').toString());
+    final valueController = TextEditingController(
+      text: (entry['amount'] ?? '').toString(),
+    );
 
     DateTime selectedDate =
-        DateTime.tryParse(entry['date'] ?? '') ?? DateTime.now();
+        DateTime.tryParse((entry['date'] ?? '').toString()) ?? DateTime.now();
 
-    String payment = entry['payment_method'] ?? 'cash';
+    String payment = (entry['payment_method'] ?? 'cash').toString();
 
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Editar entrada'),
-          content: StatefulBuilder(
-            builder: (context, setStateDialog) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: descController,
-                    decoration: const InputDecoration(
-                      labelText: 'Descrição',
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Editar entrada'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: descController,
+                      decoration: const InputDecoration(
+                        labelText: 'Descrição',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: valueController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Valor',
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: valueController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Valor',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: payment,
-                    decoration: const InputDecoration(
-                      labelText: 'Método de pagamento',
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'cash',
-                        child: Text('Dinheiro'),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: payment,
+                      decoration: const InputDecoration(
+                        labelText: 'Método de pagamento',
                       ),
-                      DropdownMenuItem(
-                        value: 'card',
-                        child: Text('Cartão'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'bank_transfer',
-                        child: Text('Transferência'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'paypay',
-                        child: Text('PayPay'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'other',
-                        child: Text('Outros'),
-                      ),
-                    ],
-                    onChanged: (v) {
-                      setStateDialog(() {
-                        payment = v ?? 'cash';
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "Data: ${selectedDate.toLocal().toString().split(' ')[0]}",
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'cash',
+                          child: Text('Dinheiro'),
                         ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: selectedDate,
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime.now(),
-                          );
+                        DropdownMenuItem(
+                          value: 'card',
+                          child: Text('Cartão'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'bank_transfer',
+                          child: Text('Transferência'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'paypay',
+                          child: Text('PayPay'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'other',
+                          child: Text('Outros'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          payment = value ?? 'cash';
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Data: ${_formatDate(selectedDate.toIso8601String())}',
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate,
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime.now(),
+                            );
 
-                          if (picked != null) {
-                            setStateDialog(() {
-                              selectedDate = picked;
-                            });
-                          }
-                        },
-                        child: const Text("Selecionar"),
-                      )
-                    ],
-                  )
-                ],
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final amount = double.tryParse(valueController.text);
+                            if (picked != null) {
+                              setStateDialog(() {
+                                selectedDate = picked;
+                              });
+                            }
+                          },
+                          child: const Text('Selecionar'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final description = descController.text.trim();
+                    final amount = double.tryParse(
+                      valueController.text.trim().replaceAll(',', '.'),
+                    );
 
-                if (descController.text.isEmpty || amount == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Dados inválidos')),
-                  );
-                  return;
-                }
+                    if (description.isEmpty || amount == null || amount <= 0) {
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        const SnackBar(content: Text('Dados inválidos')),
+                      );
+                      return;
+                    }
 
-                await SupabaseService.instance.updateEntry(
-                  entry['id'],
-                  {
-                    'entry_date': selectedDate.toIso8601String(),
-                    'description': descController.text,
-                    'amount': amount,
-                    'payment_method': payment,
+                    await SupabaseService.instance.updateEntry(
+                      entry['id'].toString(),
+                      {
+                        'entry_date': selectedDate.toIso8601String(),
+                        'description': description,
+                        'amount': amount,
+                        'payment_method': payment,
+                      },
+                    );
+
+                    if (!mounted) return;
+                    Navigator.pop(dialogContext, true);
                   },
-                );
-
-                Navigator.pop(context, true);
-              },
-              child: const Text('Salvar'),
-            )
-          ],
+                  child: const Text('Salvar'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
 
-    if (result == true) {
+    if (result == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Entrada atualizada')),
       );
-
-      _refresh();
+      await _refresh();
     }
   }
 
-  Widget _entryCard(Map entry) {
-    final value = entry['amount'] ?? 0;
-    final date = entry['date'] ?? '';
+  Widget _entryCard(Map<String, dynamic> entry) {
+    final description = (entry['description'] ?? '').toString();
+    final date = _formatDate(entry['date']);
+    final amount = _formatYen(entry['amount']);
+    final paymentMethod = _paymentLabel(
+      (entry['payment_method'] ?? '').toString(),
+    );
 
     return Card(
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade300),
       ),
-      child: ListTile(
-        title: Text(entry['description'] ?? ''),
-        subtitle: Text(
-          "$date • ${_paymentLabel(entry['payment_method'] ?? '')}",
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("¥${value.toString()}"),
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _editEntry(entry),
+            Text(
+              description.isEmpty ? 'Sem descrição' : description,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () => _deleteEntry(entry['id']),
+            const SizedBox(height: 8),
+            Text(
+              '$date • $paymentMethod',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    amount,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Editar',
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () => _editEntry(entry),
+                ),
+                IconButton(
+                  tooltip: 'Excluir',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () => _deleteEntry(entry['id'].toString()),
+                ),
+              ],
             ),
           ],
         ),
@@ -251,14 +313,47 @@ class _EntriesPageState extends State<EntriesPage> {
   }
 
   Widget _emptyState() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.receipt_long, size: 60, color: Colors.grey),
-          SizedBox(height: 10),
-          Text("Nenhuma entrada registrada"),
-        ],
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 64,
+              color: Colors.grey.shade500,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Nenhuma entrada registrada',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'As entradas cadastradas aparecerão aqui.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _errorState(Object error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          'Erro ao carregar entradas:\n$error',
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }
@@ -267,23 +362,31 @@ class _EntriesPageState extends State<EntriesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Entradas"),
+        title: const Text('Entradas'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _refresh,
-          )
+            onPressed: () {
+              _refresh();
+            },
+          ),
         ],
       ),
       body: FutureBuilder<List<dynamic>>(
         future: _entriesFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text("Erro: ${snapshot.error}"));
+            return _errorState(snapshot.error!);
           }
 
           final entries = snapshot.data ?? [];
@@ -295,10 +398,14 @@ class _EntriesPageState extends State<EntriesPage> {
           return RefreshIndicator(
             onRefresh: _refresh,
             child: ListView.builder(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               itemCount: entries.length,
               itemBuilder: (context, index) {
-                return _entryCard(entries[index]);
+                final entry = Map<String, dynamic>.from(entries[index]);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _entryCard(entry),
+                );
               },
             ),
           );
