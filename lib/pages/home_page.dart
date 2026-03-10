@@ -24,7 +24,6 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _initializeCompany() async {
     try {
-      // Aguarda sessão estar realmente disponível
       Session? session = Supabase.instance.client.auth.currentSession;
 
       int tries = 0;
@@ -37,15 +36,32 @@ class _HomePageState extends State<HomePage> {
       final companyId =
           await AuthService.instance.getCurrentCompanyId(forceRefresh: true);
 
+      if (!mounted) return;
+
       setState(() {
         _companyId = companyId;
         _loading = false;
+        _error = null;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _error = e.toString();
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    try {
+      await AuthService.instance.signOut();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao sair: $e')),
+      );
     }
   }
 
@@ -61,8 +77,48 @@ class _HomePageState extends State<HomePage> {
 
     if (_error != null) {
       return Scaffold(
+        appBar: AppBar(
+          title: const Text('Autonomo App'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: _handleLogout,
+            ),
+          ],
+        ),
         body: Center(
-          child: Text('Erro ao carregar empresa\n$_error'),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  'Erro ao carregar empresa\n$_error',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: _handleLogout,
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Sair'),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _loading = true;
+                      _error = null;
+                    });
+                    _initializeCompany();
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Tentar novamente'),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
@@ -73,14 +129,12 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await AuthService.instance.signOut();
-            },
-          )
+            onPressed: _handleLogout,
+          ),
         ],
       ),
-      body: const Center(
-        child: Text('Dashboard'),
+      body: Center(
+        child: Text('Dashboard\n$_companyId'),
       ),
     );
   }
