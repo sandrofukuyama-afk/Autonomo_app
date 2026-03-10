@@ -28,6 +28,7 @@ class _ReportsPageState extends State<ReportsPage> {
   Map<String, List<Map<String, dynamic>>> _monthlyExpenseItems = {};
 
   TaxResultJP? _taxResult;
+  Map<String, dynamic>? _appSettings;
 
   @override
   void initState() {
@@ -44,6 +45,7 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   Future<void> _loadData() async {
+    final settings = await SupabaseService.instance.getAppSettings();
     final entries = await SupabaseService.instance.getEntries();
     final expenses = await SupabaseService.instance.getExpenses();
 
@@ -110,15 +112,19 @@ class _ReportsPageState extends State<ReportsPage> {
       monthItems.add(expense);
     }
 
+    final String filingType = (settings['filing_type'] ?? 'white_return').toString();
+    final bool blueReturn = filingType == 'blue_return';
+
     final TaxResultJP taxResult = TaxCalculatorJP.calculate(
       totalIncome: incomeTotal,
       deductibleExpenses: deductibleTotal,
-      blueReturn: true,
+      blueReturn: blueReturn,
     );
 
     if (!mounted) return;
 
     setState(() {
+      _appSettings = settings;
       _totalIncome = incomeTotal;
       _totalDeductibleExpense = deductibleTotal;
       _pendingReview = review;
@@ -242,6 +248,9 @@ class _ReportsPageState extends State<ReportsPage> {
     final result = _taxResult;
     if (result == null) return const SizedBox.shrink();
 
+    final String filingType = (_appSettings?['filing_type'] ?? 'white_return').toString();
+    final bool blueReturn = filingType == 'blue_return';
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -253,6 +262,15 @@ class _ReportsPageState extends State<ReportsPage> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              blueReturn ? 'Regime: Blue Return' : 'Regime: White Return',
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black54,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 14),
