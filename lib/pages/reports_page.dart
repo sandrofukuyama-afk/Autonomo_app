@@ -61,13 +61,32 @@ class _ReportsPageState extends State<ReportsPage> {
       final date = DateTime.parse(expense['date']);
       final monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
       final yearKey = date.year;
-      final amount = (expense['amount'] as num).toInt();
+      final amount = (expense['amount'] as num).toDouble();
 
-      expenseByMonth[monthKey] = (expenseByMonth[monthKey] ?? 0) + amount;
-      expenseByYear[yearKey] = (expenseByYear[yearKey] ?? 0) + amount;
+      final status = expense['deductibility_status'];
+      final deductibleAmount = expense['deductible_amount'];
+      final businessPercent = expense['business_use_percent'];
 
-      final monthItems =
-          expenseItemsByMonth.putIfAbsent(monthKey, () => []);
+      double fiscalAmount = 0;
+
+      if (status == 'deductible_full') {
+        fiscalAmount = amount;
+      } else if (status == 'deductible_partial') {
+        if (deductibleAmount != null) {
+          fiscalAmount = (deductibleAmount as num).toDouble();
+        } else if (businessPercent != null) {
+          fiscalAmount = amount * ((businessPercent as num).toDouble() / 100);
+        }
+      } else {
+        fiscalAmount = 0;
+      }
+
+      final fiscalInt = fiscalAmount.round();
+
+      expenseByMonth[monthKey] = (expenseByMonth[monthKey] ?? 0) + fiscalInt;
+      expenseByYear[yearKey] = (expenseByYear[yearKey] ?? 0) + fiscalInt;
+
+      final monthItems = expenseItemsByMonth.putIfAbsent(monthKey, () => []);
       monthItems.add(expense);
     }
 
@@ -82,8 +101,6 @@ class _ReportsPageState extends State<ReportsPage> {
       _loading = false;
     });
   }
-
-
 
   Future<void> _generateFiscalPdf() async {
     final int? year = _selectedFiscalYear;
@@ -134,7 +151,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.pop(context),
-                  )
+                  ),
                 ],
               ),
               Flexible(
@@ -144,7 +161,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     fit: BoxFit.contain,
                   ),
                 ),
-              )
+              ),
             ],
           ),
         );
@@ -153,7 +170,9 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   Widget _expenseItem(
-      AppLocalizations localizations, Map<String, dynamic> item) {
+    AppLocalizations localizations,
+    Map<String, dynamic> item,
+  ) {
     final description = item['description'] ?? '-';
     final amount = (item['amount'] as num).toInt();
     final date = item['date'];
@@ -171,9 +190,13 @@ class _ReportsPageState extends State<ReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(description,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          Text(
+            description,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
           const SizedBox(height: 6),
           Text(
             '$date • $category',
@@ -182,18 +205,22 @@ class _ReportsPageState extends State<ReportsPage> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Text(_yen(amount),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 15)),
+              Text(
+                _yen(amount),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
               const Spacer(),
               if (receiptUrl != null)
                 TextButton.icon(
                   onPressed: () => _showReceipt(receiptUrl),
                   icon: const Icon(Icons.receipt),
                   label: const Text('Ver recibo'),
-                )
+                ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -223,7 +250,8 @@ class _ReportsPageState extends State<ReportsPage> {
         .reversed
         .toList();
 
-    _selectedFiscalYear ??= allYears.isNotEmpty ? allYears.first : DateTime.now().year;
+    _selectedFiscalYear ??=
+        allYears.isNotEmpty ? allYears.first : DateTime.now().year;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -238,7 +266,10 @@ class _ReportsPageState extends State<ReportsPage> {
                 children: [
                   const Text(
                     'Relatório Fiscal Anual PDF',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
@@ -249,10 +280,12 @@ class _ReportsPageState extends State<ReportsPage> {
                     ),
                     items: allYears.isNotEmpty
                         ? allYears
-                            .map((year) => DropdownMenuItem<int>(
-                                  value: year,
-                                  child: Text(year.toString()),
-                                ))
+                            .map(
+                              (year) => DropdownMenuItem<int>(
+                                value: year,
+                                child: Text(year.toString()),
+                              ),
+                            )
                             .toList()
                         : [
                             DropdownMenuItem<int>(
@@ -278,7 +311,9 @@ class _ReportsPageState extends State<ReportsPage> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.picture_as_pdf),
-                      label: Text(_generatingPdf ? 'Gerando PDF...' : 'Gerar PDF Fiscal'),
+                      label: Text(
+                        _generatingPdf ? 'Gerando PDF...' : 'Gerar PDF Fiscal',
+                      ),
                     ),
                   ),
                 ],
@@ -306,9 +341,15 @@ class _ReportsPageState extends State<ReportsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${localizations.translate('income')}: ${_yen(income)}'),
-                      Text('${localizations.translate('expenses')}: ${_yen(expense)}'),
-                      Text('${localizations.translate('balance')}: ${_yen(balance)}'),
+                      Text(
+                        '${localizations.translate('income')}: ${_yen(income)}',
+                      ),
+                      Text(
+                        '${localizations.translate('expenses')}: ${_yen(expense)}',
+                      ),
+                      Text(
+                        '${localizations.translate('balance')}: ${_yen(balance)}',
+                      ),
                     ],
                   ),
                 ),
@@ -321,7 +362,7 @@ class _ReportsPageState extends State<ReportsPage> {
                             .map((e) => _expenseItem(localizations, e))
                             .toList(),
                       ),
-                    )
+                    ),
                 ],
               ),
             );
@@ -343,9 +384,15 @@ class _ReportsPageState extends State<ReportsPage> {
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${localizations.translate('income')}: ${_yen(income)}'),
-                    Text('${localizations.translate('expenses')}: ${_yen(expense)}'),
-                    Text('${localizations.translate('balance')}: ${_yen(balance)}'),
+                    Text(
+                      '${localizations.translate('income')}: ${_yen(income)}',
+                    ),
+                    Text(
+                      '${localizations.translate('expenses')}: ${_yen(expense)}',
+                    ),
+                    Text(
+                      '${localizations.translate('balance')}: ${_yen(balance)}',
+                    ),
                   ],
                 ),
               ),
