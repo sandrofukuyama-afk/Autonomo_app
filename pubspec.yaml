@@ -1,34 +1,34 @@
 name: autonomo_app
-description: Aplicativo de controle financeiro para autônomos.
+description: Aplicativo financeiro para autônomos no Japão.
+
 publish_to: "none"
 
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: ">=3.2.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
-  flutter_localizations:
-    sdk: flutter
+  cupertino_icons: ^1.0.6
 
-  cupertino_icons: ^1.0.8
-  intl: ^0.20.2
+  # Supabase
   supabase_flutter: ^2.8.0
-  image_picker: ^1.1.2
-  path_provider: ^2.1.5
-  http: ^1.2.1
+
+  # PDF fiscal
+  pdf: ^3.10.8
+  printing: ^5.12.0
+
+  # utilidades
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^5.0.0
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
-
-  assets:
-    - assets/images/
