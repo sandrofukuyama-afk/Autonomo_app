@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/auth_service.dart';
 import 'entries_page.dart';
 import 'expenses_page.dart';
+import 'reports_page.dart';
 
 class HomePage extends StatefulWidget {
   final Function(Locale) onLocaleChanged;
@@ -198,6 +199,15 @@ class _HomePageState extends State<HomePage> {
     await _refreshDashboard();
   }
 
+  Future<void> _openReportsPage() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ReportsPage()),
+    );
+
+    await _refreshDashboard();
+  }
+
   Widget _buildSummaryMiniCard({
     required String title,
     required String value,
@@ -378,6 +388,91 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildActionShortcuts() {
+    final actions = [
+      {
+        'title': 'Entradas',
+        'icon': Icons.add_circle_outline,
+        'color': Colors.green,
+        'onTap': _openEntriesPage,
+      },
+      {
+        'title': 'Despesas',
+        'icon': Icons.receipt_long_outlined,
+        'color': Colors.red,
+        'onTap': _openExpensesPage,
+      },
+      {
+        'title': 'Relatório Fiscal',
+        'icon': Icons.assessment_outlined,
+        'color': Colors.blue,
+        'onTap': _openReportsPage,
+      },
+    ];
+
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = width >= 900 ? 3 : width >= 600 ? 3 : 1;
+    final childAspectRatio = width >= 600 ? 2.2 : 3.3;
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: actions.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: childAspectRatio,
+      ),
+      itemBuilder: (context, index) {
+        final item = actions[index];
+        final color = item['color'] as Color;
+        final icon = item['icon'] as IconData;
+        final title = item['title'] as String;
+        final onTap = item['onTap'] as Future<void> Function();
+
+        return InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onTap,
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.grey.shade300),
+              color: Colors.white,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: color.withOpacity(0.12),
+                    child: Icon(icon, color: color),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: Colors.grey.shade500,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildSectionCard({
     required String title,
     required Widget child,
@@ -408,76 +503,81 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildMetricBar({
-    required String label,
-    required double value,
-    required double maxValue,
-    required Color color,
-  }) {
-    final double progress = maxValue <= 0 ? 0 : (value / maxValue).clamp(0, 1);
+  Widget _buildVerticalBarChart() {
+    final bars = [
+      {
+        'label': 'Entradas',
+        'value': _monthEntriesTotal,
+        'color': Colors.green,
+      },
+      {
+        'label': 'Despesas',
+        'value': _monthExpensesTotal,
+        'color': Colors.red,
+      },
+      {
+        'label': _monthProfit >= 0 ? 'Resultado' : 'Prejuízo',
+        'value': _monthProfit.abs(),
+        'color': _monthProfit >= 0 ? Colors.blue : Colors.orange,
+      },
+    ];
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
+    double maxValue = 0;
+    for (final bar in bars) {
+      final value = bar['value'] as double;
+      if (value > maxValue) maxValue = value;
+    }
+
+    if (maxValue <= 0) {
+      maxValue = 1;
+    }
+
+    return SizedBox(
+      height: 250,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: bars.map((bar) {
+          final value = bar['value'] as double;
+          final color = bar['color'] as Color;
+          final label = bar['label'] as String;
+          final heightFactor = (value / maxValue).clamp(0.0, 1.0);
+
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    _formatYen(value),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    height: 150 * heightFactor + 8,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                _formatYen(value),
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 12,
-              backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
-          ),
-        ],
+          );
+        }).toList(),
       ),
-    );
-  }
-
-  Widget _buildFinancialChart() {
-    final double chartMax = [
-      _monthEntriesTotal,
-      _monthExpensesTotal,
-      _monthProfit.abs(),
-    ].fold<double>(0, (prev, item) => item > prev ? item : prev);
-
-    return Column(
-      children: [
-        _buildMetricBar(
-          label: 'Entradas',
-          value: _monthEntriesTotal,
-          maxValue: chartMax,
-          color: Colors.green,
-        ),
-        _buildMetricBar(
-          label: 'Despesas',
-          value: _monthExpensesTotal,
-          maxValue: chartMax,
-          color: Colors.red,
-        ),
-        _buildMetricBar(
-          label: _monthProfit >= 0 ? 'Resultado' : 'Resultado negativo',
-          value: _monthProfit.abs(),
-          maxValue: chartMax,
-          color: _monthProfit >= 0 ? Colors.blue : Colors.orange,
-        ),
-      ],
     );
   }
 
@@ -599,24 +699,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'entry',
-            icon: const Icon(Icons.add),
-            label: const Text('Entrada'),
-            onPressed: _openEntriesPage,
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton.extended(
-            heroTag: 'expense',
-            icon: const Icon(Icons.receipt),
-            label: const Text('Despesa'),
-            onPressed: _openExpensesPage,
-          ),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: _refreshDashboard,
         child: ListView(
@@ -635,8 +717,13 @@ class _HomePageState extends State<HomePage> {
             _buildSummaryGrid(),
             const SizedBox(height: 14),
             _buildSectionCard(
+              title: 'Acessos rápidos',
+              child: _buildActionShortcuts(),
+            ),
+            const SizedBox(height: 12),
+            _buildSectionCard(
               title: 'Visão financeira',
-              child: _buildFinancialChart(),
+              child: _buildVerticalBarChart(),
             ),
             const SizedBox(height: 12),
             _buildSectionCard(
@@ -648,9 +735,34 @@ class _HomePageState extends State<HomePage> {
               title: 'Últimas despesas',
               child: _buildRecentExpenses(),
             ),
-            const SizedBox(height: 90),
+            const SizedBox(height: 24),
           ],
         ),
+      ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'entry',
+            icon: const Icon(Icons.add),
+            label: const Text('Entrada'),
+            onPressed: _openEntriesPage,
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
+            heroTag: 'expense',
+            icon: const Icon(Icons.receipt),
+            label: const Text('Despesa'),
+            onPressed: _openExpensesPage,
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
+            heroTag: 'report',
+            icon: const Icon(Icons.assessment),
+            label: const Text('Relatório'),
+            onPressed: _openReportsPage,
+          ),
+        ],
       ),
     );
   }
