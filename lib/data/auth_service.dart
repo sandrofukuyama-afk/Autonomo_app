@@ -17,6 +17,9 @@ class AuthService {
 
   final SupabaseClient _client = Supabase.instance.client;
 
+  String? _cachedCompanyId;
+  String? _cachedCompanyUserId;
+
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
   User? get currentUser => _client.auth.currentUser;
@@ -35,6 +38,8 @@ class AuthService {
     if (cleanPassword.isEmpty) {
       throw Exception('Informe sua senha.');
     }
+
+    _clearCompanyCache();
 
     await _client.auth.signInWithPassword(
       email: cleanEmail,
@@ -99,10 +104,16 @@ class AuthService {
     );
   }
 
-  Future<String> getCurrentCompanyId() async {
+  Future<String> getCurrentCompanyId({bool forceRefresh = false}) async {
     final User? user = currentUser;
     if (user == null) {
       throw Exception('Usuário não autenticado.');
+    }
+
+    if (!forceRefresh &&
+        _cachedCompanyId != null &&
+        _cachedCompanyUserId == user.id) {
+      return _cachedCompanyId!;
     }
 
     final List<dynamic> rows = await _client
@@ -115,10 +126,21 @@ class AuthService {
       throw Exception('Empresa não encontrada para o usuário.');
     }
 
-    return rows.first['id'] as String;
+    final String companyId = rows.first['id'] as String;
+
+    _cachedCompanyId = companyId;
+    _cachedCompanyUserId = user.id;
+
+    return companyId;
+  }
+
+  void _clearCompanyCache() {
+    _cachedCompanyId = null;
+    _cachedCompanyUserId = null;
   }
 
   Future<void> signOut() async {
+    _clearCompanyCache();
     await _client.auth.signOut();
   }
 }
