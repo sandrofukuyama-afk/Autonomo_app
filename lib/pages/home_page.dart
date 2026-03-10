@@ -198,54 +198,183 @@ class _HomePageState extends State<HomePage> {
     await _refreshDashboard();
   }
 
-  Widget _buildSummaryCard({
+  Widget _buildSummaryMiniCard({
     required String title,
     required String value,
     required IconData icon,
-    required Color backgroundColor,
     required Color iconColor,
+    required Color iconBackground,
   }) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: Colors.grey.shade300),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: backgroundColor,
-              child: Icon(icon, color: iconColor),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      constraints: const BoxConstraints(minHeight: 126),
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: BorderSide(color: Colors.grey.shade300),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.black54,
-                    ),
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: iconBackground,
+                    child: Icon(icon, color: iconColor),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  const Spacer(),
+                  Icon(
+                    Icons.more_horiz,
+                    color: Colors.grey.shade500,
+                    size: 20,
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 18),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  height: 1.05,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSummaryGrid() {
+    final width = MediaQuery.of(context).size.width;
+    final bool isWide = width >= 900;
+    final bool isMedium = width >= 600;
+
+    if (isWide) {
+      return Row(
+        children: [
+          Expanded(
+            child: _buildSummaryMiniCard(
+              title: 'Entradas',
+              value: _formatYen(_monthEntriesTotal),
+              icon: Icons.trending_up,
+              iconColor: Colors.green.shade800,
+              iconBackground: Colors.green.shade100,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildSummaryMiniCard(
+              title: 'Despesas',
+              value: _formatYen(_monthExpensesTotal),
+              icon: Icons.receipt_long,
+              iconColor: Colors.red.shade800,
+              iconBackground: Colors.red.shade100,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildSummaryMiniCard(
+              title: 'Resultado',
+              value: _formatYen(_monthProfit),
+              icon: _monthProfit >= 0 ? Icons.savings : Icons.warning_amber,
+              iconColor: _monthProfit >= 0
+                  ? Colors.blue.shade800
+                  : Colors.orange.shade800,
+              iconBackground: _monthProfit >= 0
+                  ? Colors.blue.shade100
+                  : Colors.orange.shade100,
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (isMedium) {
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildSummaryMiniCard(
+                  title: 'Entradas',
+                  value: _formatYen(_monthEntriesTotal),
+                  icon: Icons.trending_up,
+                  iconColor: Colors.green.shade800,
+                  iconBackground: Colors.green.shade100,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSummaryMiniCard(
+                  title: 'Despesas',
+                  value: _formatYen(_monthExpensesTotal),
+                  icon: Icons.receipt_long,
+                  iconColor: Colors.red.shade800,
+                  iconBackground: Colors.red.shade100,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildSummaryMiniCard(
+            title: 'Resultado',
+            value: _formatYen(_monthProfit),
+            icon: _monthProfit >= 0 ? Icons.savings : Icons.warning_amber,
+            iconColor: _monthProfit >= 0
+                ? Colors.blue.shade800
+                : Colors.orange.shade800,
+            iconBackground: _monthProfit >= 0
+                ? Colors.blue.shade100
+                : Colors.orange.shade100,
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        _buildSummaryMiniCard(
+          title: 'Entradas',
+          value: _formatYen(_monthEntriesTotal),
+          icon: Icons.trending_up,
+          iconColor: Colors.green.shade800,
+          iconBackground: Colors.green.shade100,
+        ),
+        const SizedBox(height: 12),
+        _buildSummaryMiniCard(
+          title: 'Despesas',
+          value: _formatYen(_monthExpensesTotal),
+          icon: Icons.receipt_long,
+          iconColor: Colors.red.shade800,
+          iconBackground: Colors.red.shade100,
+        ),
+        const SizedBox(height: 12),
+        _buildSummaryMiniCard(
+          title: 'Resultado',
+          value: _formatYen(_monthProfit),
+          icon: _monthProfit >= 0 ? Icons.savings : Icons.warning_amber,
+          iconColor: _monthProfit >= 0
+              ? Colors.blue.shade800
+              : Colors.orange.shade800,
+          iconBackground: _monthProfit >= 0
+              ? Colors.blue.shade100
+              : Colors.orange.shade100,
+        ),
+      ],
     );
   }
 
@@ -256,22 +385,22 @@ class _HomePageState extends State<HomePage> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         side: BorderSide(color: Colors.grey.shade300),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 19,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             child,
           ],
         ),
@@ -288,7 +417,7 @@ class _HomePageState extends State<HomePage> {
     final double progress = maxValue <= 0 ? 0 : (value / maxValue).clamp(0, 1);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -371,7 +500,14 @@ class _HomePageState extends State<HomePage> {
       children: _recentEntries.map((item) {
         return ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.arrow_downward, color: Colors.green),
+          leading: CircleAvatar(
+            radius: 20,
+            backgroundColor: Colors.green.shade100,
+            child: Icon(
+              Icons.arrow_downward,
+              color: Colors.green.shade800,
+            ),
+          ),
           title: Text((item['description'] ?? 'Sem descrição').toString()),
           subtitle: Text(
             '${_formatDate(item['entry_date'])} • ${(item['category'] ?? 'Sem categoria').toString()}',
@@ -397,7 +533,14 @@ class _HomePageState extends State<HomePage> {
 
         return ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.arrow_upward, color: Colors.red),
+          leading: CircleAvatar(
+            radius: 20,
+            backgroundColor: Colors.red.shade100,
+            child: Icon(
+              Icons.arrow_upward,
+              color: Colors.red.shade800,
+            ),
+          ),
           title: Text(description),
           subtitle: Text(
             '${_formatDate(item['expense_date'])} • ${storeName.isNotEmpty ? storeName : (item['category'] ?? 'Sem categoria').toString()}',
@@ -489,32 +632,8 @@ class _HomePageState extends State<HomePage> {
               style: const TextStyle(color: Colors.black54),
             ),
             const SizedBox(height: 16),
-            _buildSummaryCard(
-              title: 'Entradas do mês',
-              value: _formatYen(_monthEntriesTotal),
-              icon: Icons.trending_up,
-              backgroundColor: Colors.green.shade100,
-              iconColor: Colors.green.shade800,
-            ),
-            _buildSummaryCard(
-              title: 'Despesas do mês',
-              value: _formatYen(_monthExpensesTotal),
-              icon: Icons.receipt_long,
-              backgroundColor: Colors.red.shade100,
-              iconColor: Colors.red.shade800,
-            ),
-            _buildSummaryCard(
-              title: 'Resultado do mês',
-              value: _formatYen(_monthProfit),
-              icon: _monthProfit >= 0 ? Icons.savings : Icons.warning_amber,
-              backgroundColor: _monthProfit >= 0
-                  ? Colors.blue.shade100
-                  : Colors.orange.shade100,
-              iconColor: _monthProfit >= 0
-                  ? Colors.blue.shade800
-                  : Colors.orange.shade800,
-            ),
-            const SizedBox(height: 12),
+            _buildSummaryGrid(),
+            const SizedBox(height: 14),
             _buildSectionCard(
               title: 'Visão financeira',
               child: _buildFinancialChart(),
