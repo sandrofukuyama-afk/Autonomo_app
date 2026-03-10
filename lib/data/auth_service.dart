@@ -28,8 +28,8 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final String cleanEmail = email.trim().toLowerCase();
-    final String cleanPassword = password.trim();
+    final cleanEmail = email.trim().toLowerCase();
+    final cleanPassword = password.trim();
 
     if (cleanEmail.isEmpty) {
       throw Exception('Informe seu e-mail.');
@@ -53,26 +53,10 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final String cleanFullName = fullName.trim();
-    final String cleanBusinessName = businessName.trim();
-    final String cleanEmail = email.trim().toLowerCase();
-    final String cleanPassword = password.trim();
-
-    if (cleanFullName.isEmpty) {
-      throw Exception('Informe seu nome.');
-    }
-
-    if (cleanBusinessName.isEmpty) {
-      throw Exception('Informe o nome do negócio.');
-    }
-
-    if (cleanEmail.isEmpty) {
-      throw Exception('Informe seu e-mail.');
-    }
-
-    if (cleanPassword.isEmpty) {
-      throw Exception('Informe sua senha.');
-    }
+    final cleanFullName = fullName.trim();
+    final cleanBusinessName = businessName.trim();
+    final cleanEmail = email.trim().toLowerCase();
+    final cleanPassword = password.trim();
 
     final AuthResponse response = await _client.auth.signUp(
       email: cleanEmail,
@@ -84,8 +68,9 @@ class AuthService {
     );
 
     final User? user = response.user;
+
     if (user == null) {
-      throw Exception('Não foi possível criar o usuário.');
+      throw Exception('Erro ao criar usuário.');
     }
 
     final bool requiresEmailConfirmation = response.session == null;
@@ -94,7 +79,7 @@ class AuthService {
       return const SignUpResult(
         requiresEmailConfirmation: true,
         message:
-            'Cadastro realizado com sucesso. Verifique seu e-mail para confirmar a conta antes de entrar.',
+            'Cadastro realizado. Verifique seu e-mail para confirmar a conta.',
       );
     }
 
@@ -105,7 +90,8 @@ class AuthService {
   }
 
   Future<String> getCurrentCompanyId({bool forceRefresh = false}) async {
-    final User? user = currentUser;
+    final user = currentUser;
+
     if (user == null) {
       throw Exception('Usuário não autenticado.');
     }
@@ -116,17 +102,21 @@ class AuthService {
       return _cachedCompanyId!;
     }
 
-    final List<dynamic> rows = await _client
-        .from('companies')
-        .select('id')
-        .eq('user_id', user.id)
-        .limit(1);
+    final profile = await _client
+        .from('profiles')
+        .select('id, company_id')
+        .eq('id', user.id)
+        .maybeSingle();
 
-    if (rows.isEmpty) {
-      throw Exception('Empresa não encontrada para o usuário.');
+    if (profile == null) {
+      throw Exception('Perfil não encontrado.');
     }
 
-    final String companyId = rows.first['id'] as String;
+    final companyId = profile['company_id'];
+
+    if (companyId == null) {
+      throw Exception('Usuário não possui empresa vinculada.');
+    }
 
     _cachedCompanyId = companyId;
     _cachedCompanyUserId = user.id;
