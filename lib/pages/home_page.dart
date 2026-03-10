@@ -46,8 +46,11 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _companyId = companyId;
         _loading = false;
+        _error = null;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -63,101 +66,348 @@ class _HomePageState extends State<HomePage> {
     final String startIso = monthStart.toIso8601String().split('T').first;
     final String endIso = nextMonthStart.toIso8601String().split('T').first;
 
-    final entries = await _client
+    final List<dynamic> entries = await _client
         .from('entries_v2')
-        .select('entry_date, description, amount')
+        .select('id, entry_date, description, category, amount')
         .eq('company_id', companyId)
         .gte('entry_date', startIso)
-        .lt('entry_date', endIso);
+        .lt('entry_date', endIso)
+        .order('entry_date', ascending: false);
 
-    final expenses = await _client
+    final List<dynamic> expenses = await _client
         .from('expenses_v2')
-        .select('expense_date, description, amount')
+        .select('id, expense_date, description, category, amount, store_name')
         .eq('company_id', companyId)
         .gte('expense_date', startIso)
-        .lt('expense_date', endIso);
+        .lt('expense_date', endIso)
+        .order('expense_date', ascending: false);
 
-    double entryTotal = 0;
-    for (final e in entries) {
-      entryTotal += (e['amount'] ?? 0).toDouble();
+    final List<dynamic> recentEntries = await _client
+        .from('entries_v2')
+        .select('id, entry_date, description, category, amount')
+        .eq('company_id', companyId)
+        .order('entry_date', ascending: false)
+        .limit(5);
+
+    final List<dynamic> recentExpenses = await _client
+        .from('expenses_v2')
+        .select('id, expense_date, description, category, amount, store_name')
+        .eq('company_id', companyId)
+        .order('expense_date', ascending: false)
+        .limit(5);
+
+    double entriesTotal = 0;
+    for (final item in entries) {
+      entriesTotal += _toDouble(item['amount']);
     }
 
-    double expenseTotal = 0;
-    for (final e in expenses) {
-      expenseTotal += (e['amount'] ?? 0).toDouble();
+    double expensesTotal = 0;
+    for (final item in expenses) {
+      expensesTotal += _toDouble(item['amount']);
     }
 
-    _monthEntriesTotal = entryTotal;
-    _monthExpensesTotal = expenseTotal;
-    _monthProfit = entryTotal - expenseTotal;
+    _monthEntriesTotal = entriesTotal;
+    _monthExpensesTotal = expensesTotal;
+    _monthProfit = entriesTotal - expensesTotal;
 
-    _recentEntries = List<Map<String, dynamic>>.from(entries.take(5));
-    _recentExpenses = List<Map<String, dynamic>>.from(expenses.take(5));
+    _recentEntries = recentEntries
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+
+    _recentExpenses = recentExpenses
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
+
+  double _toDouble(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString()) ?? 0;
+  }
+
+  String _formatYen(double value) {
+    final bool negative = value < 0;
+    final String digits = value.abs().round().toString();
+    final StringBuffer buffer = StringBuffer();
+
+    for (int i = 0; i < digits.length; i++) {
+      buffer.write(digits[i]);
+      final int remaining = digits.length - i - 1;
+      if (remaining > 0 && remaining % 3 == 0) {
+        buffer.write(',');
+      }
+    }
+
+    return '${negative ? '-' : ''}¥${buffer.toString()}';
+  }
+
+  String _formatDate(dynamic value) {
+    if (value == null) return '-';
+    final raw = value.toString();
+    if (raw.length >= 10) {
+      return raw.substring(0, 10);
+    }
+    return raw;
+  }
+
+  Future<void> _handleLogout() async {
+    await AuthService.instance.signOut();
+  }
+
+  Future<void> _refreshDashboard() async {
+    if (_companyId == null) return;
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      await _loadDashboard(_companyId!);
+
+      if (!mounted) return;
+
+      setState(() {
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _openEntriesPage() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const EntriesPage()),
+      MaterialPageRoute(builder: (context) => const EntriesPage()),
     );
-    await _initializeDashboard();
+
+    await _refreshDashboard();
   }
 
   Future<void> _openExpensesPage() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ExpensesPage()),
+      MaterialPageRoute(builder: (context) => const ExpensesPage()),
     );
-    await _initializeDashboard();
+
+    await _refreshDashboard();
   }
 
-  String _yen(double value) {
-    return "¥${value.toStringAsFixed(0)}";
-  }
-
-  Widget _summaryCard(
-      String title, double value, IconData icon, Color color) {
-    return Expanded(
-      child: Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: Colors.grey.shade300),
+  Widget _buildSummaryCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color backgroundColor,
+    required Color iconColor,
+  }) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: Colors.grey.shade300),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: backgroundColor,
+              child: Icon(icon, color: iconColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required Widget child,
+  }) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: Colors.grey.shade300),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 14),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricBar({
+    required String label,
+    required double value,
+    required double maxValue,
+    required Color color,
+  }) {
+    final double progress = maxValue <= 0 ? 0 : (value / maxValue).clamp(0, 1);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 10),
-              Text(title,
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
               Text(
-                _yen(value),
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                _formatYen(value),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 12,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _listItem(String title, String date, double amount, bool income) {
-    return ListTile(
-      leading: Icon(
-        income ? Icons.arrow_downward : Icons.arrow_upward,
-        color: income ? Colors.green : Colors.red,
+  Widget _buildFinancialChart() {
+    final double chartMax = [
+      _monthEntriesTotal,
+      _monthExpensesTotal,
+      _monthProfit.abs(),
+    ].fold<double>(0, (prev, item) => item > prev ? item : prev);
+
+    return Column(
+      children: [
+        _buildMetricBar(
+          label: 'Entradas',
+          value: _monthEntriesTotal,
+          maxValue: chartMax,
+          color: Colors.green,
+        ),
+        _buildMetricBar(
+          label: 'Despesas',
+          value: _monthExpensesTotal,
+          maxValue: chartMax,
+          color: Colors.red,
+        ),
+        _buildMetricBar(
+          label: _monthProfit >= 0 ? 'Resultado' : 'Resultado negativo',
+          value: _monthProfit.abs(),
+          maxValue: chartMax,
+          color: _monthProfit >= 0 ? Colors.blue : Colors.orange,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyText(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Text(
+        text,
+        style: const TextStyle(color: Colors.black54),
       ),
-      title: Text(title),
-      subtitle: Text(date),
-      trailing: Text(
-        _yen(amount),
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
+    );
+  }
+
+  Widget _buildRecentEntries() {
+    if (_recentEntries.isEmpty) {
+      return _buildEmptyText('Nenhuma entrada cadastrada.');
+    }
+
+    return Column(
+      children: _recentEntries.map((item) {
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.arrow_downward, color: Colors.green),
+          title: Text((item['description'] ?? 'Sem descrição').toString()),
+          subtitle: Text(
+            '${_formatDate(item['entry_date'])} • ${(item['category'] ?? 'Sem categoria').toString()}',
+          ),
+          trailing: Text(
+            _formatYen(_toDouble(item['amount'])),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildRecentExpenses() {
+    if (_recentExpenses.isEmpty) {
+      return _buildEmptyText('Nenhuma despesa cadastrada.');
+    }
+
+    return Column(
+      children: _recentExpenses.map((item) {
+        final storeName = (item['store_name'] ?? '').toString().trim();
+        final description = (item['description'] ?? 'Sem descrição').toString();
+
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.arrow_upward, color: Colors.red),
+          title: Text(description),
+          subtitle: Text(
+            '${_formatDate(item['expense_date'])} • ${storeName.isNotEmpty ? storeName : (item['category'] ?? 'Sem categoria').toString()}',
+          ),
+          trailing: Text(
+            _formatYen(_toDouble(item['amount'])),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -170,89 +420,118 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (_error != null) {
-      return Scaffold(body: Center(child: Text(_error!)));
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Autonomo App'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: _handleLogout,
+            ),
+          ],
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              _error!,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Autonomo App"),
+        title: const Text('Autonomo App'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshDashboard,
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await AuthService.instance.signOut();
-            },
-          )
+            onPressed: _handleLogout,
+          ),
         ],
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           FloatingActionButton.extended(
-            heroTag: "entry",
+            heroTag: 'entry',
             icon: const Icon(Icons.add),
-            label: const Text("Entrada"),
+            label: const Text('Entrada'),
             onPressed: _openEntriesPage,
           ),
           const SizedBox(height: 10),
           FloatingActionButton.extended(
-            heroTag: "expense",
+            heroTag: 'expense',
             icon: const Icon(Icons.receipt),
-            label: const Text("Despesa"),
+            label: const Text('Despesa'),
             onPressed: _openExpensesPage,
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Text(
-            "Resumo do mês",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-
-          Row(
-            children: [
-              _summaryCard(
-                  "Entradas", _monthEntriesTotal, Icons.trending_up, Colors.green),
-              const SizedBox(width: 10),
-              _summaryCard("Despesas", _monthExpensesTotal,
-                  Icons.trending_down, Colors.red),
-              const SizedBox(width: 10),
-              _summaryCard("Resultado", _monthProfit, Icons.account_balance,
-                  Colors.blue),
-            ],
-          ),
-
-          const SizedBox(height: 30),
-
-          const Text(
-            "Últimas entradas",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-
-          ..._recentEntries.map((e) => _listItem(
-                e['description'] ?? '',
-                e['entry_date'] ?? '',
-                (e['amount'] ?? 0).toDouble(),
-                true,
-              )),
-
-          const SizedBox(height: 20),
-
-          const Text(
-            "Últimas despesas",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-
-          ..._recentExpenses.map((e) => _listItem(
-                e['description'] ?? '',
-                e['expense_date'] ?? '',
-                (e['amount'] ?? 0).toDouble(),
-                false,
-              )),
-        ],
+      body: RefreshIndicator(
+        onRefresh: _refreshDashboard,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              'Resumo do mês',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Empresa: ${_companyId ?? '-'}',
+              style: const TextStyle(color: Colors.black54),
+            ),
+            const SizedBox(height: 16),
+            _buildSummaryCard(
+              title: 'Entradas do mês',
+              value: _formatYen(_monthEntriesTotal),
+              icon: Icons.trending_up,
+              backgroundColor: Colors.green.shade100,
+              iconColor: Colors.green.shade800,
+            ),
+            _buildSummaryCard(
+              title: 'Despesas do mês',
+              value: _formatYen(_monthExpensesTotal),
+              icon: Icons.receipt_long,
+              backgroundColor: Colors.red.shade100,
+              iconColor: Colors.red.shade800,
+            ),
+            _buildSummaryCard(
+              title: 'Resultado do mês',
+              value: _formatYen(_monthProfit),
+              icon: _monthProfit >= 0 ? Icons.savings : Icons.warning_amber,
+              backgroundColor: _monthProfit >= 0
+                  ? Colors.blue.shade100
+                  : Colors.orange.shade100,
+              iconColor: _monthProfit >= 0
+                  ? Colors.blue.shade800
+                  : Colors.orange.shade800,
+            ),
+            const SizedBox(height: 12),
+            _buildSectionCard(
+              title: 'Visão financeira',
+              child: _buildFinancialChart(),
+            ),
+            const SizedBox(height: 12),
+            _buildSectionCard(
+              title: 'Últimas entradas',
+              child: _buildRecentEntries(),
+            ),
+            const SizedBox(height: 12),
+            _buildSectionCard(
+              title: 'Últimas despesas',
+              child: _buildRecentExpenses(),
+            ),
+            const SizedBox(height: 90),
+          ],
+        ),
       ),
     );
   }
