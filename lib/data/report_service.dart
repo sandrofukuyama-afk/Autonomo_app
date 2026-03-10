@@ -1,52 +1,122 @@
-import 'dart:convert';
-import 'dart:html' as html;
 import 'dart:typed_data';
-
-import 'package:http/http.dart' as http;
-
-import 'auth_service.dart';
-import 'supabase_service.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 class ReportService {
-  ReportService._();
+  ReportService._private();
 
-  static final ReportService instance = ReportService._();
+  static final ReportService instance = ReportService._private();
 
-  Future<void> generateAnnualFiscalPdf(int year) async {
-    final Uri endpoint = Uri.parse('${Uri.base.origin}/api/fiscal-report');
-    final String companyId = await AuthService.instance.getCurrentCompanyId();
-    final Map<String, dynamic> settings =
-        await SupabaseService.instance.getAppSettings();
+  Future<void> generateFiscalReport({
+    required int year,
+    required double entries,
+    required double expenses,
+    required double profit,
+    required double nationalTax,
+    required double residentTax,
+    required double totalTax,
+  }) async {
+    final pdf = pw.Document();
 
-    final String filingType =
-        (settings['filing_type'] ?? 'white_return').toString();
-    final bool blueReturn = filingType == 'blue_return';
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (context) {
+          return pw.Padding(
+            padding: const pw.EdgeInsets.all(32),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
 
-    final response = await http.post(
-      endpoint,
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'year': year,
-        'reportMode': 'complete',
-        'companyId': companyId,
-        'filingType': filingType,
-        'blueReturn': blueReturn,
-      }),
+                pw.Text(
+                  "Relatório Fiscal",
+                  style: pw.TextStyle(
+                    fontSize: 28,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+
+                pw.SizedBox(height: 8),
+
+                pw.Text(
+                  "Ano: $year",
+                  style: const pw.TextStyle(fontSize: 16),
+                ),
+
+                pw.SizedBox(height: 30),
+
+                _sectionTitle("Resumo financeiro"),
+
+                pw.SizedBox(height: 10),
+
+                _row("Receita total", _yen(entries)),
+                _row("Despesas totais", _yen(expenses)),
+                _row("Lucro tributável", _yen(profit)),
+
+                pw.SizedBox(height: 30),
+
+                _sectionTitle("Estimativa de imposto"),
+
+                pw.SizedBox(height: 10),
+
+                _row("Income Tax", _yen(nationalTax)),
+                _row("Resident Tax", _yen(residentTax)),
+
+                pw.Divider(),
+
+                _row("Total estimado", _yen(totalTax), bold: true),
+
+                pw.Spacer(),
+
+                pw.Text(
+                  "Relatório gerado automaticamente pelo Autonomo App",
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    color: PdfColors.grey700,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
 
-    if (response.statusCode != 200) {
-      throw Exception('Falha ao gerar PDF: ${response.body}');
-    }
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+    );
+  }
 
-    final Uint8List bytes = response.bodyBytes;
-    final blob = html.Blob([bytes], 'application/pdf');
-    final url = html.Url.createObjectUrlFromBlob(blob);
+  pw.Widget _sectionTitle(String title) {
+    return pw.Text(
+      title,
+      style: pw.TextStyle(
+        fontSize: 18,
+        fontWeight: pw.FontWeight.bold,
+      ),
+    );
+  }
 
-    html.AnchorElement(href: url)
-      ..setAttribute('download', 'autonomo_fiscal_$year.pdf')
-      ..target = '_blank'
-      ..click();
+  pw.Widget _row(String label, String value, {bool bold = false}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 4),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(label),
+          pw.Text(
+            value,
+            style: bold
+                ? pw.TextStyle(fontWeight: pw.FontWeight.bold)
+                : const pw.TextStyle(),
+          )
+        ],
+      ),
+    );
+  }
 
-    html.Url.revokeObjectUrl(url);
+  String _yen(double value) {
+    return "¥${value.toStringAsFixed(0)}";
   }
 }
