@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/supabase_service.dart';
+import '../services/report_service.dart';
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
@@ -163,6 +164,18 @@ class _ReportsPageState extends State<ReportsPage> {
     );
   }
 
+  Future<void> _generatePdf(Map<String, dynamic> data) async {
+    await ReportService.instance.generateFiscalReport(
+      year: _year,
+      entries: data["entries"],
+      expenses: data["expenses"],
+      profit: data["profit"],
+      nationalTax: data["nationalTax"],
+      residentTax: data["residentTax"],
+      totalTax: data["totalTax"],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -193,24 +206,49 @@ class _ReportsPageState extends State<ReportsPage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+
                 _periodSelector(),
+
                 const SizedBox(height: 20),
+
                 _card("Receita total", _yen(data["entries"]),
                     color: Colors.green),
+
                 _card("Despesas totais", _yen(data["expenses"]),
                     color: Colors.red),
+
                 _card("Lucro tributável", _yen(data["profit"]),
                     color: Colors.blue),
+
                 const SizedBox(height: 20),
+
                 const Text(
                   "Estimativa de imposto",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
+
                 const SizedBox(height: 10),
+
                 _card("Income Tax", _yen(data["nationalTax"])),
+
                 _card("Resident Tax", _yen(data["residentTax"])),
+
                 _card("Total estimado", _yen(data["totalTax"]),
                     color: Colors.orange),
+
+                const SizedBox(height: 30),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.picture_as_pdf),
+                    label: const Text("Gerar PDF Fiscal"),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.all(16),
+                    ),
+                    onPressed: () => _generatePdf(data),
+                  ),
+                )
               ],
             ),
           );
