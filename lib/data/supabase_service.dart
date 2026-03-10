@@ -185,6 +185,21 @@ class SupabaseService {
         .toList();
   }
 
+  Future<void> updateExpense(String id, Map<String, dynamic> data) async {
+    await _client.from('expenses_v2').update({
+      'expense_date': data['date'],
+      'description': data['description'],
+      'category': _normalizeExpenseCategory(data['category']),
+      'amount': data['amount'],
+      'tax_amount': data['tax'],
+      'tax_type': data['tax_type'],
+    }).eq('id', id);
+  }
+
+  Future<void> deleteExpense(String id) async {
+    await _client.from('expenses_v2').delete().eq('id', id);
+  }
+
   Future<String> uploadReceipt(Uint8List fileBytes, String fileName) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
 
@@ -207,14 +222,18 @@ class SupabaseService {
     switch (value) {
       case 'payment_cash':
       case 'Dinheiro':
+      case 'cash':
         return 'cash';
       case 'payment_bank_transfer':
       case 'Transferência bancária':
+      case 'bank_transfer':
         return 'bank_transfer';
       case 'payment_credit_card':
       case 'Cartão de crédito':
+      case 'card':
         return 'card';
       case 'payment_paypay':
+      case 'paypay':
         return 'paypay';
       default:
         return 'other';
