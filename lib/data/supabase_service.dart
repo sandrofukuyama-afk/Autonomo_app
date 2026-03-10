@@ -10,6 +10,22 @@ class SupabaseService {
 
   final SupabaseClient _client = Supabase.instance.client;
 
+  Future<Map<String, dynamic>> getAppSettings() async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final Map<String, dynamic>? row = await _client
+        .from('app_settings')
+        .select()
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+    if (row == null) {
+      throw Exception('Configurações da empresa não encontradas.');
+    }
+
+    return row;
+  }
+
   Future<void> addEntry(Map<String, dynamic> data) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
 
@@ -20,6 +36,14 @@ class SupabaseService {
       'category': data['category'] ?? 'service',
       'amount': data['amount'],
       'payment_method': _normalizePaymentMethod(data['payment_method']),
+      'tax_rate': data['tax_rate'],
+      'tax_inclusion_type': data['tax_inclusion_type'] ?? 'unknown',
+      'tax_amount': data['tax_amount'],
+      'qualified_invoice_issued': data['qualified_invoice_issued'] ?? false,
+      'qualified_invoice_number': data['qualified_invoice_number'],
+      'customer_name': data['customer_name'],
+      'revenue_type': data['revenue_type'] ?? 'service',
+      'fiscal_revenue_category': data['fiscal_revenue_category'],
       'created_at': data['created_at'] ?? DateTime.now().toIso8601String(),
     });
   }
@@ -57,6 +81,23 @@ class SupabaseService {
           'tax_amount': data['tax'],
           'tax_type': data['tax_type'],
           'receipt_status': receiptUrl != null ? 'uploaded' : 'none',
+          'deductibility_status': data['deductibility_status'] ?? 'review_required',
+          'is_mixed_use': data['is_mixed_use'] ?? false,
+          'business_use_percent': data['business_use_percent'] ?? 100,
+          'private_use_percent': data['private_use_percent'] ?? 0,
+          'allocation_basis': data['allocation_basis'],
+          'allocation_note': data['allocation_note'],
+          'deductible_amount': data['deductible_amount'],
+          'non_deductible_amount': data['non_deductible_amount'],
+          'tax_rate': data['tax_rate'],
+          'tax_inclusion_type': data['tax_inclusion_type'] ?? 'unknown',
+          'qualified_invoice_flag': data['qualified_invoice_flag'] ?? false,
+          'qualified_invoice_number': data['qualified_invoice_number'],
+          'vendor_name': data['vendor_name'],
+          'vendor_tax_id_note': data['vendor_tax_id_note'],
+          'fiscal_category': data['fiscal_category'],
+          'review_status': data['review_status'] ?? 'pending',
+          'review_note': data['review_note'],
           'created_at': data['created_at'] ?? DateTime.now().toIso8601String(),
         })
         .select()
@@ -69,13 +110,28 @@ class SupabaseService {
         'storage_path': receiptUrl,
         'public_url': receiptUrl,
         'file_name': data['file_name'],
+        'original_file_name': data['original_file_name'] ?? data['file_name'],
+        'mime_type': data['mime_type'],
+        'file_size_bytes': data['file_size_bytes'],
         'ocr_status': 'processed',
+        'ocr_engine': data['ocr_engine'] ?? 'google_vision',
+        'ocr_raw_text': data['ocr_raw_text'],
         'ocr_store_name': data['store_name'],
         'ocr_amount': data['amount'],
         'ocr_date': data['date'],
         'ocr_tax_amount': data['tax'],
         'ocr_tax_type': data['tax_type'],
         'ocr_category_suggestion': data['category'],
+        'document_type': data['document_type'] ?? 'receipt',
+        'document_date': data['document_date'],
+        'document_amount': data['document_amount'],
+        'document_store_name': data['document_store_name'] ?? data['store_name'],
+        'search_vendor_name': data['search_vendor_name'] ?? data['store_name'],
+        'search_amount': data['search_amount'] ?? data['amount'],
+        'search_date': data['search_date'] ?? data['date'],
+        'is_electronic_transaction': data['is_electronic_transaction'] ?? false,
+        'retention_lock_flag': data['retention_lock_flag'] ?? false,
+        'review_status': data['receipt_review_status'] ?? 'pending',
         'uploaded_at': DateTime.now().toIso8601String(),
       });
     }
