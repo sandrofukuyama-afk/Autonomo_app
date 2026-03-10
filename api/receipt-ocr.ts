@@ -72,7 +72,7 @@ function parseAmount(text: string): number | null {
   const yenMatches = [...normalized.matchAll(/[¥￥]\s*([\d,]+)/g)];
   if (yenMatches.length > 0) {
     const values = yenMatches
-      .map((m) => Number(m[1].replace(/,/g, "")))
+      .map((m) => Number((m[1] ?? "").replace(/,/g, "")))
       .filter((v) => Number.isFinite(v) && v > 0);
 
     if (values.length > 0) {
@@ -80,10 +80,12 @@ function parseAmount(text: string): number | null {
     }
   }
 
-  const numberMatches = [...normalized.matchAll(/(?:^|\D)(\d{3,})(?!\d)/g)];
+  const numberMatches = [
+    ...normalized.matchAll(/(?:^|[^\d])(\d{1,3}(?:,\d{3})+|\d{3,})(?!\d)/g),
+  ];
   if (numberMatches.length > 0) {
     const values = numberMatches
-      .map((m) => Number(m[1].replace(/,/g, "")))
+      .map((m) => Number((m[1] ?? "").replace(/,/g, "")))
       .filter((v) => Number.isFinite(v) && v > 0);
 
     if (values.length > 0) {
@@ -100,7 +102,7 @@ function parseDate(text: string): string | null {
   const patterns = [
     /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/,
     /(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/,
-    /(?<!\d)(\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?!\d)/,
+    /(?:^|[^\d])(\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?!\d)/,
     /令和\s*(\d{1,2}|元)\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/,
     /平成\s*(\d{1,2}|元)\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/,
   ];
@@ -318,7 +320,20 @@ function suggestCategory(text: string, store: string | null): string | null {
   return null;
 }
 
-async function runVision(imageUrl: string, apiKey: string): Promise<string> {
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch (_) {
+    return false;
+  }
+}
+
+async function callVision(
+  imageUrl: string,
+  apiKey: string,
+  featureType: "DOCUMENT_TEXT_DETECTION" | "TEXT_DETECTION"
+): Promise<string> {
   const response = await fetch(
     `https://vision.googleapis.com/v1/images:annotate?key=${encodeURIComponent(apiKey)}`,
     {
@@ -336,11 +351,11 @@ async function runVision(imageUrl: string, apiKey: string): Promise<string> {
             },
             features: [
               {
-                type: "DOCUMENT_TEXT_DETECTION",
+                type: featureType,
               },
             ],
             imageContext: {
-              languageHints: ["ja"],
+              languageHints: ["ja", "en"],
             },
           },
         ],
@@ -359,11 +374,27 @@ async function runVision(imageUrl: string, apiKey: string): Promise<string> {
     data?.responses?.[0]?.textAnnotations?.[0]?.description ||
     "";
 
-  if (!text) {
+  return typeof text === "string" ? text.trim() : "";
+}
+
+async function runVision(imageUrl: string, apiKey: string): Promise<string> {
+  const documentText = await callVision(
+    imageUrl,
+    apiKey,
+    "DOCUMENT_TEXT_DETECTION"
+  );
+
+  if (documentText) {
+    return documentText;
+  }
+
+  const fallbackText = await callVision(imageUrl, apiKey, "TEXT_DETECTION");
+
+  if (!fallbackText) {
     throw new Error("OCR sem texto retornado");
   }
 
-  return text;
+  return fallbackText;
 }
 
 export default {
@@ -377,6 +408,10 @@ export default {
 
       if (!imageUrl || typeof imageUrl !== "string") {
         return json({ success: false, error: "imageUrl obrigatório" }, 400);
+      }
+
+      if (!isValidHttpUrl(imageUrl)) {
+        return json({ success: false, error: "imageUrl inválido" }, 400);
       }
 
       const apiKey = process.env.GOOGLE_VISION_API_KEY;
