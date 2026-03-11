@@ -103,7 +103,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
     });
   }
 
-  
   Future<void> _capturePhoto(StateSetter setStateDialog) async {
     final result = await FilePicker.platform.pickFiles(
       withData: true,
@@ -113,8 +112,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
     if (result == null || result.files.isEmpty) return;
 
     final file = result.files.single;
-
-    if (file.bytes == null) return;
+    if (file.bytes == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível capturar a foto.')),
+      );
+      return;
+    }
 
     setStateDialog(() {
       _selectedReceiptBytes = file.bytes;
@@ -124,7 +128,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
     });
   }
 
-String _mimeFromName(String fileName) {
+  String _mimeFromName(String fileName) {
     final lower = fileName.toLowerCase();
 
     if (lower.endsWith('.png')) return 'image/png';
@@ -462,27 +466,7 @@ String _mimeFromName(String fileName) {
               style: TextStyle(color: Colors.grey.shade700),
             ),
           ],
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: 
-Row(
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => _pickReceipt(setStateDialog),
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Escolher arquivo'),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: () => _capturePhoto(setStateDialog),
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Tirar foto'),
-              ),
-            ],
-          ),
-
-          ),
+          if (hasSelectedReceipt || hasExistingReceipt) const SizedBox(height: 4),
         ],
       ),
     );
@@ -529,6 +513,27 @@ Row(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
                           ),
+                        ),
+                        const SizedBox(height: 18),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () => _capturePhoto(setStateDialog),
+                              icon: const Icon(Icons.camera_alt),
+                              label: const Text('Tirar foto'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () => _pickReceipt(setStateDialog),
+                              icon: const Icon(Icons.upload_file),
+                              label: Text(
+                                _selectedReceiptBytes != null
+                                    ? 'Trocar arquivo'
+                                    : 'Escolher arquivo',
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 24),
                         TextField(
@@ -825,6 +830,27 @@ Row(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
                           ),
+                        ),
+                        const SizedBox(height: 18),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () => _capturePhoto(setStateDialog),
+                              icon: const Icon(Icons.camera_alt),
+                              label: const Text('Tirar foto'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () => _pickReceipt(setStateDialog),
+                              icon: const Icon(Icons.upload_file),
+                              label: Text(
+                                _selectedReceiptBytes != null
+                                    ? 'Trocar arquivo'
+                                    : 'Escolher arquivo',
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 24),
                         TextField(
