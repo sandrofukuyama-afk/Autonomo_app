@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../data/supabase_service.dart';
+import '../l10n/app_localizations.dart';
 
 class ExpensesPage extends StatefulWidget {
   const ExpensesPage({super.key});
@@ -34,6 +35,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
   String? _selectedReceiptName;
   String? _selectedReceiptMimeType;
   int? _selectedReceiptSize;
+
+  AppLocalizations get t => AppLocalizations.of(context);
 
   @override
   void initState() {
@@ -90,7 +93,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
     if (file.bytes == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Não foi possível ler o arquivo.')),
+        SnackBar(content: Text(t.translate('could_not_read_file'))),
       );
       return;
     }
@@ -115,7 +118,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
     if (file.bytes == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Não foi possível capturar a foto.')),
+        SnackBar(content: Text(t.translate('could_not_capture_photo'))),
       );
       return;
     }
@@ -185,43 +188,43 @@ class _ExpensesPageState extends State<ExpensesPage> {
   String _categoryLabel(String value) {
     switch (value) {
       case 'food':
-        return 'Alimentação';
+        return t.translate('category_food');
       case 'transport':
-        return 'Transporte';
+        return t.translate('category_transport');
       case 'rent':
-        return 'Aluguel';
+        return t.translate('category_rent');
       case 'services':
-        return 'Serviços';
+        return t.translate('category_services');
       case 'fees':
-        return 'Taxas';
+        return t.translate('category_fees');
       default:
-        return 'Outros';
+        return t.translate('category_other');
     }
   }
 
   String _paymentMethodLabel(String value) {
     switch (value) {
       case 'cash':
-        return 'Cash';
+        return t.translate('payment_cash');
       case 'credit_card':
-        return 'Credit Card';
+        return t.translate('payment_credit_card');
       case 'furikomi':
-        return 'Furikomi';
+        return t.translate('payment_furikomi');
       case 'paypay':
-        return 'PayPay';
+        return t.translate('payment_paypay');
       default:
-        return 'Other';
+        return t.translate('payment_other');
     }
   }
 
   String _taxInclusionTypeLabel(String value) {
     switch (value) {
       case 'inclusive':
-        return 'Imposto incluso';
+        return t.translate('tax_inclusive');
       case 'external':
-        return 'Imposto fora';
+        return t.translate('tax_external');
       default:
-        return 'Não definido';
+        return t.translate('tax_not_defined');
     }
   }
 
@@ -308,10 +311,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
               children: [
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Recibo anexado',
-                        style: TextStyle(
+                        t.translate('receipt_viewer_title'),
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
                         ),
@@ -403,9 +406,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Recibo / comprovante',
-            style: TextStyle(
+          Text(
+            t.translate('receipt_attachment'),
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
             ),
@@ -428,7 +431,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       _clearSelectedReceipt();
                     });
                   },
-                  child: const Text('Remover'),
+                  child: Text(t.translate('remove')),
                 ),
               ],
             ),
@@ -449,20 +452,20 @@ class _ExpensesPageState extends State<ExpensesPage> {
               children: [
                 const Icon(Icons.receipt_long, color: Colors.green),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Já existe um recibo anexado para esta despesa.',
+                    t.translate('existing_receipt_attached'),
                   ),
                 ),
                 TextButton(
                   onPressed: () => _showReceiptPreview(existingReceiptUrl),
-                  child: const Text('Ver'),
+                  child: Text(t.translate('view')),
                 ),
               ],
             ),
           ] else ...[
             Text(
-              'Nenhum recibo selecionado.',
+              t.translate('no_receipt_selected'),
               style: TextStyle(color: Colors.grey.shade700),
             ),
           ],
@@ -492,6 +495,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
+            final dialogT = AppLocalizations.of(context);
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -507,9 +511,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Nova despesa',
-                          style: TextStyle(
+                        Text(
+                          dialogT.translate('new_expense'),
+                          style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
                           ),
@@ -522,15 +526,15 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             ElevatedButton.icon(
                               onPressed: () => _capturePhoto(setStateDialog),
                               icon: const Icon(Icons.camera_alt),
-                              label: const Text('Tirar foto'),
+                              label: Text(dialogT.translate('take_photo')),
                             ),
                             OutlinedButton.icon(
                               onPressed: () => _pickReceipt(setStateDialog),
                               icon: const Icon(Icons.upload_file),
                               label: Text(
                                 _selectedReceiptBytes != null
-                                    ? 'Trocar arquivo'
-                                    : 'Escolher arquivo',
+                                    ? dialogT.translate('change_file')
+                                    : dialogT.translate('choose_file'),
                               ),
                             ),
                           ],
@@ -538,12 +542,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         const SizedBox(height: 24),
                         TextField(
                           controller: _descController,
-                          decoration: _fieldDecoration('Descrição'),
+                          decoration: _fieldDecoration(dialogT.translate('description')),
                         ),
                         const SizedBox(height: 16),
                         TextField(
                           controller: _storeController,
-                          decoration: _fieldDecoration('Loja'),
+                          decoration: _fieldDecoration(dialogT.translate('store')),
                         ),
                         const SizedBox(height: 16),
                         TextField(
@@ -551,36 +555,36 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: _fieldDecoration('Valor (¥)'),
+                          decoration: _fieldDecoration('${dialogT.translate('value')} (¥)'),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _category,
-                          decoration: _fieldDecoration('Categoria'),
-                          items: const [
+                          decoration: _fieldDecoration(dialogT.translate('category')),
+                          items: [
                             DropdownMenuItem(
                               value: 'food',
-                              child: Text('Alimentação'),
+                              child: Text(dialogT.translate('category_food')),
                             ),
                             DropdownMenuItem(
                               value: 'transport',
-                              child: Text('Transporte'),
+                              child: Text(dialogT.translate('category_transport')),
                             ),
                             DropdownMenuItem(
                               value: 'rent',
-                              child: Text('Aluguel'),
+                              child: Text(dialogT.translate('category_rent')),
                             ),
                             DropdownMenuItem(
                               value: 'services',
-                              child: Text('Serviços'),
+                              child: Text(dialogT.translate('category_services')),
                             ),
                             DropdownMenuItem(
                               value: 'fees',
-                              child: Text('Taxas'),
+                              child: Text(dialogT.translate('category_fees')),
                             ),
                             DropdownMenuItem(
                               value: 'other',
-                              child: Text('Outros'),
+                              child: Text(dialogT.translate('category_other')),
                             ),
                           ],
                           onChanged: (value) {
@@ -590,9 +594,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           },
                         ),
                         const SizedBox(height: 20),
-                        const Text(
-                          'Dados fiscais básicos',
-                          style: TextStyle(
+                        Text(
+                          dialogT.translate('fiscal_basic_data'),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
@@ -600,32 +604,32 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: _vendorController,
-                          decoration: _fieldDecoration('Fornecedor'),
+                          decoration: _fieldDecoration(dialogT.translate('vendor')),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _paymentMethod,
-                          decoration: _fieldDecoration('Método de pagamento'),
-                          items: const [
+                          decoration: _fieldDecoration(dialogT.translate('payment_method')),
+                          items: [
                             DropdownMenuItem(
                               value: 'cash',
-                              child: Text('Cash'),
+                              child: Text(dialogT.translate('payment_cash')),
                             ),
                             DropdownMenuItem(
                               value: 'credit_card',
-                              child: Text('Credit Card'),
+                              child: Text(dialogT.translate('payment_credit_card')),
                             ),
                             DropdownMenuItem(
                               value: 'furikomi',
-                              child: Text('Furikomi'),
+                              child: Text(dialogT.translate('payment_furikomi')),
                             ),
                             DropdownMenuItem(
                               value: 'paypay',
-                              child: Text('PayPay'),
+                              child: Text(dialogT.translate('payment_paypay')),
                             ),
                             DropdownMenuItem(
                               value: 'other',
-                              child: Text('Other'),
+                              child: Text(dialogT.translate('payment_other')),
                             ),
                           ],
                           onChanged: (value) {
@@ -640,22 +644,22 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: _fieldDecoration('Taxa de imposto (%)'),
+                          decoration: _fieldDecoration(dialogT.translate('tax_rate')),
                         ),
                         const SizedBox(height: 10),
                         _quickTaxRateButtons(setStateDialog),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _taxInclusionType,
-                          decoration: _fieldDecoration('Tipo de imposto'),
-                          items: const [
+                          decoration: _fieldDecoration(dialogT.translate('tax_type')),
+                          items: [
                             DropdownMenuItem(
                               value: 'external',
-                              child: Text('Imposto fora'),
+                              child: Text(dialogT.translate('tax_external')),
                             ),
                             DropdownMenuItem(
                               value: 'inclusive',
-                              child: Text('Imposto incluso'),
+                              child: Text(dialogT.translate('tax_inclusive')),
                             ),
                           ],
                           onChanged: (value) {
@@ -669,7 +673,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           controller: _notesController,
                           minLines: 2,
                           maxLines: 4,
-                          decoration: _fieldDecoration('Observações'),
+                          decoration: _fieldDecoration(dialogT.translate('notes')),
                         ),
                         const SizedBox(height: 16),
                         Container(
@@ -685,13 +689,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  'Data: ${_formatDate(_selectedDate.toIso8601String())}',
+                                  '${dialogT.translate('date')}: ${_formatDate(_selectedDate.toIso8601String())}',
                                   style: const TextStyle(fontSize: 15),
                                 ),
                               ),
                               ElevatedButton(
                                 onPressed: () => _selectDate(setStateDialog),
-                                child: const Text('Alterar'),
+                                child: Text(dialogT.translate('change')),
                               ),
                             ],
                           ),
@@ -703,34 +707,27 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(dialogContext, false),
-                              child: const Text('Cancelar'),
+                              onPressed: () => Navigator.pop(dialogContext, false),
+                              child: Text(dialogT.translate('cancel')),
                             ),
                             const SizedBox(width: 12),
                             ElevatedButton(
                               onPressed: () async {
                                 final description = _descController.text.trim();
                                 final amount = double.tryParse(
-                                  _amountController.text
-                                      .trim()
-                                      .replaceAll(',', '.'),
+                                  _amountController.text.trim().replaceAll(',', '.'),
                                 );
 
-                                if (description.isEmpty ||
-                                    amount == null ||
-                                    amount <= 0) {
-                                  ScaffoldMessenger.of(this.context)
-                                      .showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Dados inválidos'),
+                                if (description.isEmpty || amount == null || amount <= 0) {
+                                  ScaffoldMessenger.of(this.context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(dialogT.translate('invalid_data')),
                                     ),
                                   );
                                   return;
                                 }
 
-                                final receiptPayload =
-                                    await _uploadSelectedReceiptIfNeeded();
+                                final receiptPayload = await _uploadSelectedReceiptIfNeeded();
 
                                 await SupabaseService.instance.addExpense({
                                   'date': _selectedDate.toIso8601String(),
@@ -751,7 +748,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                 if (!mounted) return;
                                 Navigator.pop(dialogContext, true);
                               },
-                              child: const Text('Salvar'),
+                              child: Text(dialogT.translate('save')),
                             ),
                           ],
                         ),
@@ -770,7 +767,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
     if (saved == true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Despesa adicionada')),
+        SnackBar(content: Text(t.translate('expense_added'))),
       );
       await _refresh();
     }
@@ -809,6 +806,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
+            final dialogT = AppLocalizations.of(context);
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -824,9 +822,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Editar despesa',
-                          style: TextStyle(
+                        Text(
+                          dialogT.translate('edit_expense'),
+                          style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
                           ),
@@ -839,15 +837,15 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             ElevatedButton.icon(
                               onPressed: () => _capturePhoto(setStateDialog),
                               icon: const Icon(Icons.camera_alt),
-                              label: const Text('Tirar foto'),
+                              label: Text(dialogT.translate('take_photo')),
                             ),
                             OutlinedButton.icon(
                               onPressed: () => _pickReceipt(setStateDialog),
                               icon: const Icon(Icons.upload_file),
                               label: Text(
                                 _selectedReceiptBytes != null
-                                    ? 'Trocar arquivo'
-                                    : 'Escolher arquivo',
+                                    ? dialogT.translate('change_file')
+                                    : dialogT.translate('choose_file'),
                               ),
                             ),
                           ],
@@ -855,12 +853,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         const SizedBox(height: 24),
                         TextField(
                           controller: _descController,
-                          decoration: _fieldDecoration('Descrição'),
+                          decoration: _fieldDecoration(dialogT.translate('description')),
                         ),
                         const SizedBox(height: 16),
                         TextField(
                           controller: _storeController,
-                          decoration: _fieldDecoration('Loja'),
+                          decoration: _fieldDecoration(dialogT.translate('store')),
                         ),
                         const SizedBox(height: 16),
                         TextField(
@@ -868,36 +866,36 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: _fieldDecoration('Valor (¥)'),
+                          decoration: _fieldDecoration('${dialogT.translate('value')} (¥)'),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _category,
-                          decoration: _fieldDecoration('Categoria'),
-                          items: const [
+                          decoration: _fieldDecoration(dialogT.translate('category')),
+                          items: [
                             DropdownMenuItem(
                               value: 'food',
-                              child: Text('Alimentação'),
+                              child: Text(dialogT.translate('category_food')),
                             ),
                             DropdownMenuItem(
                               value: 'transport',
-                              child: Text('Transporte'),
+                              child: Text(dialogT.translate('category_transport')),
                             ),
                             DropdownMenuItem(
                               value: 'rent',
-                              child: Text('Aluguel'),
+                              child: Text(dialogT.translate('category_rent')),
                             ),
                             DropdownMenuItem(
                               value: 'services',
-                              child: Text('Serviços'),
+                              child: Text(dialogT.translate('category_services')),
                             ),
                             DropdownMenuItem(
                               value: 'fees',
-                              child: Text('Taxas'),
+                              child: Text(dialogT.translate('category_fees')),
                             ),
                             DropdownMenuItem(
                               value: 'other',
-                              child: Text('Outros'),
+                              child: Text(dialogT.translate('category_other')),
                             ),
                           ],
                           onChanged: (value) {
@@ -907,9 +905,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           },
                         ),
                         const SizedBox(height: 20),
-                        const Text(
-                          'Dados fiscais básicos',
-                          style: TextStyle(
+                        Text(
+                          dialogT.translate('fiscal_basic_data'),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
@@ -917,32 +915,32 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: _vendorController,
-                          decoration: _fieldDecoration('Fornecedor'),
+                          decoration: _fieldDecoration(dialogT.translate('vendor')),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _paymentMethod,
-                          decoration: _fieldDecoration('Método de pagamento'),
-                          items: const [
+                          decoration: _fieldDecoration(dialogT.translate('payment_method')),
+                          items: [
                             DropdownMenuItem(
                               value: 'cash',
-                              child: Text('Cash'),
+                              child: Text(dialogT.translate('payment_cash')),
                             ),
                             DropdownMenuItem(
                               value: 'credit_card',
-                              child: Text('Credit Card'),
+                              child: Text(dialogT.translate('payment_credit_card')),
                             ),
                             DropdownMenuItem(
                               value: 'furikomi',
-                              child: Text('Furikomi'),
+                              child: Text(dialogT.translate('payment_furikomi')),
                             ),
                             DropdownMenuItem(
                               value: 'paypay',
-                              child: Text('PayPay'),
+                              child: Text(dialogT.translate('payment_paypay')),
                             ),
                             DropdownMenuItem(
                               value: 'other',
-                              child: Text('Other'),
+                              child: Text(dialogT.translate('payment_other')),
                             ),
                           ],
                           onChanged: (value) {
@@ -957,22 +955,22 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: _fieldDecoration('Taxa de imposto (%)'),
+                          decoration: _fieldDecoration(dialogT.translate('tax_rate')),
                         ),
                         const SizedBox(height: 10),
                         _quickTaxRateButtons(setStateDialog),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _taxInclusionType,
-                          decoration: _fieldDecoration('Tipo de imposto'),
-                          items: const [
+                          decoration: _fieldDecoration(dialogT.translate('tax_type')),
+                          items: [
                             DropdownMenuItem(
                               value: 'external',
-                              child: Text('Imposto fora'),
+                              child: Text(dialogT.translate('tax_external')),
                             ),
                             DropdownMenuItem(
                               value: 'inclusive',
-                              child: Text('Imposto incluso'),
+                              child: Text(dialogT.translate('tax_inclusive')),
                             ),
                           ],
                           onChanged: (value) {
@@ -986,7 +984,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           controller: _notesController,
                           minLines: 2,
                           maxLines: 4,
-                          decoration: _fieldDecoration('Observações'),
+                          decoration: _fieldDecoration(dialogT.translate('notes')),
                         ),
                         const SizedBox(height: 16),
                         Container(
@@ -1002,13 +1000,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  'Data: ${_formatDate(_selectedDate.toIso8601String())}',
+                                  '${dialogT.translate('date')}: ${_formatDate(_selectedDate.toIso8601String())}',
                                   style: const TextStyle(fontSize: 15),
                                 ),
                               ),
                               ElevatedButton(
                                 onPressed: () => _selectDate(setStateDialog),
-                                child: const Text('Alterar'),
+                                child: Text(dialogT.translate('change')),
                               ),
                             ],
                           ),
@@ -1023,27 +1021,21 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(dialogContext, false),
-                              child: const Text('Cancelar'),
+                              onPressed: () => Navigator.pop(dialogContext, false),
+                              child: Text(dialogT.translate('cancel')),
                             ),
                             const SizedBox(width: 12),
                             ElevatedButton(
                               onPressed: () async {
                                 final description = _descController.text.trim();
                                 final amount = double.tryParse(
-                                  _amountController.text
-                                      .trim()
-                                      .replaceAll(',', '.'),
+                                  _amountController.text.trim().replaceAll(',', '.'),
                                 );
 
-                                if (description.isEmpty ||
-                                    amount == null ||
-                                    amount <= 0) {
-                                  ScaffoldMessenger.of(this.context)
-                                      .showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Dados inválidos'),
+                                if (description.isEmpty || amount == null || amount <= 0) {
+                                  ScaffoldMessenger.of(this.context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(dialogT.translate('invalid_data')),
                                     ),
                                   );
                                   return;
@@ -1067,12 +1059,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                   },
                                 );
 
-                                final receiptPayload =
-                                    await _uploadSelectedReceiptIfNeeded();
+                                final receiptPayload = await _uploadSelectedReceiptIfNeeded();
 
                                 if (receiptPayload.isNotEmpty) {
-                                  await SupabaseService.instance
-                                      .attachReceiptToExpense(
+                                  await SupabaseService.instance.attachReceiptToExpense(
                                     expense['id'].toString(),
                                     {
                                       'date': _selectedDate.toIso8601String(),
@@ -1095,7 +1085,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                 if (!mounted) return;
                                 Navigator.pop(dialogContext, true);
                               },
-                              child: const Text('Salvar'),
+                              child: Text(dialogT.translate('save')),
                             ),
                           ],
                         ),
@@ -1114,7 +1104,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
     if (result == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Despesa atualizada')),
+        SnackBar(content: Text(t.translate('expense_updated'))),
       );
       await _refresh();
     }
@@ -1124,16 +1114,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Excluir despesa'),
-        content: const Text('Deseja realmente excluir esta despesa?'),
+        title: Text(t.translate('delete_expense_title')),
+        content: Text(t.translate('delete_expense_confirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: Text(t.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Excluir'),
+            child: Text(t.translate('delete')),
           ),
         ],
       ),
@@ -1146,7 +1136,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Despesa excluída')),
+      SnackBar(content: Text(t.translate('expense_deleted'))),
     );
 
     await _refresh();
@@ -1179,7 +1169,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              description.isEmpty ? 'Sem descrição' : description,
+              description.isEmpty ? t.translate('no_description') : description,
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -1198,16 +1188,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (vendor.isNotEmpty) _chip('Fornecedor: $vendor'),
-                _chip('Pagamento: $paymentMethod'),
-                _chip('Imposto: $taxRate'),
+                if (vendor.isNotEmpty) _chip('${t.translate('vendor')}: $vendor'),
+                _chip('${t.translate('payment')}: $paymentMethod'),
+                _chip('${t.translate('tax')}: $taxRate'),
                 _chip(taxInclusion),
               ],
             ),
             if (notes.isNotEmpty) ...[
               const SizedBox(height: 10),
               Text(
-                'Obs: $notes',
+                '${t.translate('obs_short')}: $notes',
                 style: TextStyle(
                   color: Colors.grey.shade800,
                   fontSize: 13,
@@ -1228,7 +1218,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 ),
                 if (receipt.isNotEmpty)
                   IconButton(
-                    tooltip: 'Ver recibo',
+                    tooltip: t.translate('view'),
                     icon: const Icon(
                       Icons.receipt_long,
                       color: Colors.green,
@@ -1236,12 +1226,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     onPressed: () => _showReceiptPreview(receipt),
                   ),
                 IconButton(
-                  tooltip: 'Editar',
+                  tooltip: t.translate('edit'),
                   icon: const Icon(Icons.edit_outlined),
                   onPressed: () => _editExpense(expense),
                 ),
                 IconButton(
-                  tooltip: 'Excluir',
+                  tooltip: t.translate('delete'),
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () => _deleteExpense(expense['id'].toString()),
                 ),
@@ -1266,16 +1256,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
               color: Colors.grey.shade500,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Nenhuma despesa registrada',
-              style: TextStyle(
+            Text(
+              t.translate('no_expenses_registered'),
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              'As despesas cadastradas aparecerão aqui.',
+              t.translate('expenses_will_appear_here'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.grey.shade700,
@@ -1291,7 +1281,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Despesas'),
+        title: Text(t.translate('expenses')),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -1299,7 +1289,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            tooltip: 'Nova despesa',
+            tooltip: t.translate('new_expense_tooltip'),
             onPressed: _openAddDialog,
           ),
           IconButton(
@@ -1318,8 +1308,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     padding: const EdgeInsets.all(16),
                     itemCount: _expenses.length,
                     itemBuilder: (context, index) {
-                      final expense =
-                          Map<String, dynamic>.from(_expenses[index]);
+                      final expense = Map<String, dynamic>.from(_expenses[index]);
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
