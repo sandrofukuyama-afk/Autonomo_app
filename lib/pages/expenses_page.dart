@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/supabase_service.dart';
+import '../data/supabase_service.dart';
 
 class ExpensesPage extends StatefulWidget {
   const ExpensesPage({super.key});
