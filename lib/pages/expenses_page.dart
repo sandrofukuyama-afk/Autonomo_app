@@ -71,7 +71,18 @@ class _ExpensesPageState extends State<ExpensesPage> {
         ? value.toDouble()
         : double.tryParse(value?.toString() ?? '0') ?? 0;
 
-    return '¥${number.toStringAsFixed(0)}';
+    final integerValue = number.toStringAsFixed(0);
+    final chars = integerValue.split('').reversed.toList();
+    final buffer = StringBuffer();
+
+    for (int i = 0; i < chars.length; i++) {
+      if (i > 0 && i % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.write(chars[i]);
+    }
+
+    return '¥${buffer.toString().split('').reversed.join()}';
   }
 
   String _categoryLabel(String value) {
@@ -106,6 +117,19 @@ class _ExpensesPageState extends State<ExpensesPage> {
     }
   }
 
+  InputDecoration _fieldDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 14,
+      ),
+    );
+  }
+
   Future<void> _openAddDialog() async {
     _descController.clear();
     _amountController.clear();
@@ -120,125 +144,160 @@ class _ExpensesPageState extends State<ExpensesPage> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            return AlertDialog(
-              title: const Text('Nova despesa'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: _descController,
-                      decoration: const InputDecoration(
-                        labelText: 'Descrição',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _storeController,
-                      decoration: const InputDecoration(
-                        labelText: 'Loja',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Valor',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: _category,
-                      decoration: const InputDecoration(
-                        labelText: 'Categoria',
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'food',
-                          child: Text('Alimentação'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'transport',
-                          child: Text('Transporte'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'rent',
-                          child: Text('Aluguel'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'services',
-                          child: Text('Serviços'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'fees',
-                          child: Text('Taxas'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'other',
-                          child: Text('Outros'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setStateDialog(() {
-                          _category = value ?? 'other';
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 520,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            'Data: ${_formatDate(_selectedDate.toIso8601String())}',
+                        const Text(
+                          'Nova despesa',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        ElevatedButton(
-                          onPressed: () => _selectDate(setStateDialog),
-                          child: const Text('Selecionar'),
+                        const SizedBox(height: 24),
+                        TextField(
+                          controller: _descController,
+                          decoration: _fieldDecoration('Descrição'),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _storeController,
+                          decoration: _fieldDecoration('Loja / fornecedor'),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _amountController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: _fieldDecoration('Valor (¥)'),
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: _category,
+                          decoration: _fieldDecoration('Categoria'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'food',
+                              child: Text('Alimentação'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'transport',
+                              child: Text('Transporte'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'rent',
+                              child: Text('Aluguel'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'services',
+                              child: Text('Serviços'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'fees',
+                              child: Text('Taxas'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'other',
+                              child: Text('Outros'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              _category = value ?? 'other';
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Data: ${_formatDate(_selectedDate.toIso8601String())}',
+                                  style: const TextStyle(fontSize: 15),
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => _selectDate(setStateDialog),
+                                child: const Text('Alterar'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, false),
+                              child: const Text('Cancelar'),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton(
+                              onPressed: () async {
+                                final description = _descController.text.trim();
+                                final amount = double.tryParse(
+                                  _amountController.text
+                                      .trim()
+                                      .replaceAll(',', '.'),
+                                );
+
+                                if (description.isEmpty ||
+                                    amount == null ||
+                                    amount <= 0) {
+                                  ScaffoldMessenger.of(this.context)
+                                      .showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Dados inválidos'),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                await SupabaseService.instance.addExpense({
+                                  'date': _selectedDate.toIso8601String(),
+                                  'store_name': _storeController.text.trim(),
+                                  'description': description,
+                                  'category': _category,
+                                  'amount': amount,
+                                  'tax': _taxAmount,
+                                  'tax_type': _taxType,
+                                });
+
+                                if (!mounted) return;
+                                Navigator.pop(dialogContext, true);
+                              },
+                              child: const Text('Salvar'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final description = _descController.text.trim();
-                    final amount = double.tryParse(
-                      _amountController.text.trim().replaceAll(',', '.'),
-                    );
-
-                    if (description.isEmpty || amount == null || amount <= 0) {
-                      ScaffoldMessenger.of(this.context).showSnackBar(
-                        const SnackBar(content: Text('Dados inválidos')),
-                      );
-                      return;
-                    }
-
-                    await SupabaseService.instance.addExpense({
-                      'date': _selectedDate.toIso8601String(),
-                      'store_name': _storeController.text.trim(),
-                      'description': description,
-                      'category': _category,
-                      'amount': amount,
-                      'tax': _taxAmount,
-                      'tax_type': _taxType,
-                    });
-
-                    if (!mounted) return;
-                    Navigator.pop(dialogContext, true);
-                  },
-                  child: const Text('Salvar'),
-                ),
-              ],
             );
           },
         );
@@ -270,127 +329,163 @@ class _ExpensesPageState extends State<ExpensesPage> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            return AlertDialog(
-              title: const Text('Editar despesa'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: _descController,
-                      decoration: const InputDecoration(
-                        labelText: 'Descrição',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _storeController,
-                      decoration: const InputDecoration(
-                        labelText: 'Loja',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Valor',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: _category,
-                      decoration: const InputDecoration(
-                        labelText: 'Categoria',
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'food',
-                          child: Text('Alimentação'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'transport',
-                          child: Text('Transporte'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'rent',
-                          child: Text('Aluguel'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'services',
-                          child: Text('Serviços'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'fees',
-                          child: Text('Taxas'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'other',
-                          child: Text('Outros'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setStateDialog(() {
-                          _category = value ?? 'other';
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 520,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            'Data: ${_formatDate(_selectedDate.toIso8601String())}',
+                        const Text(
+                          'Editar despesa',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        ElevatedButton(
-                          onPressed: () => _selectDate(setStateDialog),
-                          child: const Text('Selecionar'),
+                        const SizedBox(height: 24),
+                        TextField(
+                          controller: _descController,
+                          decoration: _fieldDecoration('Descrição'),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _storeController,
+                          decoration: _fieldDecoration('Loja / fornecedor'),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _amountController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: _fieldDecoration('Valor (¥)'),
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: _category,
+                          decoration: _fieldDecoration('Categoria'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'food',
+                              child: Text('Alimentação'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'transport',
+                              child: Text('Transporte'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'rent',
+                              child: Text('Aluguel'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'services',
+                              child: Text('Serviços'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'fees',
+                              child: Text('Taxas'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'other',
+                              child: Text('Outros'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              _category = value ?? 'other';
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Data: ${_formatDate(_selectedDate.toIso8601String())}',
+                                  style: const TextStyle(fontSize: 15),
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => _selectDate(setStateDialog),
+                                child: const Text('Alterar'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, false),
+                              child: const Text('Cancelar'),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton(
+                              onPressed: () async {
+                                final description = _descController.text.trim();
+                                final amount = double.tryParse(
+                                  _amountController.text
+                                      .trim()
+                                      .replaceAll(',', '.'),
+                                );
+
+                                if (description.isEmpty ||
+                                    amount == null ||
+                                    amount <= 0) {
+                                  ScaffoldMessenger.of(this.context)
+                                      .showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Dados inválidos'),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                await SupabaseService.instance.updateExpense(
+                                  expense['id'].toString(),
+                                  {
+                                    'date': _selectedDate.toIso8601String(),
+                                    'store_name': _storeController.text.trim(),
+                                    'description': description,
+                                    'category': _category,
+                                    'amount': amount,
+                                    'tax': _taxAmount,
+                                    'tax_type': _taxType,
+                                  },
+                                );
+
+                                if (!mounted) return;
+                                Navigator.pop(dialogContext, true);
+                              },
+                              child: const Text('Salvar'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final description = _descController.text.trim();
-                    final amount = double.tryParse(
-                      _amountController.text.trim().replaceAll(',', '.'),
-                    );
-
-                    if (description.isEmpty || amount == null || amount <= 0) {
-                      ScaffoldMessenger.of(this.context).showSnackBar(
-                        const SnackBar(content: Text('Dados inválidos')),
-                      );
-                      return;
-                    }
-
-                    await SupabaseService.instance.updateExpense(
-                      expense['id'].toString(),
-                      {
-                        'date': _selectedDate.toIso8601String(),
-                        'description': description,
-                        'category': _category,
-                        'amount': amount,
-                        'tax': _taxAmount,
-                        'tax_type': _taxType,
-                      },
-                    );
-
-                    if (!mounted) return;
-                    Navigator.pop(dialogContext, true);
-                  },
-                  child: const Text('Salvar'),
-                ),
-              ],
             );
           },
         );
@@ -556,9 +651,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              _refresh();
-            },
+            onPressed: _refresh,
           ),
         ],
       ),
