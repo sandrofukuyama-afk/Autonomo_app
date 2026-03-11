@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'data/auth_service.dart';
@@ -26,9 +27,37 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  Locale? _locale;
+  static const String _localeStorageKey = 'app_locale';
 
-  void _setLocale(Locale locale) {
+  Locale? _locale;
+  bool _localeReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedLocale();
+  }
+
+  Future<void> _loadSavedLocale() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedCode = prefs.getString(_localeStorageKey);
+
+    if (!mounted) return;
+
+    setState(() {
+      _locale = (savedCode != null && savedCode.isNotEmpty)
+          ? Locale(savedCode)
+          : null;
+      _localeReady = true;
+    });
+  }
+
+  Future<void> _setLocale(Locale locale) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_localeStorageKey, locale.languageCode);
+
+    if (!mounted) return;
+
     setState(() {
       _locale = locale;
     });
@@ -36,6 +65,15 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_localeReady) {
+      return const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     return MaterialApp(
       title: 'Autonomo App',
       debugShowCheckedModeBanner: false,
@@ -63,7 +101,10 @@ class _MyAppState extends State<MyApp> {
           if (user == null) {
             return const AuthPage();
           }
-          return HomePage(onLocaleChanged: _setLocale);
+          return HomePage(
+            currentLocale: _locale,
+            onLocaleChanged: _setLocale,
+          );
         },
       ),
     );
