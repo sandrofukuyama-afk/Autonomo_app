@@ -93,8 +93,10 @@ class SupabaseService {
           'amount': data['amount'],
           'tax_amount': data['tax'],
           'tax_type': data['tax_type'],
+
           'payment_method': _normalizePaymentMethod(data['payment_method']),
           'notes': data['notes'],
+
           'receipt_status': receiptUrl != null ? 'uploaded' : 'none',
           'deductibility_status':
               data['deductibility_status'] ?? 'review_required',
@@ -170,11 +172,13 @@ class SupabaseService {
       'amount': data['amount'],
       'tax_amount': data['tax'],
       'tax_type': data['tax_type'],
+
       'payment_method': _normalizePaymentMethod(data['payment_method']),
       'notes': data['notes'],
       'tax_rate': data['tax_rate'],
       'tax_inclusion_type': data['tax_inclusion_type'],
       'vendor_name': data['vendor_name'],
+
     }).eq('id', id);
   }
 
@@ -276,21 +280,12 @@ class SupabaseService {
 
   String _normalizePaymentMethod(dynamic value) {
     switch (value) {
-      case 'payment_cash':
-      case 'Dinheiro':
       case 'cash':
         return 'cash';
-      case 'payment_bank_transfer':
-      case 'Transferência bancária':
-      case 'bank_transfer':
-      case 'furikomi':
-        return 'furikomi';
-      case 'payment_credit_card':
-      case 'Cartão de crédito':
-      case 'card':
       case 'credit_card':
         return 'credit_card';
-      case 'payment_paypay':
+      case 'furikomi':
+        return 'furikomi';
       case 'paypay':
         return 'paypay';
       default:
