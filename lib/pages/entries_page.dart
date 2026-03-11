@@ -111,6 +111,19 @@ class _EntriesPageState extends State<EntriesPage> {
     }
   }
 
+  InputDecoration _fieldDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 14,
+      ),
+    );
+  }
+
   Future<void> _openAddDialog() async {
     _descController.clear();
     _amountController.clear();
@@ -126,154 +139,141 @@ class _EntriesPageState extends State<EntriesPage> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Container(
-                width: 420,
-                padding: const EdgeInsets.all(24),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Nova entrada',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      TextField(
-                        controller: _descController,
-                        decoration: const InputDecoration(
-                          labelText: 'Descrição',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 14,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 460,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Nova entrada',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _amountController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
+                        const SizedBox(height: 24),
+                        TextField(
+                          controller: _descController,
+                          decoration: _fieldDecoration('Descrição'),
                         ),
-                        decoration: const InputDecoration(
-                          labelText: 'Valor (¥)',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 14,
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _amountController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
                           ),
+                          decoration: _fieldDecoration('Valor (¥)'),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: _paymentMethod,
-                        decoration: const InputDecoration(
-                          labelText: 'Método de pagamento',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 14,
-                          ),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'cash',
-                            child: Text('Dinheiro'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'card',
-                            child: Text('Cartão'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'bank_transfer',
-                            child: Text('Transferência'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'paypay',
-                            child: Text('PayPay'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'other',
-                            child: Text('Outros'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setStateDialog(() {
-                            _paymentMethod = value ?? 'cash';
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Data: ${_formatDate(_selectedDate.toIso8601String())}',
-                                style: const TextStyle(fontSize: 15),
-                              ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: _paymentMethod,
+                          decoration: _fieldDecoration('Método de pagamento'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'cash',
+                              child: Text('Dinheiro'),
                             ),
+                            DropdownMenuItem(
+                              value: 'card',
+                              child: Text('Cartão'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'bank_transfer',
+                              child: Text('Transferência'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'paypay',
+                              child: Text('PayPay'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'other',
+                              child: Text('Outros'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              _paymentMethod = value ?? 'cash';
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Data: ${_formatDate(_selectedDate.toIso8601String())}',
+                                  style: const TextStyle(fontSize: 15),
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => _selectDate(setStateDialog),
+                                child: const Text('Alterar'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, false),
+                              child: const Text('Cancelar'),
+                            ),
+                            const SizedBox(width: 12),
                             ElevatedButton(
-                              onPressed: () => _selectDate(setStateDialog),
-                              child: const Text('Alterar'),
+                              onPressed: () async {
+                                final description = _descController.text.trim();
+                                final amount = double.tryParse(
+                                  _amountController.text
+                                      .trim()
+                                      .replaceAll(',', '.'),
+                                );
+
+                                if (description.isEmpty ||
+                                    amount == null ||
+                                    amount <= 0) {
+                                  ScaffoldMessenger.of(this.context)
+                                      .showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Dados inválidos'),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                await SupabaseService.instance.addEntry({
+                                  'date': _selectedDate.toIso8601String(),
+                                  'description': description,
+                                  'amount': amount,
+                                  'payment_method': _paymentMethod,
+                                });
+
+                                if (!mounted) return;
+                                Navigator.pop(dialogContext, true);
+                              },
+                              child: const Text('Salvar'),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(dialogContext, false),
-                            child: const Text('Cancelar'),
-                          ),
-                          const SizedBox(width: 12),
-                          ElevatedButton(
-                            onPressed: () async {
-                              final description = _descController.text.trim();
-                              final amount = double.tryParse(
-                                _amountController.text.trim().replaceAll(',', '.'),
-                              );
-
-                              if (description.isEmpty ||
-                                  amount == null ||
-                                  amount <= 0) {
-                                ScaffoldMessenger.of(this.context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Dados inválidos'),
-                                  ),
-                                );
-                                return;
-                              }
-
-                              await SupabaseService.instance.addEntry({
-                                'date': _selectedDate.toIso8601String(),
-                                'description': description,
-                                'amount': amount,
-                                'payment_method': _paymentMethod,
-                              });
-
-                              if (!mounted) return;
-                              Navigator.pop(dialogContext, true);
-                            },
-                            child: const Text('Salvar'),
-                          ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -307,157 +307,145 @@ class _EntriesPageState extends State<EntriesPage> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Container(
-                width: 420,
-                padding: const EdgeInsets.all(24),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Editar entrada',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      TextField(
-                        controller: _descController,
-                        decoration: const InputDecoration(
-                          labelText: 'Descrição',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 14,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 460,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Editar entrada',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _amountController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
+                        const SizedBox(height: 24),
+                        TextField(
+                          controller: _descController,
+                          decoration: _fieldDecoration('Descrição'),
                         ),
-                        decoration: const InputDecoration(
-                          labelText: 'Valor (¥)',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 14,
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _amountController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
                           ),
+                          decoration: _fieldDecoration('Valor (¥)'),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: _paymentMethod,
-                        decoration: const InputDecoration(
-                          labelText: 'Método de pagamento',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 14,
-                          ),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'cash',
-                            child: Text('Dinheiro'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'card',
-                            child: Text('Cartão'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'bank_transfer',
-                            child: Text('Transferência'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'paypay',
-                            child: Text('PayPay'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'other',
-                            child: Text('Outros'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setStateDialog(() {
-                            _paymentMethod = value ?? 'cash';
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Data: ${_formatDate(_selectedDate.toIso8601String())}',
-                                style: const TextStyle(fontSize: 15),
-                              ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: _paymentMethod,
+                          decoration: _fieldDecoration('Método de pagamento'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'cash',
+                              child: Text('Dinheiro'),
                             ),
+                            DropdownMenuItem(
+                              value: 'card',
+                              child: Text('Cartão'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'bank_transfer',
+                              child: Text('Transferência'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'paypay',
+                              child: Text('PayPay'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'other',
+                              child: Text('Outros'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              _paymentMethod = value ?? 'cash';
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Data: ${_formatDate(_selectedDate.toIso8601String())}',
+                                  style: const TextStyle(fontSize: 15),
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => _selectDate(setStateDialog),
+                                child: const Text('Alterar'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, false),
+                              child: const Text('Cancelar'),
+                            ),
+                            const SizedBox(width: 12),
                             ElevatedButton(
-                              onPressed: () => _selectDate(setStateDialog),
-                              child: const Text('Alterar'),
+                              onPressed: () async {
+                                final description = _descController.text.trim();
+                                final amount = double.tryParse(
+                                  _amountController.text
+                                      .trim()
+                                      .replaceAll(',', '.'),
+                                );
+
+                                if (description.isEmpty ||
+                                    amount == null ||
+                                    amount <= 0) {
+                                  ScaffoldMessenger.of(this.context)
+                                      .showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Dados inválidos'),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                await SupabaseService.instance.updateEntry(
+                                  entry['id'].toString(),
+                                  {
+                                    'entry_date':
+                                        _selectedDate.toIso8601String(),
+                                    'description': description,
+                                    'amount': amount,
+                                    'payment_method': _paymentMethod,
+                                  },
+                                );
+
+                                if (!mounted) return;
+                                Navigator.pop(dialogContext, true);
+                              },
+                              child: const Text('Salvar'),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(dialogContext, false),
-                            child: const Text('Cancelar'),
-                          ),
-                          const SizedBox(width: 12),
-                          ElevatedButton(
-                            onPressed: () async {
-                              final description = _descController.text.trim();
-                              final amount = double.tryParse(
-                                _amountController.text.trim().replaceAll(',', '.'),
-                              );
-
-                              if (description.isEmpty ||
-                                  amount == null ||
-                                  amount <= 0) {
-                                ScaffoldMessenger.of(this.context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Dados inválidos'),
-                                  ),
-                                );
-                                return;
-                              }
-
-                              await SupabaseService.instance.updateEntry(
-                                entry['id'].toString(),
-                                {
-                                  'entry_date': _selectedDate.toIso8601String(),
-                                  'description': description,
-                                  'amount': amount,
-                                  'payment_method': _paymentMethod,
-                                },
-                              );
-
-                              if (!mounted) return;
-                              Navigator.pop(dialogContext, true);
-                            },
-                            child: const Text('Salvar'),
-                          ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -468,3 +456,182 @@ class _EntriesPageState extends State<EntriesPage> {
     );
 
     if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Entrada atualizada')),
+      );
+      await _refresh();
+    }
+  }
+
+  Future<void> _deleteEntry(String id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Excluir entrada'),
+        content: const Text('Deseja realmente excluir esta entrada?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    await SupabaseService.instance.deleteEntry(id);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Entrada excluída')),
+    );
+
+    await _refresh();
+  }
+
+  Widget _entryCard(Map<String, dynamic> entry) {
+    final description = (entry['description'] ?? '').toString();
+    final date = _formatDate(entry['date']);
+    final amount = _formatYen(entry['amount']);
+    final paymentMethod = _paymentLabel(
+      (entry['payment_method'] ?? '').toString(),
+    );
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade300),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              description.isEmpty ? 'Sem descrição' : description,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '$date • $paymentMethod',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    amount,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Editar',
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () => _editEntry(entry),
+                ),
+                IconButton(
+                  tooltip: 'Excluir',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () => _deleteEntry(entry['id'].toString()),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 64,
+              color: Colors.grey.shade500,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Nenhuma entrada registrada',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'As entradas cadastradas aparecerão aqui.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Entradas'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Nova entrada',
+            onPressed: _openAddDialog,
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refresh,
+          ),
+        ],
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _entries.isEmpty
+              ? _emptyState()
+              : RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _entries.length,
+                    itemBuilder: (context, index) {
+                      final entry = Map<String, dynamic>.from(_entries[index]);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _entryCard(entry),
+                      );
+                    },
+                  ),
+                ),
+    );
+  }
+}
