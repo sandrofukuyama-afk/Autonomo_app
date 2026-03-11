@@ -93,6 +93,8 @@ class SupabaseService {
           'amount': data['amount'],
           'tax_amount': data['tax'],
           'tax_type': data['tax_type'],
+          'payment_method': _normalizePaymentMethod(data['payment_method']),
+          'notes': data['notes'],
           'receipt_status': receiptUrl != null ? 'uploaded' : 'none',
           'deductibility_status':
               data['deductibility_status'] ?? 'review_required',
@@ -168,6 +170,11 @@ class SupabaseService {
       'amount': data['amount'],
       'tax_amount': data['tax'],
       'tax_type': data['tax_type'],
+      'payment_method': _normalizePaymentMethod(data['payment_method']),
+      'notes': data['notes'],
+      'tax_rate': data['tax_rate'],
+      'tax_inclusion_type': data['tax_inclusion_type'],
+      'vendor_name': data['vendor_name'],
     }).eq('id', id);
   }
 
@@ -276,11 +283,13 @@ class SupabaseService {
       case 'payment_bank_transfer':
       case 'Transferência bancária':
       case 'bank_transfer':
-        return 'bank_transfer';
+      case 'furikomi':
+        return 'furikomi';
       case 'payment_credit_card':
       case 'Cartão de crédito':
       case 'card':
-        return 'card';
+      case 'credit_card':
+        return 'credit_card';
       case 'payment_paypay':
       case 'paypay':
         return 'paypay';
