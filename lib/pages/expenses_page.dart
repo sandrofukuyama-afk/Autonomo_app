@@ -36,7 +36,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
     try {
 
-      await SupabaseService.client.from('expenses_v2').insert({
+      await SupabaseService.instance.addExpense({
 
         "description": descriptionController.text,
         "amount": double.tryParse(amountController.text) ?? 0,
