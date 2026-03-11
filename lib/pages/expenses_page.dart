@@ -103,7 +103,28 @@ class _ExpensesPageState extends State<ExpensesPage> {
     });
   }
 
-  String _mimeFromName(String fileName) {
+  
+  Future<void> _capturePhoto(StateSetter setStateDialog) async {
+    final result = await FilePicker.platform.pickFiles(
+      withData: true,
+      type: FileType.image,
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.single;
+
+    if (file.bytes == null) return;
+
+    setStateDialog(() {
+      _selectedReceiptBytes = file.bytes;
+      _selectedReceiptName = file.name;
+      _selectedReceiptMimeType = _mimeFromName(file.name);
+      _selectedReceiptSize = file.size;
+    });
+  }
+
+String _mimeFromName(String fileName) {
     final lower = fileName.toLowerCase();
 
     if (lower.endsWith('.png')) return 'image/png';
@@ -444,11 +465,23 @@ class _ExpensesPageState extends State<ExpensesPage> {
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
-            child: ElevatedButton.icon(
-              onPressed: () => _pickReceipt(setStateDialog),
-              icon: const Icon(Icons.upload_file),
-              label: Text(hasSelectedReceipt ? 'Trocar arquivo' : 'Anexar recibo'),
-            ),
+            child: 
+Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => _pickReceipt(setStateDialog),
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Escolher arquivo'),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: () => _capturePhoto(setStateDialog),
+                icon: const Icon(Icons.camera_alt),
+                label: const Text('Tirar foto'),
+              ),
+            ],
+          ),
+
           ),
         ],
       ),
