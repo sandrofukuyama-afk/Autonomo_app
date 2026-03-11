@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+
 import '../data/supabase_service.dart';
 
 class ExpensesPage extends StatefulWidget {
@@ -20,6 +24,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
   String _category = 'other';
   String _taxType = 'external';
   double _taxAmount = 0;
+
+  Uint8List? _selectedReceiptBytes;
+  String? _selectedReceiptName;
+  String? _selectedReceiptMimeType;
+  int? _selectedReceiptSize;
 
   @override
   void initState() {
@@ -51,6 +60,61 @@ class _ExpensesPageState extends State<ExpensesPage> {
       _loading = true;
     });
     await _loadExpenses();
+  }
+
+  void _clearSelectedReceipt() {
+    _selectedReceiptBytes = null;
+    _selectedReceiptName = null;
+    _selectedReceiptMimeType = null;
+    _selectedReceiptSize = null;
+  }
+
+  Future<void> _pickReceipt(StateSetter setStateDialog) async {
+    final result = await FilePicker.platform.pickFiles(
+      withData: true,
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.single;
+    if (file.bytes == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível ler o arquivo.')),
+      );
+      return;
+    }
+
+    setStateDialog(() {
+      _selectedReceiptBytes = file.bytes;
+      _selectedReceiptName = file.name;
+      _selectedReceiptMimeType = _mimeFromName(file.name);
+      _selectedReceiptSize = file.size;
+    });
+  }
+
+  String _mimeFromName(String fileName) {
+    final lower = fileName.toLowerCase();
+
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    return 'image/jpeg';
+  }
+
+  bool _isImageMime(String? mime) {
+    return mime != null && mime.startsWith('image/');
+  }
+
+  bool _isImageUrl(String? url) {
+    if (url == null) return false;
+    final lower = url.toLowerCase();
+    return lower.contains('.jpg') ||
+        lower.contains('.jpeg') ||
+        lower.contains('.png') ||
+        lower.contains('.webp');
   }
 
   String _formatDate(dynamic rawDate) {
@@ -130,6 +194,182 @@ class _ExpensesPageState extends State<ExpensesPage> {
     );
   }
 
+  Future<Map<String, dynamic>> _uploadSelectedReceiptIfNeeded() async {
+    if (_selectedReceiptBytes == null || _selectedReceiptName == null) {
+      return {};
+    }
+
+    final publicUrl = await SupabaseService.instance.uploadReceipt(
+      _selectedReceiptBytes!,
+      _selectedReceiptName!,
+      contentType: _selectedReceiptMimeType,
+    );
+
+    return {
+      'receipt_url': publicUrl,
+      'storage_path': publicUrl,
+      'file_name': _selectedReceiptName,
+      'original_file_name': _selectedReceiptName,
+      'mime_type': _selectedReceiptMimeType,
+      'file_size_bytes': _selectedReceiptSize,
+      'document_type': 'receipt',
+      'ocr_status': 'pending',
+      'receipt_review_status': 'pending',
+    };
+  }
+
+  Future<void> _showReceiptPreview(String url) async {
+    await showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        insetPadding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: 900,
+            maxHeight: 700,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Recibo anexado',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: _isImageUrl(url)
+                      ? InteractiveViewer(
+                          child: Image.network(
+                            url,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) {
+                              return SelectableText(url);
+                            },
+                          ),
+                        )
+                      : Center(
+                          child: SelectableText(url),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _receiptSection({
+    required StateSetter setStateDialog,
+    String? existingReceiptUrl,
+  }) {
+    final hasSelectedReceipt =
+        _selectedReceiptBytes != null && _selectedReceiptName != null;
+    final hasExistingReceipt =
+        existingReceiptUrl != null && existingReceiptUrl.trim().isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade400),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Recibo / comprovante',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (hasSelectedReceipt) ...[
+            Row(
+              children: [
+                const Icon(Icons.attach_file, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _selectedReceiptName!,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setStateDialog(() {
+                      _clearSelectedReceipt();
+                    });
+                  },
+                  child: const Text('Remover'),
+                ),
+              ],
+            ),
+            if (_isImageMime(_selectedReceiptMimeType)) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.memory(
+                  _selectedReceiptBytes!,
+                  height: 160,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ],
+          ] else if (hasExistingReceipt) ...[
+            Row(
+              children: [
+                const Icon(Icons.receipt_long, color: Colors.green),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Já existe um recibo anexado para esta despesa.',
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _showReceiptPreview(existingReceiptUrl),
+                  child: const Text('Ver'),
+                ),
+              ],
+            ),
+          ] else ...[
+            Text(
+              'Nenhum recibo selecionado.',
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ElevatedButton.icon(
+              onPressed: () => _pickReceipt(setStateDialog),
+              icon: const Icon(Icons.upload_file),
+              label: Text(hasSelectedReceipt ? 'Trocar arquivo' : 'Anexar recibo'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _openAddDialog() async {
     _descController.clear();
     _amountController.clear();
@@ -138,6 +378,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
     _category = 'other';
     _taxType = 'external';
     _taxAmount = 0;
+    _clearSelectedReceipt();
 
     final saved = await showDialog<bool>(
       context: context,
@@ -150,7 +391,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
               ),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                  maxWidth: 520,
+                  maxWidth: 560,
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -245,6 +486,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        _receiptSection(setStateDialog: setStateDialog),
                         const SizedBox(height: 24),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -276,6 +519,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                   return;
                                 }
 
+                                final receiptPayload =
+                                    await _uploadSelectedReceiptIfNeeded();
+
                                 await SupabaseService.instance.addExpense({
                                   'date': _selectedDate.toIso8601String(),
                                   'store_name': _storeController.text.trim(),
@@ -284,6 +530,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                   'amount': amount,
                                   'tax': _taxAmount,
                                   'tax_type': _taxType,
+                                  ...receiptPayload,
                                 });
 
                                 if (!mounted) return;
@@ -304,6 +551,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
       },
     );
 
+    _clearSelectedReceipt();
+
     if (saved == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Despesa adicionada')),
@@ -323,6 +572,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
     _taxAmount = expense['tax_amount'] is num
         ? (expense['tax_amount'] as num).toDouble()
         : double.tryParse((expense['tax_amount'] ?? '0').toString()) ?? 0;
+    _clearSelectedReceipt();
+
+    final existingReceiptUrl = (expense['receipt_url'] ?? '').toString();
 
     final result = await showDialog<bool>(
       context: context,
@@ -335,7 +587,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
               ),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                  maxWidth: 520,
+                  maxWidth: 560,
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -430,6 +682,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        _receiptSection(
+                          setStateDialog: setStateDialog,
+                          existingReceiptUrl: existingReceiptUrl,
+                        ),
                         const SizedBox(height: 24),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -474,6 +731,26 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                   },
                                 );
 
+                                final receiptPayload =
+                                    await _uploadSelectedReceiptIfNeeded();
+
+                                if (receiptPayload.isNotEmpty) {
+                                  await SupabaseService.instance
+                                      .attachReceiptToExpense(
+                                    expense['id'].toString(),
+                                    {
+                                      'date': _selectedDate.toIso8601String(),
+                                      'store_name': _storeController.text.trim(),
+                                      'description': description,
+                                      'category': _category,
+                                      'amount': amount,
+                                      'tax': _taxAmount,
+                                      'tax_type': _taxType,
+                                      ...receiptPayload,
+                                    },
+                                  );
+                                }
+
                                 if (!mounted) return;
                                 Navigator.pop(dialogContext, true);
                               },
@@ -491,6 +768,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
         );
       },
     );
+
+    _clearSelectedReceipt();
 
     if (result == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -537,7 +816,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
     final category = _categoryLabel((expense['category'] ?? 'other').toString());
     final date = _formatDate(expense['date']);
     final amount = _formatYen(expense['amount']);
-    final receipt = expense['receipt_url'];
+    final receipt = (expense['receipt_url'] ?? '').toString();
 
     return Card(
       elevation: 0,
@@ -577,10 +856,14 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     ),
                   ),
                 ),
-                if (receipt != null && receipt.toString().isNotEmpty)
-                  const Icon(
-                    Icons.receipt_long,
-                    color: Colors.green,
+                if (receipt.isNotEmpty)
+                  IconButton(
+                    tooltip: 'Ver recibo',
+                    icon: const Icon(
+                      Icons.receipt_long,
+                      color: Colors.green,
+                    ),
+                    onPressed: () => _showReceiptPreview(receipt),
                   ),
                 IconButton(
                   tooltip: 'Editar',
