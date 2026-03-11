@@ -151,6 +151,12 @@ class _HomePageState extends State<HomePage> {
     return raw;
   }
 
+  String _currentMonthLabel() {
+    final now = DateTime.now();
+    final month = now.month.toString().padLeft(2, '0');
+    return '${now.year}-$month';
+  }
+
   Future<void> _handleLogout() async {
     await AuthService.instance.signOut();
   }
@@ -208,15 +214,126 @@ class _HomePageState extends State<HomePage> {
     await _refreshDashboard();
   }
 
+  Widget _buildHeroCard() {
+    final bool positive = _monthProfit >= 0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: positive
+              ? const [
+                  Color(0xFF0F172A),
+                  Color(0xFF1E3A8A),
+                ]
+              : const [
+                  Color(0xFF3F3F46),
+                  Color(0xFF7C2D12),
+                ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Dashboard financeiro',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Resumo do mês ${_currentMonthLabel()}',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Resultado atual',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.85),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _formatYen(_monthProfit),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 34,
+              fontWeight: FontWeight.bold,
+              height: 1.05,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _heroChip(
+                icon: Icons.trending_up,
+                label: 'Entradas ${_formatYen(_monthEntriesTotal)}',
+              ),
+              _heroChip(
+                icon: Icons.receipt_long,
+                label: 'Despesas ${_formatYen(_monthExpensesTotal)}',
+              ),
+              _heroChip(
+                icon: positive ? Icons.check_circle_outline : Icons.warning_amber,
+                label: positive ? 'Mês positivo' : 'Atenção ao saldo',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _heroChip({
+    required IconData icon,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.10)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSummaryMiniCard({
     required String title,
     required String value,
     required IconData icon,
     required Color iconColor,
     required Color iconBackground,
+    Color? valueColor,
   }) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 126),
+    return SizedBox(
+      height: 140,
       child: Card(
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -243,7 +360,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+              const Spacer(),
               Text(
                 title,
                 style: TextStyle(
@@ -255,10 +372,11 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 8),
               Text(
                 value,
-                style: const TextStyle(
-                  fontSize: 28,
+                style: TextStyle(
+                  fontSize: 27,
                   fontWeight: FontWeight.bold,
                   height: 1.05,
+                  color: valueColor,
                 ),
               ),
             ],
@@ -270,8 +388,8 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildSummaryGrid() {
     final width = MediaQuery.of(context).size.width;
-    final bool isWide = width >= 900;
-    final bool isMedium = width >= 600;
+    final bool isWide = width >= 1000;
+    final bool isMedium = width >= 650;
 
     if (isWide) {
       return Row(
@@ -283,6 +401,7 @@ class _HomePageState extends State<HomePage> {
               icon: Icons.trending_up,
               iconColor: Colors.green.shade800,
               iconBackground: Colors.green.shade100,
+              valueColor: Colors.green.shade700,
             ),
           ),
           const SizedBox(width: 12),
@@ -293,6 +412,7 @@ class _HomePageState extends State<HomePage> {
               icon: Icons.receipt_long,
               iconColor: Colors.red.shade800,
               iconBackground: Colors.red.shade100,
+              valueColor: Colors.red.shade700,
             ),
           ),
           const SizedBox(width: 12),
@@ -307,6 +427,9 @@ class _HomePageState extends State<HomePage> {
               iconBackground: _monthProfit >= 0
                   ? Colors.blue.shade100
                   : Colors.orange.shade100,
+              valueColor: _monthProfit >= 0
+                  ? Colors.blue.shade700
+                  : Colors.orange.shade700,
             ),
           ),
         ],
@@ -325,6 +448,7 @@ class _HomePageState extends State<HomePage> {
                   icon: Icons.trending_up,
                   iconColor: Colors.green.shade800,
                   iconBackground: Colors.green.shade100,
+                  valueColor: Colors.green.shade700,
                 ),
               ),
               const SizedBox(width: 12),
@@ -335,6 +459,7 @@ class _HomePageState extends State<HomePage> {
                   icon: Icons.receipt_long,
                   iconColor: Colors.red.shade800,
                   iconBackground: Colors.red.shade100,
+                  valueColor: Colors.red.shade700,
                 ),
               ),
             ],
@@ -350,6 +475,9 @@ class _HomePageState extends State<HomePage> {
             iconBackground: _monthProfit >= 0
                 ? Colors.blue.shade100
                 : Colors.orange.shade100,
+            valueColor: _monthProfit >= 0
+                ? Colors.blue.shade700
+                : Colors.orange.shade700,
           ),
         ],
       );
@@ -363,6 +491,7 @@ class _HomePageState extends State<HomePage> {
           icon: Icons.trending_up,
           iconColor: Colors.green.shade800,
           iconBackground: Colors.green.shade100,
+          valueColor: Colors.green.shade700,
         ),
         const SizedBox(height: 12),
         _buildSummaryMiniCard(
@@ -371,6 +500,7 @@ class _HomePageState extends State<HomePage> {
           icon: Icons.receipt_long,
           iconColor: Colors.red.shade800,
           iconBackground: Colors.red.shade100,
+          valueColor: Colors.red.shade700,
         ),
         const SizedBox(height: 12),
         _buildSummaryMiniCard(
@@ -383,6 +513,9 @@ class _HomePageState extends State<HomePage> {
           iconBackground: _monthProfit >= 0
               ? Colors.blue.shade100
               : Colors.orange.shade100,
+          valueColor: _monthProfit >= 0
+              ? Colors.blue.shade700
+              : Colors.orange.shade700,
         ),
       ],
     );
@@ -392,18 +525,21 @@ class _HomePageState extends State<HomePage> {
     final actions = [
       {
         'title': 'Entradas',
+        'subtitle': 'Cadastrar e revisar receitas',
         'icon': Icons.add_circle_outline,
         'color': Colors.green,
         'onTap': _openEntriesPage,
       },
       {
         'title': 'Despesas',
+        'subtitle': 'Lançar gastos e recibos',
         'icon': Icons.receipt_long_outlined,
         'color': Colors.red,
         'onTap': _openExpensesPage,
       },
       {
         'title': 'Relatório Fiscal',
+        'subtitle': 'Gerar resumo fiscal em PDF',
         'icon': Icons.assessment_outlined,
         'color': Colors.blue,
         'onTap': _openReportsPage,
@@ -411,8 +547,8 @@ class _HomePageState extends State<HomePage> {
     ];
 
     final width = MediaQuery.of(context).size.width;
-    final crossAxisCount = width >= 900 ? 3 : width >= 600 ? 3 : 1;
-    final childAspectRatio = width >= 600 ? 2.2 : 3.3;
+    final crossAxisCount = width >= 1000 ? 3 : width >= 650 ? 3 : 1;
+    final childAspectRatio = width >= 650 ? 1.8 : 2.8;
 
     return GridView.builder(
       shrinkWrap: true,
@@ -429,6 +565,7 @@ class _HomePageState extends State<HomePage> {
         final color = item['color'] as Color;
         final icon = item['icon'] as IconData;
         final title = item['title'] as String;
+        final subtitle = item['subtitle'] as String;
         final onTap = item['onTap'] as Future<void> Function();
 
         return InkWell(
@@ -445,18 +582,34 @@ class _HomePageState extends State<HomePage> {
               child: Row(
                 children: [
                   CircleAvatar(
-                    radius: 22,
+                    radius: 24,
                     backgroundColor: color.withOpacity(0.12),
                     child: Icon(icon, color: color),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   Icon(
@@ -475,6 +628,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildSectionCard({
     required String title,
+    String? subtitle,
     required Widget child,
   }) {
     return Card(
@@ -495,6 +649,16 @@ class _HomePageState extends State<HomePage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             child,
           ],
@@ -532,51 +696,59 @@ class _HomePageState extends State<HomePage> {
       maxValue = 1;
     }
 
-    return SizedBox(
-      height: 250,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: bars.map((bar) {
-          final value = bar['value'] as double;
-          final color = bar['color'] as Color;
-          final label = bar['label'] as String;
-          final heightFactor = (value / maxValue).clamp(0.0, 1.0);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: const Color(0xFFF8FAFC),
+      ),
+      child: SizedBox(
+        height: 260,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: bars.map((bar) {
+            final value = bar['value'] as double;
+            final color = bar['color'] as Color;
+            final label = bar['label'] as String;
+            final heightFactor = (value / maxValue).clamp(0.0, 1.0);
 
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    _formatYen(value),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      _formatYen(value),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    height: 150 * heightFactor + 8,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(14),
+                    const SizedBox(height: 10),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      height: 160 * heightFactor + 10,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(height: 10),
+                    Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -598,23 +770,55 @@ class _HomePageState extends State<HomePage> {
 
     return Column(
       children: _recentEntries.map((item) {
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: CircleAvatar(
-            radius: 20,
-            backgroundColor: Colors.green.shade100,
-            child: Icon(
-              Icons.arrow_downward,
-              color: Colors.green.shade800,
-            ),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: const Color(0xFFF8FAFC),
+            border: Border.all(color: Colors.grey.shade200),
           ),
-          title: Text((item['description'] ?? 'Sem descrição').toString()),
-          subtitle: Text(
-            '${_formatDate(item['entry_date'])} • ${(item['category'] ?? 'Sem categoria').toString()}',
-          ),
-          trailing: Text(
-            _formatYen(_toDouble(item['amount'])),
-            style: const TextStyle(fontWeight: FontWeight.bold),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.green.shade100,
+                child: Icon(
+                  Icons.arrow_downward,
+                  color: Colors.green.shade800,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      (item['description'] ?? 'Sem descrição').toString(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_formatDate(item['entry_date'])} • ${(item['category'] ?? 'Sem categoria').toString()}',
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                _formatYen(_toDouble(item['amount'])),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green.shade700,
+                ),
+              ),
+            ],
           ),
         );
       }).toList(),
@@ -631,26 +835,152 @@ class _HomePageState extends State<HomePage> {
         final storeName = (item['store_name'] ?? '').toString().trim();
         final description = (item['description'] ?? 'Sem descrição').toString();
 
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: CircleAvatar(
-            radius: 20,
-            backgroundColor: Colors.red.shade100,
-            child: Icon(
-              Icons.arrow_upward,
-              color: Colors.red.shade800,
-            ),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: const Color(0xFFF8FAFC),
+            border: Border.all(color: Colors.grey.shade200),
           ),
-          title: Text(description),
-          subtitle: Text(
-            '${_formatDate(item['expense_date'])} • ${storeName.isNotEmpty ? storeName : (item['category'] ?? 'Sem categoria').toString()}',
-          ),
-          trailing: Text(
-            _formatYen(_toDouble(item['amount'])),
-            style: const TextStyle(fontWeight: FontWeight.bold),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.red.shade100,
+                child: Icon(
+                  Icons.arrow_upward,
+                  color: Colors.red.shade800,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_formatDate(item['expense_date'])} • ${storeName.isNotEmpty ? storeName : (item['category'] ?? 'Sem categoria').toString()}',
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                _formatYen(_toDouble(item['amount'])),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red.shade700,
+                ),
+              ),
+            ],
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildMainContent() {
+    final width = MediaQuery.of(context).size.width;
+    final bool desktop = width >= 1100;
+
+    if (!desktop) {
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildHeroCard(),
+          const SizedBox(height: 16),
+          _buildSummaryGrid(),
+          const SizedBox(height: 14),
+          _buildSectionCard(
+            title: 'Acessos rápidos',
+            subtitle: 'Navegação principal do sistema',
+            child: _buildActionShortcuts(),
+          ),
+          const SizedBox(height: 12),
+          _buildSectionCard(
+            title: 'Visão financeira',
+            subtitle: 'Comparativo do mês atual',
+            child: _buildVerticalBarChart(),
+          ),
+          const SizedBox(height: 12),
+          _buildSectionCard(
+            title: 'Últimas entradas',
+            subtitle: '5 registros mais recentes',
+            child: _buildRecentEntries(),
+          ),
+          const SizedBox(height: 12),
+          _buildSectionCard(
+            title: 'Últimas despesas',
+            subtitle: '5 registros mais recentes',
+            child: _buildRecentExpenses(),
+          ),
+          const SizedBox(height: 24),
+        ],
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildHeroCard(),
+        const SizedBox(height: 16),
+        _buildSummaryGrid(),
+        const SizedBox(height: 14),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 6,
+              child: Column(
+                children: [
+                  _buildSectionCard(
+                    title: 'Acessos rápidos',
+                    subtitle: 'Navegação principal do sistema',
+                    child: _buildActionShortcuts(),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSectionCard(
+                    title: 'Visão financeira',
+                    subtitle: 'Comparativo do mês atual',
+                    child: _buildVerticalBarChart(),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 5,
+              child: Column(
+                children: [
+                  _buildSectionCard(
+                    title: 'Últimas entradas',
+                    subtitle: '5 registros mais recentes',
+                    child: _buildRecentEntries(),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSectionCard(
+                    title: 'Últimas despesas',
+                    subtitle: '5 registros mais recentes',
+                    child: _buildRecentExpenses(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 
@@ -701,43 +1031,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: RefreshIndicator(
         onRefresh: _refreshDashboard,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text(
-              'Resumo do mês',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Empresa: ${_companyId ?? '-'}',
-              style: const TextStyle(color: Colors.black54),
-            ),
-            const SizedBox(height: 16),
-            _buildSummaryGrid(),
-            const SizedBox(height: 14),
-            _buildSectionCard(
-              title: 'Acessos rápidos',
-              child: _buildActionShortcuts(),
-            ),
-            const SizedBox(height: 12),
-            _buildSectionCard(
-              title: 'Visão financeira',
-              child: _buildVerticalBarChart(),
-            ),
-            const SizedBox(height: 12),
-            _buildSectionCard(
-              title: 'Últimas entradas',
-              child: _buildRecentEntries(),
-            ),
-            const SizedBox(height: 12),
-            _buildSectionCard(
-              title: 'Últimas despesas',
-              child: _buildRecentExpenses(),
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
+        child: _buildMainContent(),
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
