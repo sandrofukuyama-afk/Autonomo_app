@@ -118,40 +118,11 @@ class SupabaseService {
         .single();
 
     if (receiptUrl != null && receiptUrl.toString().trim().isNotEmpty) {
-      await _client.from('expense_receipts').insert({
-        'expense_id': inserted['id'],
-        'company_id': companyId,
-        'storage_path': receiptUrl,
-        'public_url': receiptUrl,
-        'file_name': data['file_name'],
-        'original_file_name':
-            data['original_file_name'] ?? data['file_name'],
-        'mime_type': data['mime_type'],
-        'file_size_bytes': data['file_size_bytes'],
-        'ocr_status': 'processed',
-        'ocr_engine': data['ocr_engine'] ?? 'google_vision',
-        'ocr_raw_text': data['ocr_raw_text'],
-        'ocr_store_name': data['store_name'],
-        'ocr_amount': data['amount'],
-        'ocr_date': data['date'],
-        'ocr_tax_amount': data['tax'],
-        'ocr_tax_type': data['tax_type'],
-        'ocr_category_suggestion': data['category'],
-        'document_type': data['document_type'] ?? 'receipt',
-        'document_date': data['document_date'],
-        'document_amount': data['document_amount'],
-        'document_store_name':
-            data['document_store_name'] ?? data['store_name'],
-        'search_vendor_name':
-            data['search_vendor_name'] ?? data['store_name'],
-        'search_amount': data['search_amount'] ?? data['amount'],
-        'search_date': data['search_date'] ?? data['date'],
-        'is_electronic_transaction':
-            data['is_electronic_transaction'] ?? false,
-        'retention_lock_flag': data['retention_lock_flag'] ?? false,
-        'review_status': data['receipt_review_status'] ?? 'pending',
-        'uploaded_at': DateTime.now().toIso8601String(),
-      });
+      await _insertExpenseReceipt(
+        expenseId: inserted['id'].toString(),
+        companyId: companyId,
+        data: data,
+      );
     }
   }
 
@@ -166,14 +137,17 @@ class SupabaseService {
 
     final List<dynamic> receipts = await _client
         .from('expense_receipts')
-        .select('expense_id, public_url')
-        .eq('company_id', companyId);
+        .select('expense_id, public_url, uploaded_at')
+        .eq('company_id', companyId)
+        .order('uploaded_at', ascending: false);
 
     final Map<String, String> receiptMap = {};
 
     for (final row in receipts) {
-      receiptMap[row['expense_id'].toString()] =
-          (row['public_url'] ?? '').toString();
+      final expenseId = row['expense_id'].toString();
+      if (!receiptMap.containsKey(expenseId)) {
+        receiptMap[expenseId] = (row['public_url'] ?? '').toString();
+      }
     }
 
     return expenses
@@ -188,6 +162,7 @@ class SupabaseService {
   Future<void> updateExpense(String id, Map<String, dynamic> data) async {
     await _client.from('expenses_v2').update({
       'expense_date': data['date'],
+      'store_name': data['store_name'],
       'description': data['description'],
       'category': _normalizeExpenseCategory(data['category']),
       'amount': data['amount'],
@@ -196,11 +171,76 @@ class SupabaseService {
     }).eq('id', id);
   }
 
+  Future<void> attachReceiptToExpense(
+    String expenseId,
+    Map<String, dynamic> data,
+  ) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final receiptUrl = data['receipt_url'];
+
+    if (receiptUrl == null || receiptUrl.toString().trim().isEmpty) return;
+
+    await _client.from('expenses_v2').update({
+      'receipt_status': 'uploaded',
+    }).eq('id', expenseId);
+
+    await _insertExpenseReceipt(
+      expenseId: expenseId,
+      companyId: companyId,
+      data: data,
+    );
+  }
+
   Future<void> deleteExpense(String id) async {
+    await _client.from('expense_receipts').delete().eq('expense_id', id);
     await _client.from('expenses_v2').delete().eq('id', id);
   }
 
-  Future<String> uploadReceipt(Uint8List fileBytes, String fileName) async {
+  Future<void> _insertExpenseReceipt({
+    required String expenseId,
+    required String companyId,
+    required Map<String, dynamic> data,
+  }) async {
+    await _client.from('expense_receipts').insert({
+      'expense_id': expenseId,
+      'company_id': companyId,
+      'storage_path': data['storage_path'] ?? data['receipt_url'],
+      'public_url': data['receipt_url'],
+      'file_name': data['file_name'],
+      'original_file_name': data['original_file_name'] ?? data['file_name'],
+      'mime_type': data['mime_type'],
+      'file_size_bytes': data['file_size_bytes'],
+      'ocr_status': data['ocr_status'] ?? 'pending',
+      'ocr_engine': data['ocr_engine'] ?? 'google_vision',
+      'ocr_raw_text': data['ocr_raw_text'],
+      'ocr_store_name': data['ocr_store_name'] ?? data['store_name'],
+      'ocr_amount': data['ocr_amount'] ?? data['amount'],
+      'ocr_date': data['ocr_date'] ?? data['date'],
+      'ocr_tax_amount': data['ocr_tax_amount'] ?? data['tax'],
+      'ocr_tax_type': data['ocr_tax_type'] ?? data['tax_type'],
+      'ocr_category_suggestion':
+          data['ocr_category_suggestion'] ?? data['category'],
+      'document_type': data['document_type'] ?? 'receipt',
+      'document_date': data['document_date'] ?? data['date'],
+      'document_amount': data['document_amount'] ?? data['amount'],
+      'document_store_name':
+          data['document_store_name'] ?? data['store_name'],
+      'search_vendor_name': data['search_vendor_name'] ?? data['store_name'],
+      'search_amount': data['search_amount'] ?? data['amount'],
+      'search_date': data['search_date'] ?? data['date'],
+      'is_electronic_transaction':
+          data['is_electronic_transaction'] ?? false,
+      'retention_lock_flag': data['retention_lock_flag'] ?? false,
+      'review_status': data['receipt_review_status'] ?? 'pending',
+      'uploaded_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<String> uploadReceipt(
+    Uint8List fileBytes,
+    String fileName, {
+    String? contentType,
+  }) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
 
     final storagePath =
@@ -209,13 +249,22 @@ class SupabaseService {
     await _client.storage.from('receipts').uploadBinary(
           storagePath,
           fileBytes,
-          fileOptions: const FileOptions(
+          fileOptions: FileOptions(
             upsert: true,
-            contentType: 'image/jpeg',
+            contentType: contentType ?? _guessContentType(fileName),
           ),
         );
 
     return _client.storage.from('receipts').getPublicUrl(storagePath);
+  }
+
+  String _guessContentType(String fileName) {
+    final lower = fileName.toLowerCase();
+
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    return 'image/jpeg';
   }
 
   String _normalizePaymentMethod(dynamic value) {
