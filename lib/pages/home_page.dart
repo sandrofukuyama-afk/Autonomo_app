@@ -2,14 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/auth_service.dart';
+import '../l10n/app_localizations.dart';
 import 'entries_page.dart';
 import 'expenses_page.dart';
 import 'reports_page.dart';
 
 class HomePage extends StatefulWidget {
-  final Function(Locale) onLocaleChanged;
+  final Locale? currentLocale;
+  final Future<void> Function(Locale) onLocaleChanged;
 
-  const HomePage({super.key, required this.onLocaleChanged});
+  const HomePage({
+    super.key,
+    required this.currentLocale,
+    required this.onLocaleChanged,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -212,6 +218,122 @@ class _HomePageState extends State<HomePage> {
     );
 
     await _refreshDashboard();
+  }
+
+
+  String _languageLabel(AppLocalizations t, String code) {
+    switch (code) {
+      case 'pt':
+        return t.translate('lang_pt');
+      case 'en':
+        return t.translate('lang_en');
+      case 'ja':
+        return t.translate('lang_ja');
+      case 'es':
+        return t.translate('lang_es');
+      default:
+        return code;
+    }
+  }
+
+  Future<void> _openSettingsDialog() async {
+    final t = AppLocalizations.of(context);
+    String selectedLanguage = widget.currentLocale?.languageCode ??
+        Localizations.localeOf(context).languageCode;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(t.translate('app_settings')),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      t.translate('language_settings_description'),
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedLanguage,
+                      decoration: InputDecoration(
+                        labelText: t.translate('select_language'),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      items: const ['pt', 'es', 'en', 'ja'].map((code) {
+                        return DropdownMenuItem<String>(
+                          value: code,
+                          child: Text(code),
+                        );
+                      }).toList(),
+                      selectedItemBuilder: (context) {
+                        return ['pt', 'es', 'en', 'ja'].map((code) {
+                          return Text(_languageLabel(t, code));
+                        }).toList();
+                      },
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setStateDialog(() {
+                          selectedLanguage = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    ...['pt', 'es', 'en', 'ja'].map((code) {
+                      final selected = selectedLanguage == code;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                          color: selected ? Theme.of(context).colorScheme.primary : Colors.grey,
+                        ),
+                        title: Text(_languageLabel(t, code)),
+                        onTap: () {
+                          setStateDialog(() {
+                            selectedLanguage = code;
+                          });
+                        },
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: Text(t.translate('cancel')),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    await widget.onLocaleChanged(Locale(selectedLanguage));
+                    if (!context.mounted) return;
+                    Navigator.pop(dialogContext, true);
+                  },
+                  child: Text(t.translate('save_changes')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (saved == true && mounted) {
+      final updatedT = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(updatedT.translate('language_updated'))),
+      );
+      setState(() {});
+    }
   }
 
   Widget _buildHeroCard() {
@@ -986,6 +1108,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+
     if (_loading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -997,6 +1121,11 @@ class _HomePageState extends State<HomePage> {
         appBar: AppBar(
           title: const Text('Autonomo App'),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: _openSettingsDialog,
+              tooltip: t.translate('settings'),
+            ),
             IconButton(
               icon: const Icon(Icons.logout),
               onPressed: _handleLogout,
@@ -1020,6 +1149,11 @@ class _HomePageState extends State<HomePage> {
         title: const Text('Autonomo App'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: _openSettingsDialog,
+            tooltip: t.translate('settings'),
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _refreshDashboard,
           ),
@@ -1039,21 +1173,21 @@ class _HomePageState extends State<HomePage> {
           FloatingActionButton.extended(
             heroTag: 'entry',
             icon: const Icon(Icons.add),
-            label: const Text('Entrada'),
+            label: Text(t.translate('nav_entries')),
             onPressed: _openEntriesPage,
           ),
           const SizedBox(height: 10),
           FloatingActionButton.extended(
             heroTag: 'expense',
             icon: const Icon(Icons.receipt),
-            label: const Text('Despesa'),
+            label: Text(t.translate('nav_expenses')),
             onPressed: _openExpensesPage,
           ),
           const SizedBox(height: 10),
           FloatingActionButton.extended(
             heroTag: 'report',
             icon: const Icon(Icons.assessment),
-            label: const Text('Relatório'),
+            label: Text(t.translate('nav_reports')),
             onPressed: _openReportsPage,
           ),
         ],
