@@ -1,24 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// A simple localization class that provides translated strings for the
-/// supported languages of the application. This implementation uses an
-/// internal map to store translations for each supported locale. To add
-/// translations for a new string, add the key with its translations to
-/// the `_localizedValues` map below. The `translate` method looks up
-/// the current locale's translation for the given key and falls back to
-/// the key itself when no translation is found. This allows missing
-/// translations to be easily spotted during development.
 class AppLocalizations {
-  /// The locale that this instance should provide translations for.
   final Locale locale;
 
   AppLocalizations(this.locale);
 
-  /// A map containing all localized strings for each supported language.
-  ///
-  /// Keys represent a logical identifier for the string (e.g. `description`,
-  /// `value`) and values are the translated string in the specified
-  /// language. Add entries here for new strings you wish to localize.
   static const Map<String, Map<String, String>> _localizedValues = {
     'pt': {
       'description': 'Descrição',
@@ -27,6 +13,8 @@ class AppLocalizations {
       'payment_cash': 'Dinheiro',
       'payment_credit_card': 'Cartão de crédito',
       'payment_bank_transfer': 'Transferência bancária',
+      'payment_paypay': 'PayPay',
+      'payment_furikomi': 'Furikomi',
       'payment_other': 'Outro',
       'no_date_selected': 'Nenhuma data selecionada',
       'date': 'Data',
@@ -38,6 +26,8 @@ class AppLocalizations {
       'error_invalid_value': 'Valor inválido',
       'entry_added': 'Entrada adicionada!',
       'expense_added': 'Despesa adicionada!',
+      'expense_updated': 'Despesa atualizada',
+      'expense_deleted': 'Despesa excluída',
       'category': 'Categoria',
       'category_food': 'Alimentação',
       'category_transport': 'Transporte',
@@ -45,6 +35,9 @@ class AppLocalizations {
       'category_entertainment': 'Entretenimento',
       'category_health': 'Saúde',
       'category_other': 'Outros',
+      'category_rent': 'Aluguel',
+      'category_services': 'Serviços',
+      'category_fees': 'Taxas',
       'no_receipt_selected': 'Nenhum recibo selecionado',
       'receipt': 'Recibo',
       'select_receipt': 'Selecionar recibo',
@@ -53,19 +46,51 @@ class AppLocalizations {
       'income': 'Entradas',
       'expenses': 'Saídas',
       'balance': 'Saldo',
-
-      // Navigation bar labels
       'nav_home': 'Início',
       'nav_entries': 'Entradas',
       'nav_expenses': 'Saídas',
       'nav_reports': 'Relatórios',
-
-      // Language selection and names
       'select_language': 'Idioma',
       'lang_pt': 'Português',
       'lang_en': 'Inglês',
       'lang_ja': 'Japonês',
       'lang_es': 'Espanhol',
+      'new_expense': 'Nova despesa',
+      'edit_expense': 'Editar despesa',
+      'store': 'Loja',
+      'vendor': 'Fornecedor',
+      'notes': 'Observações',
+      'fiscal_basic_data': 'Dados fiscais básicos',
+      'tax_rate': 'Taxa de imposto (%)',
+      'tax_type': 'Tipo de imposto',
+      'tax_external': 'Imposto fora',
+      'tax_inclusive': 'Imposto incluso',
+      'tax_not_defined': 'Não definido',
+      'take_photo': 'Tirar foto',
+      'choose_file': 'Escolher arquivo',
+      'change_file': 'Trocar arquivo',
+      'receipt_attachment': 'Recibo / comprovante',
+      'attached_receipt': 'Recibo anexado',
+      'remove': 'Remover',
+      'existing_receipt_attached': 'Já existe um recibo anexado para esta despesa.',
+      'view': 'Ver',
+      'change': 'Alterar',
+      'cancel': 'Cancelar',
+      'delete': 'Excluir',
+      'edit': 'Editar',
+      'payment': 'Pagamento',
+      'tax': 'Imposto',
+      'obs_short': 'Obs',
+      'no_description': 'Sem descrição',
+      'no_expenses_registered': 'Nenhuma despesa registrada',
+      'expenses_will_appear_here': 'As despesas cadastradas aparecerão aqui.',
+      'could_not_read_file': 'Não foi possível ler o arquivo.',
+      'could_not_capture_photo': 'Não foi possível capturar a foto.',
+      'invalid_data': 'Dados inválidos',
+      'delete_expense_title': 'Excluir despesa',
+      'delete_expense_confirm': 'Deseja realmente excluir esta despesa?',
+      'receipt_viewer_title': 'Recibo anexado',
+      'new_expense_tooltip': 'Nova despesa',
     },
     'en': {
       'description': 'Description',
@@ -74,6 +99,8 @@ class AppLocalizations {
       'payment_cash': 'Cash',
       'payment_credit_card': 'Credit Card',
       'payment_bank_transfer': 'Bank Transfer',
+      'payment_paypay': 'PayPay',
+      'payment_furikomi': 'Furikomi',
       'payment_other': 'Other',
       'no_date_selected': 'No date selected',
       'date': 'Date',
@@ -85,6 +112,8 @@ class AppLocalizations {
       'error_invalid_value': 'Invalid value',
       'entry_added': 'Income added!',
       'expense_added': 'Expense added!',
+      'expense_updated': 'Expense updated',
+      'expense_deleted': 'Expense deleted',
       'category': 'Category',
       'category_food': 'Food',
       'category_transport': 'Transport',
@@ -92,6 +121,9 @@ class AppLocalizations {
       'category_entertainment': 'Entertainment',
       'category_health': 'Health',
       'category_other': 'Other',
+      'category_rent': 'Rent',
+      'category_services': 'Services',
+      'category_fees': 'Fees',
       'no_receipt_selected': 'No receipt selected',
       'receipt': 'Receipt',
       'select_receipt': 'Select receipt',
@@ -100,19 +132,51 @@ class AppLocalizations {
       'income': 'Income',
       'expenses': 'Expenses',
       'balance': 'Balance',
-
-      // Navigation bar labels
       'nav_home': 'Home',
       'nav_entries': 'Income',
       'nav_expenses': 'Expenses',
       'nav_reports': 'Reports',
-
-      // Language selection and names
       'select_language': 'Language',
       'lang_pt': 'Portuguese',
       'lang_en': 'English',
       'lang_ja': 'Japanese',
       'lang_es': 'Spanish',
+      'new_expense': 'New expense',
+      'edit_expense': 'Edit expense',
+      'store': 'Store',
+      'vendor': 'Vendor',
+      'notes': 'Notes',
+      'fiscal_basic_data': 'Basic fiscal data',
+      'tax_rate': 'Tax rate (%)',
+      'tax_type': 'Tax type',
+      'tax_external': 'Tax excluded',
+      'tax_inclusive': 'Tax included',
+      'tax_not_defined': 'Not defined',
+      'take_photo': 'Take photo',
+      'choose_file': 'Choose file',
+      'change_file': 'Change file',
+      'receipt_attachment': 'Receipt / proof',
+      'attached_receipt': 'Attached receipt',
+      'remove': 'Remove',
+      'existing_receipt_attached': 'A receipt is already attached to this expense.',
+      'view': 'View',
+      'change': 'Change',
+      'cancel': 'Cancel',
+      'delete': 'Delete',
+      'edit': 'Edit',
+      'payment': 'Payment',
+      'tax': 'Tax',
+      'obs_short': 'Note',
+      'no_description': 'No description',
+      'no_expenses_registered': 'No expenses registered',
+      'expenses_will_appear_here': 'Saved expenses will appear here.',
+      'could_not_read_file': 'Could not read the file.',
+      'could_not_capture_photo': 'Could not capture the photo.',
+      'invalid_data': 'Invalid data',
+      'delete_expense_title': 'Delete expense',
+      'delete_expense_confirm': 'Do you really want to delete this expense?',
+      'receipt_viewer_title': 'Attached receipt',
+      'new_expense_tooltip': 'New expense',
     },
     'ja': {
       'description': '説明',
@@ -121,6 +185,8 @@ class AppLocalizations {
       'payment_cash': '現金',
       'payment_credit_card': 'クレジットカード',
       'payment_bank_transfer': '銀行振込',
+      'payment_paypay': 'PayPay',
+      'payment_furikomi': '振込',
       'payment_other': 'その他',
       'no_date_selected': '日付が選択されていません',
       'date': '日付',
@@ -132,6 +198,8 @@ class AppLocalizations {
       'error_invalid_value': '無効な金額',
       'entry_added': '収入が追加されました！',
       'expense_added': '支出が追加されました！',
+      'expense_updated': '支出が更新されました',
+      'expense_deleted': '支出が削除されました',
       'category': 'カテゴリ',
       'category_food': '食費',
       'category_transport': '交通費',
@@ -139,6 +207,9 @@ class AppLocalizations {
       'category_entertainment': '娯楽',
       'category_health': '医療費',
       'category_other': 'その他',
+      'category_rent': '家賃',
+      'category_services': 'サービス',
+      'category_fees': '手数料',
       'no_receipt_selected': '領収書が選択されていません',
       'receipt': '領収書',
       'select_receipt': '領収書を選択',
@@ -147,19 +218,51 @@ class AppLocalizations {
       'income': '収入',
       'expenses': '支出',
       'balance': '残高',
-
-      // Navigation bar labels
       'nav_home': 'ホーム',
       'nav_entries': '収入',
       'nav_expenses': '支出',
       'nav_reports': 'レポート',
-
-      // Language selection and names
       'select_language': '言語',
       'lang_pt': 'ポルトガル語',
       'lang_en': '英語',
       'lang_ja': '日本語',
       'lang_es': 'スペイン語',
+      'new_expense': '新しい支出',
+      'edit_expense': '支出を編集',
+      'store': '店舗',
+      'vendor': '取引先',
+      'notes': '備考',
+      'fiscal_basic_data': '基本税務情報',
+      'tax_rate': '消費税率 (%)',
+      'tax_type': '税区分',
+      'tax_external': '外税',
+      'tax_inclusive': '内税',
+      'tax_not_defined': '未設定',
+      'take_photo': '写真を撮る',
+      'choose_file': 'ファイルを選択',
+      'change_file': 'ファイルを変更',
+      'receipt_attachment': '領収書 / 証憑',
+      'attached_receipt': '添付済み領収書',
+      'remove': '削除',
+      'existing_receipt_attached': 'この支出にはすでに領収書が添付されています。',
+      'view': '表示',
+      'change': '変更',
+      'cancel': 'キャンセル',
+      'delete': '削除',
+      'edit': '編集',
+      'payment': '支払',
+      'tax': '税',
+      'obs_short': '備考',
+      'no_description': '説明なし',
+      'no_expenses_registered': '支出が登録されていません',
+      'expenses_will_appear_here': '登録した支出がここに表示されます。',
+      'could_not_read_file': 'ファイルを読み取れませんでした。',
+      'could_not_capture_photo': '写真を取得できませんでした。',
+      'invalid_data': '入力データが無効です',
+      'delete_expense_title': '支出を削除',
+      'delete_expense_confirm': 'この支出を本当に削除しますか？',
+      'receipt_viewer_title': '添付済み領収書',
+      'new_expense_tooltip': '新しい支出',
     },
     'es': {
       'description': 'Descripción',
@@ -168,6 +271,8 @@ class AppLocalizations {
       'payment_cash': 'Efectivo',
       'payment_credit_card': 'Tarjeta de crédito',
       'payment_bank_transfer': 'Transferencia bancaria',
+      'payment_paypay': 'PayPay',
+      'payment_furikomi': 'Furikomi',
       'payment_other': 'Otro',
       'no_date_selected': 'No se ha seleccionado fecha',
       'date': 'Fecha',
@@ -177,8 +282,10 @@ class AppLocalizations {
       'error_fill_mandatory_fields': 'Complete todos los campos obligatorios',
       'error_select_payment': 'Seleccione el método de pago',
       'error_invalid_value': 'Valor inválido',
-      'entry_added': 'Ingreso agregado!',
-      'expense_added': 'Gasto agregado!',
+      'entry_added': '¡Ingreso agregado!',
+      'expense_added': '¡Gasto agregado!',
+      'expense_updated': 'Gasto actualizado',
+      'expense_deleted': 'Gasto eliminado',
       'category': 'Categoría',
       'category_food': 'Alimentación',
       'category_transport': 'Transporte',
@@ -186,6 +293,9 @@ class AppLocalizations {
       'category_entertainment': 'Entretenimiento',
       'category_health': 'Salud',
       'category_other': 'Otros',
+      'category_rent': 'Alquiler',
+      'category_services': 'Servicios',
+      'category_fees': 'Tasas',
       'no_receipt_selected': 'No se ha seleccionado recibo',
       'receipt': 'Recibo',
       'select_receipt': 'Seleccionar recibo',
@@ -194,36 +304,64 @@ class AppLocalizations {
       'income': 'Ingresos',
       'expenses': 'Gastos',
       'balance': 'Saldo',
-
-      // Navigation bar labels
       'nav_home': 'Inicio',
       'nav_entries': 'Ingresos',
       'nav_expenses': 'Gastos',
       'nav_reports': 'Informes',
-
-      // Language selection and names
       'select_language': 'Idioma',
       'lang_pt': 'Portugués',
       'lang_en': 'Inglés',
       'lang_ja': 'Japonés',
       'lang_es': 'Español',
+      'new_expense': 'Nuevo gasto',
+      'edit_expense': 'Editar gasto',
+      'store': 'Tienda',
+      'vendor': 'Proveedor',
+      'notes': 'Observaciones',
+      'fiscal_basic_data': 'Datos fiscales básicos',
+      'tax_rate': 'Tasa de impuesto (%)',
+      'tax_type': 'Tipo de impuesto',
+      'tax_external': 'Impuesto externo',
+      'tax_inclusive': 'Impuesto incluido',
+      'tax_not_defined': 'No definido',
+      'take_photo': 'Tomar foto',
+      'choose_file': 'Elegir archivo',
+      'change_file': 'Cambiar archivo',
+      'receipt_attachment': 'Recibo / comprobante',
+      'attached_receipt': 'Recibo adjunto',
+      'remove': 'Quitar',
+      'existing_receipt_attached': 'Ya existe un recibo adjunto para este gasto.',
+      'view': 'Ver',
+      'change': 'Cambiar',
+      'cancel': 'Cancelar',
+      'delete': 'Eliminar',
+      'edit': 'Editar',
+      'payment': 'Pago',
+      'tax': 'Impuesto',
+      'obs_short': 'Obs',
+      'no_description': 'Sin descripción',
+      'no_expenses_registered': 'No hay gastos registrados',
+      'expenses_will_appear_here': 'Los gastos registrados aparecerán aquí.',
+      'could_not_read_file': 'No se pudo leer el archivo.',
+      'could_not_capture_photo': 'No se pudo capturar la foto.',
+      'invalid_data': 'Datos inválidos',
+      'delete_expense_title': 'Eliminar gasto',
+      'delete_expense_confirm': '¿Realmente desea eliminar este gasto?',
+      'receipt_viewer_title': 'Recibo adjunto',
+      'new_expense_tooltip': 'Nuevo gasto',
     },
   };
 
-  /// Returns the translated string for the given key. If no translation
-  /// exists for the current locale, the key itself is returned as a fallback.
   String translate(String key) {
     return _localizedValues[locale.languageCode]?[key] ?? key;
   }
 
-  /// Shortcut to access the localization from the widget tree.
   static AppLocalizations of(BuildContext context) {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  /// A localization delegate that instantiates `AppLocalizations` for
-  /// supported locales.
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
