@@ -640,6 +640,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         ),
                         const SizedBox(height: 16),
                         TextField(
+                          controller: _notesController,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration: _fieldDecoration(dialogT.translate('notes')),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
                           controller: _taxRateController,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -667,13 +674,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
                               _taxInclusionType = value ?? 'external';
                             });
                           },
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _notesController,
-                          minLines: 2,
-                          maxLines: 4,
-                          decoration: _fieldDecoration(dialogT.translate('notes')),
                         ),
                         const SizedBox(height: 16),
                         Container(
@@ -951,6 +951,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         ),
                         const SizedBox(height: 16),
                         TextField(
+                          controller: _notesController,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration: _fieldDecoration(dialogT.translate('notes')),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
                           controller: _taxRateController,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -978,13 +985,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
                               _taxInclusionType = value ?? 'external';
                             });
                           },
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _notesController,
-                          minLines: 2,
-                          maxLines: 4,
-                          decoration: _fieldDecoration(dialogT.translate('notes')),
                         ),
                         const SizedBox(height: 16),
                         Container(
