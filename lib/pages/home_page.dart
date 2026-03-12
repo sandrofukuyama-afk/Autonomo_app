@@ -341,6 +341,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildHeroCard() {
+    final t = AppLocalizations.of(context);
     final bool positive = _monthProfit >= 0;
 
     return Container(
@@ -366,7 +367,7 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Dashboard financeiro',
+            t.translate('financial_dashboard'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -374,7 +375,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Resumo do mês ${_currentMonthLabel()}',
+            '${t.translate('month_summary')} ${_currentMonthLabel()}',
             style: const TextStyle(
               color: Colors.white70,
               fontSize: 14,
@@ -382,7 +383,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 20),
           Text(
-            'Resultado atual',
+            t.translate('current_result'),
             style: TextStyle(
               color: Colors.white.withOpacity(0.85),
               fontSize: 14,
@@ -405,17 +406,21 @@ class _HomePageState extends State<HomePage> {
             children: [
               _heroChip(
                 icon: Icons.trending_up,
-                label: 'Entradas ${_formatYen(_monthEntriesTotal)}',
+                label:
+                    '${t.translate('entries')} ${_formatYen(_monthEntriesTotal)}',
               ),
               _heroChip(
                 icon: Icons.receipt_long,
-                label: 'Despesas ${_formatYen(_monthExpensesTotal)}',
+                label:
+                    '${t.translate('expenses')} ${_formatYen(_monthExpensesTotal)}',
               ),
               _heroChip(
                 icon: positive
                     ? Icons.check_circle_outline
                     : Icons.warning_amber,
-                label: positive ? 'Mês positivo' : 'Atenção ao saldo',
+                label: positive
+                    ? t.translate('positive_month')
+                    : t.translate('balance_attention'),
               ),
             ],
           ),
@@ -515,6 +520,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildSummaryGrid() {
+    final t = AppLocalizations.of(context);
     final width = MediaQuery.of(context).size.width;
     final bool isWide = width >= 1000;
     final bool isMedium = width >= 650;
@@ -524,7 +530,7 @@ class _HomePageState extends State<HomePage> {
         children: [
           Expanded(
             child: _buildSummaryMiniCard(
-              title: 'Entradas',
+              title: t.translate('entries'),
               value: _formatYen(_monthEntriesTotal),
               icon: Icons.trending_up,
               iconColor: Colors.green.shade800,
@@ -535,7 +541,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 12),
           Expanded(
             child: _buildSummaryMiniCard(
-              title: 'Despesas',
+              title: t.translate('expenses'),
               value: _formatYen(_monthExpensesTotal),
               icon: Icons.receipt_long,
               iconColor: Colors.red.shade800,
@@ -546,7 +552,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 12),
           Expanded(
             child: _buildSummaryMiniCard(
-              title: 'Resultado',
+              title: t.translate('result'),
               value: _formatYen(_monthProfit),
               icon: _monthProfit >= 0 ? Icons.savings : Icons.warning_amber,
               iconColor: _monthProfit >= 0
@@ -571,7 +577,7 @@ class _HomePageState extends State<HomePage> {
             children: [
               Expanded(
                 child: _buildSummaryMiniCard(
-                  title: 'Entradas',
+                  title: t.translate('entries'),
                   value: _formatYen(_monthEntriesTotal),
                   icon: Icons.trending_up,
                   iconColor: Colors.green.shade800,
@@ -582,7 +588,7 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildSummaryMiniCard(
-                  title: 'Despesas',
+                  title: t.translate('expenses'),
                   value: _formatYen(_monthExpensesTotal),
                   icon: Icons.receipt_long,
                   iconColor: Colors.red.shade800,
@@ -594,7 +600,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 12),
           _buildSummaryMiniCard(
-            title: 'Resultado',
+            title: t.translate('result'),
             value: _formatYen(_monthProfit),
             icon: _monthProfit >= 0 ? Icons.savings : Icons.warning_amber,
             iconColor: _monthProfit >= 0
@@ -614,7 +620,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         _buildSummaryMiniCard(
-          title: 'Entradas',
+          title: t.translate('entries'),
           value: _formatYen(_monthEntriesTotal),
           icon: Icons.trending_up,
           iconColor: Colors.green.shade800,
@@ -623,7 +629,7 @@ class _HomePageState extends State<HomePage> {
         ),
         const SizedBox(height: 12),
         _buildSummaryMiniCard(
-          title: 'Despesas',
+          title: t.translate('expenses'),
           value: _formatYen(_monthExpensesTotal),
           icon: Icons.receipt_long,
           iconColor: Colors.red.shade800,
@@ -632,7 +638,7 @@ class _HomePageState extends State<HomePage> {
         ),
         const SizedBox(height: 12),
         _buildSummaryMiniCard(
-          title: 'Resultado',
+          title: t.translate('result'),
           value: _formatYen(_monthProfit),
           icon: _monthProfit >= 0 ? Icons.savings : Icons.warning_amber,
           iconColor: _monthProfit >= 0
@@ -650,24 +656,26 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildActionShortcuts() {
+    final t = AppLocalizations.of(context);
+
     final actions = [
       {
-        'title': 'Entradas',
-        'subtitle': 'Cadastrar e revisar receitas',
+        'title': t.translate('entries'),
+        'subtitle': t.translate('entries_shortcut_subtitle'),
         'icon': Icons.add_circle_outline,
         'color': Colors.green,
         'onTap': _openEntriesPage,
       },
       {
-        'title': 'Despesas',
-        'subtitle': 'Lançar gastos e recibos',
+        'title': t.translate('expenses'),
+        'subtitle': t.translate('expenses_shortcut_subtitle'),
         'icon': Icons.receipt_long_outlined,
         'color': Colors.red,
         'onTap': _openExpensesPage,
       },
       {
-        'title': 'Relatório Fiscal',
-        'subtitle': 'Gerar resumo fiscal em PDF',
+        'title': t.translate('fiscal_report'),
+        'subtitle': t.translate('fiscal_report_shortcut_subtitle'),
         'icon': Icons.assessment_outlined,
         'color': Colors.blue,
         'onTap': _openReportsPage,
@@ -797,19 +805,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildVerticalBarChart() {
+    final t = AppLocalizations.of(context);
+
     final bars = [
       {
-        'label': 'Entradas',
+        'label': t.translate('entries'),
         'value': _monthEntriesTotal,
         'color': Colors.green,
       },
       {
-        'label': 'Despesas',
+        'label': t.translate('expenses'),
         'value': _monthExpensesTotal,
         'color': Colors.red,
       },
       {
-        'label': _monthProfit >= 0 ? 'Resultado' : 'Prejuízo',
+        'label': _monthProfit >= 0
+            ? t.translate('result')
+            : t.translate('loss'),
         'value': _monthProfit.abs(),
         'color': _monthProfit >= 0 ? Colors.blue : Colors.orange,
       },
@@ -893,8 +905,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildRecentEntries() {
+    final t = AppLocalizations.of(context);
+
     if (_recentEntries.isEmpty) {
-      return _buildEmptyText('Nenhuma entrada cadastrada.');
+      return _buildEmptyText(t.translate('no_entries_registered'));
     }
 
     return Column(
@@ -923,14 +937,15 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      (item['description'] ?? 'Sem descrição').toString(),
+                      (item['description'] ?? t.translate('no_description'))
+                          .toString(),
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${_formatDate(item['entry_date'])} • ${(item['category'] ?? 'Sem categoria').toString()}',
+                      '${_formatDate(item['entry_date'])} • ${(item['category'] ?? t.translate('no_category')).toString()}',
                       style: TextStyle(
                         color: Colors.grey.shade700,
                         fontSize: 12,
@@ -955,14 +970,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildRecentExpenses() {
+    final t = AppLocalizations.of(context);
+
     if (_recentExpenses.isEmpty) {
-      return _buildEmptyText('Nenhuma despesa cadastrada.');
+      return _buildEmptyText(t.translate('no_expenses_registered'));
     }
 
     return Column(
       children: _recentExpenses.map((item) {
         final storeName = (item['store_name'] ?? '').toString().trim();
-        final description = (item['description'] ?? 'Sem descrição').toString();
+        final description =
+            (item['description'] ?? t.translate('no_description')).toString();
 
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
@@ -995,7 +1013,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${_formatDate(item['expense_date'])} • ${storeName.isNotEmpty ? storeName : (item['category'] ?? 'Sem categoria').toString()}',
+                      '${_formatDate(item['expense_date'])} • ${storeName.isNotEmpty ? storeName : (item['category'] ?? t.translate('no_category')).toString()}',
                       style: TextStyle(
                         color: Colors.grey.shade700,
                         fontSize: 12,
@@ -1020,6 +1038,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildMainContent() {
+    final t = AppLocalizations.of(context);
     final width = MediaQuery.of(context).size.width;
     final bool desktop = width >= 1100;
 
@@ -1032,26 +1051,26 @@ class _HomePageState extends State<HomePage> {
           _buildSummaryGrid(),
           const SizedBox(height: 14),
           _buildSectionCard(
-            title: 'Acessos rápidos',
-            subtitle: 'Navegação principal do sistema',
+            title: t.translate('quick_access'),
+            subtitle: t.translate('main_navigation_subtitle'),
             child: _buildActionShortcuts(),
           ),
           const SizedBox(height: 12),
           _buildSectionCard(
-            title: 'Visão financeira',
-            subtitle: 'Comparativo do mês atual',
+            title: t.translate('financial_overview'),
+            subtitle: t.translate('current_month_comparison'),
             child: _buildVerticalBarChart(),
           ),
           const SizedBox(height: 12),
           _buildSectionCard(
-            title: 'Últimas entradas',
-            subtitle: '5 registros mais recentes',
+            title: t.translate('latest_entries'),
+            subtitle: t.translate('latest_five_records'),
             child: _buildRecentEntries(),
           ),
           const SizedBox(height: 12),
           _buildSectionCard(
-            title: 'Últimas despesas',
-            subtitle: '5 registros mais recentes',
+            title: t.translate('latest_expenses'),
+            subtitle: t.translate('latest_five_records'),
             child: _buildRecentExpenses(),
           ),
           const SizedBox(height: 24),
@@ -1074,14 +1093,14 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 children: [
                   _buildSectionCard(
-                    title: 'Acessos rápidos',
-                    subtitle: 'Navegação principal do sistema',
+                    title: t.translate('quick_access'),
+                    subtitle: t.translate('main_navigation_subtitle'),
                     child: _buildActionShortcuts(),
                   ),
                   const SizedBox(height: 12),
                   _buildSectionCard(
-                    title: 'Visão financeira',
-                    subtitle: 'Comparativo do mês atual',
+                    title: t.translate('financial_overview'),
+                    subtitle: t.translate('current_month_comparison'),
                     child: _buildVerticalBarChart(),
                   ),
                 ],
@@ -1093,14 +1112,14 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 children: [
                   _buildSectionCard(
-                    title: 'Últimas entradas',
-                    subtitle: '5 registros mais recentes',
+                    title: t.translate('latest_entries'),
+                    subtitle: t.translate('latest_five_records'),
                     child: _buildRecentEntries(),
                   ),
                   const SizedBox(height: 12),
                   _buildSectionCard(
-                    title: 'Últimas despesas',
-                    subtitle: '5 registros mais recentes',
+                    title: t.translate('latest_expenses'),
+                    subtitle: t.translate('latest_five_records'),
                     child: _buildRecentExpenses(),
                   ),
                 ],
