@@ -203,12 +203,13 @@ class _HomePageState extends State<HomePage> {
   Future<void> _closeCurrentFiscalMonth() async {
     if (_companyId == null || _closingFiscalMonth) return;
 
+    final t = AppLocalizations.of(context);
     final month = _currentMonthLabel();
 
     if (_isFiscalMonthClosed(month)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This fiscal month is already closed.'),
+        SnackBar(
+          content: Text(t.translate('fiscal_month_already_closed')),
         ),
       );
       return;
@@ -218,19 +219,19 @@ class _HomePageState extends State<HomePage> {
           context: context,
           builder: (dialogContext) {
             return AlertDialog(
-              title: const Text('Close fiscal month'),
+              title: Text(t.translate('close_fiscal_month')),
               content: Text(
-                'Do you want to close fiscal month $month?\n\n'
-                'After closing, entries and expenses in this month can no longer be edited or deleted.',
+                '${t.translate('confirm_close_fiscal_month')} $month?\n\n'
+                '${t.translate('close_fiscal_month_warning')}',
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Cancel'),
+                  child: Text(t.translate('cancel')),
                 ),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(dialogContext, true),
-                  child: const Text('Close month'),
+                  child: Text(t.translate('confirm_close_month')),
                 ),
               ],
             );
@@ -262,7 +263,7 @@ class _HomePageState extends State<HomePage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Fiscal month $month closed successfully.'),
+          content: Text('${t.translate('fiscal_month_closed_success')} $month.'),
         ),
       );
     } catch (e) {
@@ -274,7 +275,7 @@ class _HomePageState extends State<HomePage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to close fiscal month: $e'),
+          content: Text('${t.translate('failed_to_close_fiscal_month')}: $e'),
         ),
       );
     }
@@ -1259,7 +1260,7 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '$_pendingExpenseReviews expenses need fiscal review',
+                        '$_pendingExpenseReviews ${t.translate('expenses_need_fiscal_review')}',
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -1340,6 +1341,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildClosedMonthsChips() {
+    final t = AppLocalizations.of(context);
+
     if (_closedFiscalMonths.isEmpty) {
       return Container(
         width: double.infinity,
@@ -1349,9 +1352,9 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.grey.shade200),
         ),
-        child: const Text(
-          'No closed fiscal months yet.',
-          style: TextStyle(fontSize: 13),
+        child: Text(
+          t.translate('no_closed_fiscal_months_yet'),
+          style: const TextStyle(fontSize: 13),
         ),
       );
     }
@@ -1397,6 +1400,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildFiscalDashboardSection() {
+    final t = AppLocalizations.of(context);
     final width = MediaQuery.of(context).size.width;
     final bool wide = width >= 900;
     final currentMonth = _currentMonthLabel();
@@ -1407,28 +1411,28 @@ class _HomePageState extends State<HomePage> {
         icon: Icons.receipt_long,
         iconColor: Colors.indigo.shade800,
         iconBackground: Colors.indigo.shade100,
-        title: 'Expenses this month',
+        title: t.translate('expenses_this_month'),
         value: _formatYen(_fiscalMonthExpenses),
       ),
       _buildFiscalSummaryCard(
         icon: Icons.check_circle,
         iconColor: Colors.green.shade800,
         iconBackground: Colors.green.shade100,
-        title: 'Deductible expenses',
+        title: t.translate('deductible_expenses'),
         value: _formatYen(_deductibleExpenses),
       ),
       _buildFiscalSummaryCard(
         icon: Icons.block,
         iconColor: Colors.red.shade800,
         iconBackground: Colors.red.shade100,
-        title: 'Non-deductible expenses',
+        title: t.translate('non_deductible_expenses'),
         value: _formatYen(_nonDeductibleExpenses),
       ),
       _buildFiscalSummaryCard(
         icon: Icons.account_balance,
         iconColor: Colors.blue.shade800,
         iconBackground: Colors.blue.shade100,
-        title: 'Estimated tax impact',
+        title: t.translate('estimated_tax_impact'),
         value: _formatYen(_estimatedTaxImpact),
       ),
     ];
@@ -1487,7 +1491,7 @@ class _HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
-                      'Current fiscal month: $currentMonth',
+                      '${t.translate('current_fiscal_month')}: $currentMonth',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         color: currentClosed
@@ -1506,7 +1510,9 @@ class _HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
-                      currentClosed ? 'Closed' : 'Open',
+                      currentClosed
+                          ? t.translate('status_closed')
+                          : t.translate('status_open'),
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         color: currentClosed
@@ -1520,8 +1526,8 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 12),
               Text(
                 currentClosed
-                    ? 'This month is already closed. Entries and expenses are protected against edits and deletions.'
-                    : 'Close the current fiscal month after finishing your monthly review.',
+                    ? t.translate('current_month_closed_description')
+                    : t.translate('close_month_after_review_description'),
                 style: TextStyle(
                   color: Colors.grey.shade800,
                   fontSize: 13,
@@ -1542,7 +1548,9 @@ class _HomePageState extends State<HomePage> {
                         )
                       : const Icon(Icons.lock_clock_outlined),
                   label: Text(
-                    currentClosed ? 'Fiscal month closed' : 'Close fiscal month',
+                    currentClosed
+                        ? t.translate('fiscal_month_closed')
+                        : t.translate('close_fiscal_month'),
                   ),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
@@ -1559,7 +1567,7 @@ class _HomePageState extends State<HomePage> {
         summaryGrid,
         const SizedBox(height: 14),
         Text(
-          'Closed fiscal months',
+          t.translate('closed_fiscal_months'),
           style: TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 14,
@@ -1590,8 +1598,8 @@ class _HomePageState extends State<HomePage> {
           _buildSummaryGrid(),
           const SizedBox(height: 12),
           _buildSectionCard(
-            title: 'Fiscal dashboard',
-            subtitle: 'Current month tax overview',
+            title: t.translate('fiscal_dashboard'),
+            subtitle: t.translate('current_month_tax_overview'),
             child: _buildFiscalDashboardSection(),
           ),
           const SizedBox(height: 14),
@@ -1635,8 +1643,8 @@ class _HomePageState extends State<HomePage> {
         _buildSummaryGrid(),
         const SizedBox(height: 12),
         _buildSectionCard(
-          title: 'Fiscal dashboard',
-          subtitle: 'Current month tax overview',
+          title: t.translate('fiscal_dashboard'),
+          subtitle: t.translate('current_month_tax_overview'),
           child: _buildFiscalDashboardSection(),
         ),
         const SizedBox(height: 14),
