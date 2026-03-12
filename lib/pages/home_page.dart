@@ -35,6 +35,11 @@ class _HomePageState extends State<HomePage> {
   double _monthExpensesTotal = 0;
   double _monthProfit = 0;
 
+  double _fiscalMonthExpenses = 0;
+  double _deductibleExpenses = 0;
+  double _nonDeductibleExpenses = 0;
+  double _estimatedTaxImpact = 0;
+
   List<Map<String, dynamic>> _recentEntries = [];
   List<Map<String, dynamic>> _recentExpenses = [];
 
@@ -51,6 +56,7 @@ class _HomePageState extends State<HomePage> {
 
       await _loadDashboard(companyId);
       await _loadExpenseReviewCount(companyId);
+      await _loadFiscalDashboard(companyId);
 
       if (!mounted) return;
 
@@ -181,6 +187,8 @@ class _HomePageState extends State<HomePage> {
 
     try {
       await _loadDashboard(_companyId!);
+      await _loadExpenseReviewCount(_companyId!);
+      await _loadFiscalDashboard(_companyId!);
 
       if (!mounted) return;
 
@@ -247,6 +255,49 @@ class _HomePageState extends State<HomePage> {
 
     _pendingExpenseReviews = reviewExpenses.length;
   }
+
+
+Future<void> _loadFiscalDashboard(String companyId) async {
+  final now = DateTime.now();
+  final monthStart = DateTime(now.year, now.month, 1);
+  final nextMonthStart = DateTime(now.year, now.month + 1, 1);
+
+  final String startIso = monthStart.toIso8601String().split('T').first;
+  final String endIso = nextMonthStart.toIso8601String().split('T').first;
+
+  final List<dynamic> expenses = await _client
+      .from('expenses_v2')
+      .select('amount, deductibility_status, expense_date')
+      .eq('company_id', companyId)
+      .gte('expense_date', startIso)
+      .lt('expense_date', endIso);
+
+  double monthTotal = 0;
+  double deductible = 0;
+  double partiallyDeductible = 0;
+  double nonDeductible = 0;
+
+  for (final raw in expenses) {
+    final Map<String, dynamic> item = Map<String, dynamic>.from(raw as Map);
+    final double amount = _toDouble(item['amount']);
+    final String status = (item['deductibility_status'] ?? '').toString();
+
+    monthTotal += amount;
+
+    if (status == 'deductible') {
+      deductible += amount;
+    } else if (status == 'partially_deductible') {
+      partiallyDeductible += amount;
+    } else if (status == 'non_deductible') {
+      nonDeductible += amount;
+    }
+  }
+
+  _fiscalMonthExpenses = monthTotal;
+  _deductibleExpenses = deductible + (partiallyDeductible * 0.5);
+  _nonDeductibleExpenses = nonDeductible;
+  _estimatedTaxImpact = _deductibleExpenses * 0.30;
+}
 
   String _languageLabel(AppLocalizations t, String code) {
     switch (code) {
@@ -1130,6 +1181,121 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+
+
+Widget _buildFiscalSummaryCard({
+  required IconData icon,
+  required Color iconColor,
+  required Color iconBackground,
+  required String title,
+  required String value,
+}) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF8FAFC),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: Colors.grey.shade200),
+    ),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: iconBackground,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icon, color: iconColor),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  height: 1.1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildFiscalDashboardSection() {
+  final width = MediaQuery.of(context).size.width;
+  final bool wide = width >= 900;
+
+  final children = [
+    _buildFiscalSummaryCard(
+      icon: Icons.receipt_long,
+      iconColor: Colors.indigo.shade800,
+      iconBackground: Colors.indigo.shade100,
+      title: 'Expenses this month',
+      value: _formatYen(_fiscalMonthExpenses),
+    ),
+    _buildFiscalSummaryCard(
+      icon: Icons.check_circle,
+      iconColor: Colors.green.shade800,
+      iconBackground: Colors.green.shade100,
+      title: 'Deductible expenses',
+      value: _formatYen(_deductibleExpenses),
+    ),
+    _buildFiscalSummaryCard(
+      icon: Icons.block,
+      iconColor: Colors.red.shade800,
+      iconBackground: Colors.red.shade100,
+      title: 'Non-deductible expenses',
+      value: _formatYen(_nonDeductibleExpenses),
+    ),
+    _buildFiscalSummaryCard(
+      icon: Icons.account_balance,
+      iconColor: Colors.blue.shade800,
+      iconBackground: Colors.blue.shade100,
+      title: 'Estimated tax impact',
+      value: _formatYen(_estimatedTaxImpact),
+    ),
+  ];
+
+  if (wide) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: children.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 2.8,
+      ),
+      itemBuilder: (context, index) => children[index],
+    );
+  }
+
+  return Column(
+    children: [
+      for (int i = 0; i < children.length; i++) ...[
+        children[i],
+        if (i != children.length - 1) const SizedBox(height: 12),
+      ],
+    ],
+  );
+}
+
   Widget _buildMainContent() {
     final t = AppLocalizations.of(context);
     final width = MediaQuery.of(context).size.width;
@@ -1146,6 +1312,12 @@ class _HomePageState extends State<HomePage> {
           ],
           const SizedBox(height: 16),
           _buildSummaryGrid(),
+          const SizedBox(height: 12),
+          _buildSectionCard(
+            title: 'Fiscal dashboard',
+            subtitle: 'Current month tax overview',
+            child: _buildFiscalDashboardSection(),
+          ),
           const SizedBox(height: 14),
           _buildSectionCard(
             title: t.translate('quick_access'),
@@ -1185,6 +1357,12 @@ class _HomePageState extends State<HomePage> {
         ],
         const SizedBox(height: 16),
         _buildSummaryGrid(),
+        const SizedBox(height: 12),
+        _buildSectionCard(
+          title: 'Fiscal dashboard',
+          subtitle: 'Current month tax overview',
+          child: _buildFiscalDashboardSection(),
+        ),
         const SizedBox(height: 14),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
