@@ -81,6 +81,16 @@ class AppLocalizations {
       'no_expenses_registered': 'Nenhuma despesa cadastrada.',
       'no_description': 'Sem descrição',
       'no_category': 'Sem categoria',
+
+      'fiscal_dashboard': 'Painel Fiscal',
+      'current_fiscal_month': 'Mês fiscal atual',
+      'close_fiscal_month': 'Fechar mês fiscal',
+      'fiscal_month_closed': 'Mês fiscal fechado',
+      'closed_fiscal_months': 'Meses fiscais fechados',
+      'expenses_this_month': 'Despesas do mês',
+      'deductible_expenses': 'Despesas dedutíveis',
+      'non_deductible_expenses': 'Despesas não dedutíveis',
+      'estimated_tax_impact': 'Impacto fiscal estimado',
     },
     'en': {
       'description': 'Description',
@@ -157,6 +167,16 @@ class AppLocalizations {
       'no_expenses_registered': 'No expenses registered.',
       'no_description': 'No description',
       'no_category': 'No category',
+
+      'fiscal_dashboard': 'Fiscal Dashboard',
+      'current_fiscal_month': 'Current fiscal month',
+      'close_fiscal_month': 'Close fiscal month',
+      'fiscal_month_closed': 'Fiscal month closed',
+      'closed_fiscal_months': 'Closed fiscal months',
+      'expenses_this_month': 'Expenses this month',
+      'deductible_expenses': 'Deductible expenses',
+      'non_deductible_expenses': 'Non-deductible expenses',
+      'estimated_tax_impact': 'Estimated tax impact',
     },
     'ja': {
       'description': '説明',
@@ -232,6 +252,16 @@ class AppLocalizations {
       'no_expenses_registered': '支出はまだ登録されていません。',
       'no_description': '説明なし',
       'no_category': 'カテゴリなし',
+
+      'fiscal_dashboard': '税務ダッシュボード',
+      'current_fiscal_month': '現在の会計月',
+      'close_fiscal_month': '会計月を締める',
+      'fiscal_month_closed': '会計月が締められました',
+      'closed_fiscal_months': '締め済み会計月',
+      'expenses_this_month': '今月の経費',
+      'deductible_expenses': '控除可能経費',
+      'non_deductible_expenses': '控除不可経費',
+      'estimated_tax_impact': '推定税負担',
     },
     'es': {
       'description': 'Descripción',
@@ -308,6 +338,16 @@ class AppLocalizations {
       'no_expenses_registered': 'No hay gastos registrados.',
       'no_description': 'Sin descripción',
       'no_category': 'Sin categoría',
+
+      'fiscal_dashboard': 'Panel fiscal',
+      'current_fiscal_month': 'Mes fiscal actual',
+      'close_fiscal_month': 'Cerrar mes fiscal',
+      'fiscal_month_closed': 'Mes fiscal cerrado',
+      'closed_fiscal_months': 'Meses fiscales cerrados',
+      'expenses_this_month': 'Gastos del mes',
+      'deductible_expenses': 'Gastos deducibles',
+      'non_deductible_expenses': 'Gastos no deducibles',
+      'estimated_tax_impact': 'Impacto fiscal estimado',
     },
   };
 
