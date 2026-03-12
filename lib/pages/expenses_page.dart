@@ -17,6 +17,7 @@ class ExpensesPage extends StatefulWidget {
 class _ExpensesPageState extends State<ExpensesPage> {
   List<Map<String, dynamic>> _expenses = [];
   bool _loading = true;
+  String _reviewFilter = 'all';
 
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
@@ -104,6 +105,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
         'value': 'Valor',
         'vendor': 'Fornecedor',
         'view': 'Ver',
+        'filter_all': 'Todas',
+        'filter_review_pending': 'Pendentes de revisão',
+        'filter_reviewed': 'Revisadas',
+        'review_filter': 'Filtro de revisão',
       },
       'en': {
         'cancel': 'Cancel',
@@ -163,6 +168,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
         'value': 'Value',
         'vendor': 'Vendor',
         'view': 'View',
+        'filter_all': 'All',
+        'filter_review_pending': 'Pending review',
+        'filter_reviewed': 'Reviewed',
+        'review_filter': 'Review filter',
       },
       'ja': {
         'cancel': 'キャンセル',
@@ -281,6 +290,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
         'value': 'Valor',
         'vendor': 'Proveedor',
         'view': 'Ver',
+        'filter_all': 'Todas',
+        'filter_review_pending': 'Pendientes de revisión',
+        'filter_reviewed': 'Revisadas',
+        'review_filter': 'Filtro de revisión',
       },
     };
 
@@ -1513,6 +1526,77 @@ class _ExpensesPageState extends State<ExpensesPage> {
     await _refresh();
   }
 
+
+  bool _isReviewPending(String? status) {
+    final value = (status ?? '').trim().toLowerCase();
+    return value.isEmpty ||
+        value == 'pending' ||
+        value == 'review_required' ||
+        value == 'needs_review' ||
+        value == 'review_pending';
+  }
+
+  bool _isReviewed(String? status) {
+    final value = (status ?? '').trim().toLowerCase();
+    return value == 'reviewed' ||
+        value == 'approved' ||
+        value == 'done' ||
+        value == 'completed';
+  }
+
+  List<Map<String, dynamic>> _filteredExpenses() {
+    if (_reviewFilter == 'all') return _expenses;
+
+    return _expenses.where((expense) {
+      final status = expense['review_status']?.toString();
+      if (_reviewFilter == 'pending') {
+        return _isReviewPending(status);
+      }
+      if (_reviewFilter == 'reviewed') {
+        return _isReviewed(status);
+      }
+      return true;
+    }).toList();
+  }
+
+  Widget _reviewFilterBar() {
+    final filters = [
+      ('all', _tr('filter_all')),
+      ('pending', _tr('filter_review_pending')),
+      ('reviewed', _tr('filter_reviewed')),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _tr('review_filter'),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: filters.map((filter) {
+            final selected = _reviewFilter == filter.$1;
+            return ChoiceChip(
+              label: Text(filter.$2),
+              selected: selected,
+              onSelected: (_) {
+                setState(() {
+                  _reviewFilter = filter.$1;
+                });
+              },
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   Widget _expenseCard(Map<String, dynamic> expense) {
     final description = (expense['description'] ?? '').toString();
     final category = _categoryLabel((expense['category'] ?? 'other').toString());
@@ -1671,15 +1755,34 @@ class _ExpensesPageState extends State<ExpensesPage> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _expenses.isEmpty
-              ? _emptyState()
-              : RefreshIndicator(
+          : Builder(
+              builder: (context) {
+                final visibleExpenses = _filteredExpenses();
+
+                if (_expenses.isEmpty) {
+                  return _emptyState();
+                }
+
+                return RefreshIndicator(
                   onRefresh: _refresh,
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: _expenses.length,
+                    itemCount: visibleExpenses.length + 1,
                     itemBuilder: (context, index) {
-                      final expense = Map<String, dynamic>.from(_expenses[index]);
+                      if (index == 0) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _reviewFilterBar(),
+                        );
+                      }
+
+                      if (visibleExpenses.isEmpty) {
+                        return _emptyState();
+                      }
+
+                      final expense = Map<String, dynamic>.from(
+                        visibleExpenses[index - 1],
+                      );
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
@@ -1687,7 +1790,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       );
                     },
                   ),
-                ),
+                );
+              },
+            ),
     );
   }
 }
