@@ -618,17 +618,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             final dialogT = AppLocalizations.of(context);
-
-            if (!ocrSuggestionsRequested) {
-              ocrSuggestionsRequested = true;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _applyOCRSuggestions(
-                  expenseId: expense['id'].toString(),
-                  setStateDialog: setStateDialog,
-                );
-              });
-            }
-
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
