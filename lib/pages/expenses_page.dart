@@ -26,7 +26,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
   DateTime _selectedDate = DateTime.now();
   String _category = 'other';
-  String _deductibilityStatus = 'review_required';
   String _taxType = 'external';
   double _taxAmount = 0;
   String _paymentMethod = 'cash';
@@ -743,7 +742,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                   'notes': _notesController.text.trim(),
                                   'tax_rate': _parseDouble(_taxRateController.text),
                                   'tax_inclusion_type': _taxInclusionType,
-                                  'deductibility_status': _deductibilityStatus,
                                   ...receiptPayload,
                                 });
 
@@ -1058,7 +1056,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                     'notes': _notesController.text.trim(),
                                     'tax_rate': _parseDouble(_taxRateController.text),
                                     'tax_inclusion_type': _taxInclusionType,
-                                  'deductibility_status': _deductibilityStatus,
                                   },
                                 );
 
@@ -1080,7 +1077,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                       'notes': _notesController.text.trim(),
                                       'tax_rate': _parseDouble(_taxRateController.text),
                                       'tax_inclusion_type': _taxInclusionType,
-                                  'deductibility_status': _deductibilityStatus,
                                       ...receiptPayload,
                                     },
                                   );
