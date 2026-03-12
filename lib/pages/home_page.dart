@@ -5,6 +5,7 @@ import '../data/auth_service.dart';
 import '../l10n/app_localizations.dart';
 import 'entries_page.dart';
 import 'expenses_page.dart';
+import 'expense_review_page.dart';
 import 'reports_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -28,6 +29,8 @@ class _HomePageState extends State<HomePage> {
   String? _companyId;
   String? _error;
 
+  int _pendingExpenseReviews = 0;
+
   double _monthEntriesTotal = 0;
   double _monthExpensesTotal = 0;
   double _monthProfit = 0;
@@ -47,6 +50,7 @@ class _HomePageState extends State<HomePage> {
           await AuthService.instance.getCurrentCompanyId(forceRefresh: true);
 
       await _loadDashboard(companyId);
+      await _loadExpenseReviewCount(companyId);
 
       if (!mounted) return;
 
@@ -218,6 +222,30 @@ class _HomePageState extends State<HomePage> {
     );
 
     await _refreshDashboard();
+  }
+
+
+  Future<void> _openExpenseReviewPage() async {
+    if (_companyId == null) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExpenseReviewPage(companyId: _companyId!),
+      ),
+    );
+
+    await _refreshDashboard();
+  }
+
+  Future<void> _loadExpenseReviewCount(String companyId) async {
+    final List<dynamic> reviewExpenses = await _client
+        .from('expenses_v2')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('review_status', 'review_required');
+
+    _pendingExpenseReviews = reviewExpenses.length;
   }
 
   String _languageLabel(AppLocalizations t, String code) {
@@ -1037,6 +1065,71 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+
+  Widget _buildExpenseReviewAlertCard() {
+    final t = AppLocalizations.of(context);
+
+    if (_pendingExpenseReviews <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: _openExpenseReviewPage,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade100,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.warning_amber_rounded,
+                      color: Colors.orange),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$_pendingExpenseReviews expenses need fiscal review',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        t.translate('tap_to_open'),
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right_rounded),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMainContent() {
     final t = AppLocalizations.of(context);
     final width = MediaQuery.of(context).size.width;
@@ -1047,6 +1140,10 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.all(16),
         children: [
           _buildHeroCard(),
+          if (_pendingExpenseReviews > 0) ...[
+            const SizedBox(height: 16),
+            _buildExpenseReviewAlertCard(),
+          ],
           const SizedBox(height: 16),
           _buildSummaryGrid(),
           const SizedBox(height: 14),
@@ -1082,6 +1179,10 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.all(16),
       children: [
         _buildHeroCard(),
+        if (_pendingExpenseReviews > 0) ...[
+          const SizedBox(height: 16),
+          _buildExpenseReviewAlertCard(),
+        ],
         const SizedBox(height: 16),
         _buildSummaryGrid(),
         const SizedBox(height: 14),
