@@ -26,8 +26,62 @@ class SupabaseService {
     return row;
   }
 
+  Future<List<String>> getClosedFiscalMonths() async {
+    final settings = await getAppSettings();
+
+    final raw = settings['closed_fiscal_months'];
+
+    if (raw == null) return [];
+
+    if (raw is List) {
+      return raw
+          .map((e) => e.toString())
+          .where((e) => e.trim().isNotEmpty)
+          .toList();
+    }
+
+    return [];
+  }
+
+  String _extractFiscalMonth(dynamic value) {
+    if (value == null) {
+      throw Exception('Data fiscal inválida.');
+    }
+
+    if (value is DateTime) {
+      return "${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}";
+    }
+
+    final text = value.toString();
+
+    if (text.length >= 7) {
+      return text.substring(0, 7);
+    }
+
+    throw Exception('Não foi possível identificar o mês fiscal.');
+  }
+
+  Future<void> _assertFiscalMonthOpen({
+    required dynamic dateValue,
+    required String errorMessage,
+  }) async {
+    final fiscalMonth = _extractFiscalMonth(dateValue);
+
+    final closedMonths = await getClosedFiscalMonths();
+
+    if (closedMonths.contains(fiscalMonth)) {
+      throw Exception(errorMessage);
+    }
+  }
+
   Future<void> addEntry(Map<String, dynamic> data) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    await _assertFiscalMonthOpen(
+      dateValue: data['date'],
+      errorMessage:
+          'Este mês fiscal está fechado. Não é possível adicionar entradas.',
+    );
 
     await _client.from('entries_v2').insert({
       'company_id': companyId,
@@ -66,6 +120,14 @@ class SupabaseService {
   }
 
   Future<void> updateEntry(String id, Map<String, dynamic> data) async {
+    final date = data['entry_date'] ?? data['date'];
+
+    await _assertFiscalMonthOpen(
+      dateValue: date,
+      errorMessage:
+          'Este mês fiscal está fechado. Não é possível editar entradas.',
+    );
+
     await _client.from('entries_v2').update({
       'entry_date': data['entry_date'],
       'description': data['description'],
@@ -75,11 +137,35 @@ class SupabaseService {
   }
 
   Future<void> deleteEntry(String id) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final row = await _client
+        .from('entries_v2')
+        .select('entry_date')
+        .eq('id', id)
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+    if (row == null) return;
+
+    await _assertFiscalMonthOpen(
+      dateValue: row['entry_date'],
+      errorMessage:
+          'Este mês fiscal está fechado. Não é possível excluir entradas.',
+    );
+
     await _client.from('entries_v2').delete().eq('id', id);
   }
 
   Future<void> addExpense(Map<String, dynamic> data) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    await _assertFiscalMonthOpen(
+      dateValue: data['date'],
+      errorMessage:
+          'Este mês fiscal está fechado. Não é possível adicionar despesas.',
+    );
+
     final receiptUrl = data['receipt_url'];
 
     final inserted = await _client
@@ -93,10 +179,8 @@ class SupabaseService {
           'amount': data['amount'],
           'tax_amount': data['tax'],
           'tax_type': data['tax_type'],
-
           'payment_method': _normalizePaymentMethod(data['payment_method']),
           'notes': data['notes'],
-
           'receipt_status': receiptUrl != null ? 'uploaded' : 'none',
           'deductibility_status':
               data['deductibility_status'] ?? 'review_required',
@@ -164,6 +248,12 @@ class SupabaseService {
   }
 
   Future<void> updateExpense(String id, Map<String, dynamic> data) async {
+    await _assertFiscalMonthOpen(
+      dateValue: data['date'] ?? data['expense_date'],
+      errorMessage:
+          'Este mês fiscal está fechado. Não é possível editar despesas.',
+    );
+
     await _client.from('expenses_v2').update({
       'expense_date': data['date'],
       'store_name': data['store_name'],
@@ -172,37 +262,32 @@ class SupabaseService {
       'amount': data['amount'],
       'tax_amount': data['tax'],
       'tax_type': data['tax_type'],
-
       'payment_method': _normalizePaymentMethod(data['payment_method']),
       'notes': data['notes'],
       'tax_rate': data['tax_rate'],
       'tax_inclusion_type': data['tax_inclusion_type'],
       'vendor_name': data['vendor_name'],
-
     }).eq('id', id);
   }
 
-  Future<void> attachReceiptToExpense(
-    String expenseId,
-    Map<String, dynamic> data,
-  ) async {
-    final companyId = await AuthService.instance.getCurrentCompanyId();
-    final receiptUrl = data['receipt_url'];
-
-    if (receiptUrl == null || receiptUrl.toString().trim().isEmpty) return;
-
-    await _client.from('expenses_v2').update({
-      'receipt_status': 'uploaded',
-    }).eq('id', expenseId);
-
-    await _insertExpenseReceipt(
-      expenseId: expenseId,
-      companyId: companyId,
-      data: data,
-    );
-  }
-
   Future<void> deleteExpense(String id) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final row = await _client
+        .from('expenses_v2')
+        .select('expense_date')
+        .eq('id', id)
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+    if (row == null) return;
+
+    await _assertFiscalMonthOpen(
+      dateValue: row['expense_date'],
+      errorMessage:
+          'Este mês fiscal está fechado. Não é possível excluir despesas.',
+    );
+
     await _client.from('expense_receipts').delete().eq('expense_id', id);
     await _client.from('expenses_v2').delete().eq('id', id);
   }
