@@ -39,6 +39,254 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
   AppLocalizations get t => AppLocalizations.of(context);
 
+  String _tr(String key) {
+    final translated = t.translate(key);
+    if (translated != key) return translated;
+
+    final lang = Localizations.localeOf(context).languageCode;
+
+    const fallback = <String, Map<String, String>>{
+      'pt': {
+        'cancel': 'Cancelar',
+        'category': 'Categoria',
+        'category_fees': 'Taxas',
+        'category_food': 'Alimentação',
+        'category_other': 'Outros',
+        'category_rent': 'Aluguel',
+        'category_services': 'Serviços',
+        'category_transport': 'Transporte',
+        'change': 'Alterar',
+        'change_file': 'Alterar arquivo',
+        'choose_file': 'Escolher arquivo',
+        'could_not_capture_photo': 'Não foi possível capturar a foto.',
+        'could_not_read_file': 'Não foi possível ler o arquivo.',
+        'date': 'Data',
+        'delete': 'Excluir',
+        'delete_expense_confirm': 'Deseja realmente excluir esta despesa?',
+        'delete_expense_title': 'Excluir despesa',
+        'description': 'Descrição',
+        'edit': 'Editar',
+        'edit_expense': 'Editar despesa',
+        'existing_receipt_attached': 'Recibo já anexado',
+        'expense_added': 'Despesa adicionada!',
+        'expense_deleted': 'Despesa excluída!',
+        'expense_updated': 'Despesa atualizada!',
+        'expenses': 'Despesas',
+        'expenses_will_appear_here': 'As despesas aparecerão aqui.',
+        'fiscal_basic_data': 'Dados fiscais básicos',
+        'invalid_data': 'Dados inválidos.',
+        'new_expense': 'Nova despesa',
+        'new_expense_tooltip': 'Nova despesa',
+        'no_description': 'Sem descrição',
+        'no_expenses_registered': 'Nenhuma despesa cadastrada.',
+        'no_receipt_selected': 'Nenhum recibo selecionado',
+        'notes': 'Observações',
+        'obs_short': 'Obs.',
+        'payment': 'Pagamento',
+        'payment_cash': 'Dinheiro',
+        'payment_credit_card': 'Cartão de crédito',
+        'payment_furikomi': 'Furikomi',
+        'payment_method': 'Método de pagamento',
+        'payment_other': 'Outro',
+        'payment_paypay': 'PayPay',
+        'receipt_attachment': 'Anexo do recibo',
+        'receipt_viewer_title': 'Visualizar recibo',
+        'remove': 'Remover',
+        'save': 'Salvar',
+        'store': 'Loja',
+        'take_photo': 'Tirar foto',
+        'tax': 'Imposto',
+        'tax_external': 'Imposto externo',
+        'tax_inclusive': 'Imposto incluso',
+        'tax_not_defined': 'Imposto não definido',
+        'tax_rate': 'Taxa de imposto',
+        'tax_type': 'Tipo de imposto',
+        'value': 'Valor',
+        'vendor': 'Fornecedor',
+        'view': 'Ver',
+      },
+      'en': {
+        'cancel': 'Cancel',
+        'category': 'Category',
+        'category_fees': 'Fees',
+        'category_food': 'Food',
+        'category_other': 'Other',
+        'category_rent': 'Rent',
+        'category_services': 'Services',
+        'category_transport': 'Transport',
+        'change': 'Change',
+        'change_file': 'Change file',
+        'choose_file': 'Choose file',
+        'could_not_capture_photo': 'Could not capture photo.',
+        'could_not_read_file': 'Could not read file.',
+        'date': 'Date',
+        'delete': 'Delete',
+        'delete_expense_confirm': 'Do you really want to delete this expense?',
+        'delete_expense_title': 'Delete expense',
+        'description': 'Description',
+        'edit': 'Edit',
+        'edit_expense': 'Edit expense',
+        'existing_receipt_attached': 'Receipt already attached',
+        'expense_added': 'Expense added!',
+        'expense_deleted': 'Expense deleted!',
+        'expense_updated': 'Expense updated!',
+        'expenses': 'Expenses',
+        'expenses_will_appear_here': 'Expenses will appear here.',
+        'fiscal_basic_data': 'Basic fiscal data',
+        'invalid_data': 'Invalid data.',
+        'new_expense': 'New expense',
+        'new_expense_tooltip': 'New expense',
+        'no_description': 'No description',
+        'no_expenses_registered': 'No expenses registered.',
+        'no_receipt_selected': 'No receipt selected',
+        'notes': 'Notes',
+        'obs_short': 'Notes',
+        'payment': 'Payment',
+        'payment_cash': 'Cash',
+        'payment_credit_card': 'Credit Card',
+        'payment_furikomi': 'Furikomi',
+        'payment_method': 'Payment method',
+        'payment_other': 'Other',
+        'payment_paypay': 'PayPay',
+        'receipt_attachment': 'Receipt attachment',
+        'receipt_viewer_title': 'Receipt viewer',
+        'remove': 'Remove',
+        'save': 'Save',
+        'store': 'Store',
+        'take_photo': 'Take photo',
+        'tax': 'Tax',
+        'tax_external': 'External tax',
+        'tax_inclusive': 'Tax included',
+        'tax_not_defined': 'Tax not defined',
+        'tax_rate': 'Tax rate',
+        'tax_type': 'Tax type',
+        'value': 'Value',
+        'vendor': 'Vendor',
+        'view': 'View',
+      },
+      'ja': {
+        'cancel': 'キャンセル',
+        'category': 'カテゴリ',
+        'category_fees': '手数料',
+        'category_food': '食費',
+        'category_other': 'その他',
+        'category_rent': '家賃',
+        'category_services': 'サービス',
+        'category_transport': '交通費',
+        'change': '変更',
+        'change_file': 'ファイルを変更',
+        'choose_file': 'ファイルを選択',
+        'could_not_capture_photo': '写真を取得できませんでした。',
+        'could_not_read_file': 'ファイルを読み込めませんでした。',
+        'date': '日付',
+        'delete': '削除',
+        'delete_expense_confirm': 'この支出を削除してもよろしいですか？',
+        'delete_expense_title': '支出を削除',
+        'description': '説明',
+        'edit': '編集',
+        'edit_expense': '支出を編集',
+        'existing_receipt_attached': '領収書はすでに添付されています',
+        'expense_added': '支出が追加されました！',
+        'expense_deleted': '支出が削除されました！',
+        'expense_updated': '支出が更新されました！',
+        'expenses': '支出',
+        'expenses_will_appear_here': '支出はここに表示されます。',
+        'fiscal_basic_data': '基本税務データ',
+        'invalid_data': '無効なデータです。',
+        'new_expense': '新しい経費',
+        'new_expense_tooltip': '新しい経費',
+        'no_description': '説明なし',
+        'no_expenses_registered': '支出はまだ登録されていません。',
+        'no_receipt_selected': '領収書が選択されていません',
+        'notes': 'メモ',
+        'obs_short': '備考',
+        'payment': '支払',
+        'payment_cash': '現金',
+        'payment_credit_card': 'クレジットカード',
+        'payment_furikomi': '振込',
+        'payment_method': '支払い方法',
+        'payment_other': 'その他',
+        'payment_paypay': 'PayPay',
+        'receipt_attachment': '領収書添付',
+        'receipt_viewer_title': '領収書表示',
+        'remove': '削除',
+        'save': '保存',
+        'store': '店舗',
+        'take_photo': '写真を撮る',
+        'tax': '税',
+        'tax_external': '外税',
+        'tax_inclusive': '内税',
+        'tax_not_defined': '税未設定',
+        'tax_rate': '税率',
+        'tax_type': '税タイプ',
+        'value': '金額',
+        'vendor': '仕入先',
+        'view': '表示',
+      },
+      'es': {
+        'cancel': 'Cancelar',
+        'category': 'Categoría',
+        'category_fees': 'Tarifas',
+        'category_food': 'Alimentación',
+        'category_other': 'Otros',
+        'category_rent': 'Alquiler',
+        'category_services': 'Servicios',
+        'category_transport': 'Transporte',
+        'change': 'Cambiar',
+        'change_file': 'Cambiar archivo',
+        'choose_file': 'Elegir archivo',
+        'could_not_capture_photo': 'No se pudo capturar la foto.',
+        'could_not_read_file': 'No se pudo leer el archivo.',
+        'date': 'Fecha',
+        'delete': 'Eliminar',
+        'delete_expense_confirm': '¿Desea eliminar este gasto?',
+        'delete_expense_title': 'Eliminar gasto',
+        'description': 'Descripción',
+        'edit': 'Editar',
+        'edit_expense': 'Editar gasto',
+        'existing_receipt_attached': 'Recibo ya adjunto',
+        'expense_added': '¡Gasto agregado!',
+        'expense_deleted': '¡Gasto eliminado!',
+        'expense_updated': '¡Gasto actualizado!',
+        'expenses': 'Gastos',
+        'expenses_will_appear_here': 'Los gastos aparecerán aquí.',
+        'fiscal_basic_data': 'Datos fiscales básicos',
+        'invalid_data': 'Datos inválidos.',
+        'new_expense': 'Nuevo gasto',
+        'new_expense_tooltip': 'Nuevo gasto',
+        'no_description': 'Sin descripción',
+        'no_expenses_registered': 'No hay gastos registrados.',
+        'no_receipt_selected': 'No se ha seleccionado recibo',
+        'notes': 'Notas',
+        'obs_short': 'Obs.',
+        'payment': 'Pago',
+        'payment_cash': 'Efectivo',
+        'payment_credit_card': 'Tarjeta de crédito',
+        'payment_furikomi': 'Furikomi',
+        'payment_method': 'Método de pago',
+        'payment_other': 'Otro',
+        'payment_paypay': 'PayPay',
+        'receipt_attachment': 'Adjunto del recibo',
+        'receipt_viewer_title': 'Visor de recibo',
+        'remove': 'Quitar',
+        'save': 'Guardar',
+        'store': 'Tienda',
+        'take_photo': 'Tomar foto',
+        'tax': 'Impuesto',
+        'tax_external': 'Impuesto externo',
+        'tax_inclusive': 'Impuesto incluido',
+        'tax_not_defined': 'Impuesto no definido',
+        'tax_rate': 'Tasa de impuesto',
+        'tax_type': 'Tipo de impuesto',
+        'value': 'Valor',
+        'vendor': 'Proveedor',
+        'view': 'Ver',
+      },
+    };
+
+    return fallback[lang]?[key] ?? fallback['en']?[key] ?? key;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -94,7 +342,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
     if (file.bytes == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t.translate('could_not_read_file'))),
+        SnackBar(content: Text(_tr('could_not_read_file'))),
       );
       return;
     }
@@ -119,7 +367,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
     if (file.bytes == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t.translate('could_not_capture_photo'))),
+        SnackBar(content: Text(_tr('could_not_capture_photo'))),
       );
       return;
     }
@@ -189,43 +437,43 @@ class _ExpensesPageState extends State<ExpensesPage> {
   String _categoryLabel(String value) {
     switch (value) {
       case 'food':
-        return t.translate('category_food');
+        return _tr('category_food');
       case 'transport':
-        return t.translate('category_transport');
+        return _tr('category_transport');
       case 'rent':
-        return t.translate('category_rent');
+        return _tr('category_rent');
       case 'services':
-        return t.translate('category_services');
+        return _tr('category_services');
       case 'fees':
-        return t.translate('category_fees');
+        return _tr('category_fees');
       default:
-        return t.translate('category_other');
+        return _tr('category_other');
     }
   }
 
   String _paymentMethodLabel(String value) {
     switch (value) {
       case 'cash':
-        return t.translate('payment_cash');
+        return _tr('payment_cash');
       case 'credit_card':
-        return t.translate('payment_credit_card');
+        return _tr('payment_credit_card');
       case 'furikomi':
-        return t.translate('payment_furikomi');
+        return _tr('payment_furikomi');
       case 'paypay':
-        return t.translate('payment_paypay');
+        return _tr('payment_paypay');
       default:
-        return t.translate('payment_other');
+        return _tr('payment_other');
     }
   }
 
   String _taxInclusionTypeLabel(String value) {
     switch (value) {
       case 'inclusive':
-        return t.translate('tax_inclusive');
+        return _tr('tax_inclusive');
       case 'external':
-        return t.translate('tax_external');
+        return _tr('tax_external');
       default:
-        return t.translate('tax_not_defined');
+        return _tr('tax_not_defined');
     }
   }
 
@@ -435,7 +683,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        t.translate('receipt_viewer_title'),
+                        _tr('receipt_viewer_title'),
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
@@ -529,7 +777,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            t.translate('receipt_attachment'),
+            _tr('receipt_attachment'),
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -553,7 +801,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       _clearSelectedReceipt();
                     });
                   },
-                  child: Text(t.translate('remove')),
+                  child: Text(_tr('remove')),
                 ),
               ],
             ),
@@ -576,18 +824,18 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    t.translate('existing_receipt_attached'),
+                    _tr('existing_receipt_attached'),
                   ),
                 ),
                 TextButton(
                   onPressed: () => _showReceiptPreview(existingReceiptUrl),
-                  child: Text(t.translate('view')),
+                  child: Text(_tr('view')),
                 ),
               ],
             ),
           ] else ...[
             Text(
-              t.translate('no_receipt_selected'),
+              _tr('no_receipt_selected'),
               style: TextStyle(color: Colors.grey.shade700),
             ),
           ],
@@ -634,7 +882,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          dialogT.translate('new_expense'),
+                          _tr('new_expense'),
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
@@ -648,15 +896,15 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             ElevatedButton.icon(
                               onPressed: () => _capturePhoto(setStateDialog),
                               icon: const Icon(Icons.camera_alt),
-                              label: Text(dialogT.translate('take_photo')),
+                              label: Text(_tr('take_photo')),
                             ),
                             OutlinedButton.icon(
                               onPressed: () => _pickReceipt(setStateDialog),
                               icon: const Icon(Icons.upload_file),
                               label: Text(
                                 _selectedReceiptBytes != null
-                                    ? dialogT.translate('change_file')
-                                    : dialogT.translate('choose_file'),
+                                    ? _tr('change_file')
+                                    : _tr('choose_file'),
                               ),
                             ),
                           ],
@@ -664,12 +912,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         const SizedBox(height: 24),
                         TextField(
                           controller: _descController,
-                          decoration: _fieldDecoration(dialogT.translate('description')),
+                          decoration: _fieldDecoration(_tr('description')),
                         ),
                         const SizedBox(height: 16),
                         TextField(
                           controller: _storeController,
-                          decoration: _fieldDecoration(dialogT.translate('store')),
+                          decoration: _fieldDecoration(_tr('store')),
                         ),
                         const SizedBox(height: 16),
                         TextField(
@@ -677,36 +925,36 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: _fieldDecoration('${dialogT.translate('value')} (¥)'),
+                          decoration: _fieldDecoration('${_tr('value')} (¥)'),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _category,
-                          decoration: _fieldDecoration(dialogT.translate('category')),
+                          decoration: _fieldDecoration(_tr('category')),
                           items: [
                             DropdownMenuItem(
                               value: 'food',
-                              child: Text(dialogT.translate('category_food')),
+                              child: Text(_tr('category_food')),
                             ),
                             DropdownMenuItem(
                               value: 'transport',
-                              child: Text(dialogT.translate('category_transport')),
+                              child: Text(_tr('category_transport')),
                             ),
                             DropdownMenuItem(
                               value: 'rent',
-                              child: Text(dialogT.translate('category_rent')),
+                              child: Text(_tr('category_rent')),
                             ),
                             DropdownMenuItem(
                               value: 'services',
-                              child: Text(dialogT.translate('category_services')),
+                              child: Text(_tr('category_services')),
                             ),
                             DropdownMenuItem(
                               value: 'fees',
-                              child: Text(dialogT.translate('category_fees')),
+                              child: Text(_tr('category_fees')),
                             ),
                             DropdownMenuItem(
                               value: 'other',
-                              child: Text(dialogT.translate('category_other')),
+                              child: Text(_tr('category_other')),
                             ),
                           ],
                           onChanged: (value) {
@@ -717,7 +965,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          dialogT.translate('fiscal_basic_data'),
+                          _tr('fiscal_basic_data'),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -726,32 +974,32 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: _vendorController,
-                          decoration: _fieldDecoration(dialogT.translate('vendor')),
+                          decoration: _fieldDecoration(_tr('vendor')),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _paymentMethod,
-                          decoration: _fieldDecoration(dialogT.translate('payment_method')),
+                          decoration: _fieldDecoration(_tr('payment_method')),
                           items: [
                             DropdownMenuItem(
                               value: 'cash',
-                              child: Text(dialogT.translate('payment_cash')),
+                              child: Text(_tr('payment_cash')),
                             ),
                             DropdownMenuItem(
                               value: 'credit_card',
-                              child: Text(dialogT.translate('payment_credit_card')),
+                              child: Text(_tr('payment_credit_card')),
                             ),
                             DropdownMenuItem(
                               value: 'furikomi',
-                              child: Text(dialogT.translate('payment_furikomi')),
+                              child: Text(_tr('payment_furikomi')),
                             ),
                             DropdownMenuItem(
                               value: 'paypay',
-                              child: Text(dialogT.translate('payment_paypay')),
+                              child: Text(_tr('payment_paypay')),
                             ),
                             DropdownMenuItem(
                               value: 'other',
-                              child: Text(dialogT.translate('payment_other')),
+                              child: Text(_tr('payment_other')),
                             ),
                           ],
                           onChanged: (value) {
@@ -765,7 +1013,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           controller: _notesController,
                           minLines: 2,
                           maxLines: 4,
-                          decoration: _fieldDecoration(dialogT.translate('notes')),
+                          decoration: _fieldDecoration(_tr('notes')),
                         ),
                         const SizedBox(height: 16),
                         TextField(
@@ -773,22 +1021,22 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: _fieldDecoration(dialogT.translate('tax_rate')),
+                          decoration: _fieldDecoration(_tr('tax_rate')),
                         ),
                         const SizedBox(height: 10),
                         _quickTaxRateButtons(setStateDialog),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _taxInclusionType,
-                          decoration: _fieldDecoration(dialogT.translate('tax_type')),
+                          decoration: _fieldDecoration(_tr('tax_type')),
                           items: [
                             DropdownMenuItem(
                               value: 'external',
-                              child: Text(dialogT.translate('tax_external')),
+                              child: Text(_tr('tax_external')),
                             ),
                             DropdownMenuItem(
                               value: 'inclusive',
-                              child: Text(dialogT.translate('tax_inclusive')),
+                              child: Text(_tr('tax_inclusive')),
                             ),
                           ],
                           onChanged: (value) {
@@ -811,13 +1059,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  '${dialogT.translate('date')}: ${_formatDate(_selectedDate.toIso8601String())}',
+                                  '${_tr('date')}: ${_formatDate(_selectedDate.toIso8601String())}',
                                   style: const TextStyle(fontSize: 15),
                                 ),
                               ),
                               ElevatedButton(
                                 onPressed: () => _selectDate(setStateDialog),
-                                child: Text(dialogT.translate('change')),
+                                child: Text(_tr('change')),
                               ),
                             ],
                           ),
@@ -830,7 +1078,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           children: [
                             TextButton(
                               onPressed: () => Navigator.pop(dialogContext, false),
-                              child: Text(dialogT.translate('cancel')),
+                              child: Text(_tr('cancel')),
                             ),
                             const SizedBox(width: 12),
                             ElevatedButton(
@@ -843,7 +1091,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                 if (description.isEmpty || amount == null || amount <= 0) {
                                   ScaffoldMessenger.of(this.context).showSnackBar(
                                     SnackBar(
-                                      content: Text(dialogT.translate('invalid_data')),
+                                      content: Text(_tr('invalid_data')),
                                     ),
                                   );
                                   return;
@@ -870,7 +1118,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                 if (!mounted) return;
                                 Navigator.pop(dialogContext, true);
                               },
-                              child: Text(dialogT.translate('save')),
+                              child: Text(_tr('save')),
                             ),
                           ],
                         ),
@@ -889,7 +1137,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
     if (saved == true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t.translate('expense_added'))),
+        SnackBar(content: Text(_tr('expense_added'))),
       );
       await _refresh();
     }
@@ -946,7 +1194,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          dialogT.translate('edit_expense'),
+                          _tr('edit_expense'),
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
@@ -960,15 +1208,15 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             ElevatedButton.icon(
                               onPressed: () => _capturePhoto(setStateDialog),
                               icon: const Icon(Icons.camera_alt),
-                              label: Text(dialogT.translate('take_photo')),
+                              label: Text(_tr('take_photo')),
                             ),
                             OutlinedButton.icon(
                               onPressed: () => _pickReceipt(setStateDialog),
                               icon: const Icon(Icons.upload_file),
                               label: Text(
                                 _selectedReceiptBytes != null
-                                    ? dialogT.translate('change_file')
-                                    : dialogT.translate('choose_file'),
+                                    ? _tr('change_file')
+                                    : _tr('choose_file'),
                               ),
                             ),
                           ],
@@ -976,12 +1224,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         const SizedBox(height: 24),
                         TextField(
                           controller: _descController,
-                          decoration: _fieldDecoration(dialogT.translate('description')),
+                          decoration: _fieldDecoration(_tr('description')),
                         ),
                         const SizedBox(height: 16),
                         TextField(
                           controller: _storeController,
-                          decoration: _fieldDecoration(dialogT.translate('store')),
+                          decoration: _fieldDecoration(_tr('store')),
                         ),
                         const SizedBox(height: 16),
                         TextField(
@@ -989,36 +1237,36 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: _fieldDecoration('${dialogT.translate('value')} (¥)'),
+                          decoration: _fieldDecoration('${_tr('value')} (¥)'),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _category,
-                          decoration: _fieldDecoration(dialogT.translate('category')),
+                          decoration: _fieldDecoration(_tr('category')),
                           items: [
                             DropdownMenuItem(
                               value: 'food',
-                              child: Text(dialogT.translate('category_food')),
+                              child: Text(_tr('category_food')),
                             ),
                             DropdownMenuItem(
                               value: 'transport',
-                              child: Text(dialogT.translate('category_transport')),
+                              child: Text(_tr('category_transport')),
                             ),
                             DropdownMenuItem(
                               value: 'rent',
-                              child: Text(dialogT.translate('category_rent')),
+                              child: Text(_tr('category_rent')),
                             ),
                             DropdownMenuItem(
                               value: 'services',
-                              child: Text(dialogT.translate('category_services')),
+                              child: Text(_tr('category_services')),
                             ),
                             DropdownMenuItem(
                               value: 'fees',
-                              child: Text(dialogT.translate('category_fees')),
+                              child: Text(_tr('category_fees')),
                             ),
                             DropdownMenuItem(
                               value: 'other',
-                              child: Text(dialogT.translate('category_other')),
+                              child: Text(_tr('category_other')),
                             ),
                           ],
                           onChanged: (value) {
@@ -1029,7 +1277,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          dialogT.translate('fiscal_basic_data'),
+                          _tr('fiscal_basic_data'),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -1038,32 +1286,32 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: _vendorController,
-                          decoration: _fieldDecoration(dialogT.translate('vendor')),
+                          decoration: _fieldDecoration(_tr('vendor')),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _paymentMethod,
-                          decoration: _fieldDecoration(dialogT.translate('payment_method')),
+                          decoration: _fieldDecoration(_tr('payment_method')),
                           items: [
                             DropdownMenuItem(
                               value: 'cash',
-                              child: Text(dialogT.translate('payment_cash')),
+                              child: Text(_tr('payment_cash')),
                             ),
                             DropdownMenuItem(
                               value: 'credit_card',
-                              child: Text(dialogT.translate('payment_credit_card')),
+                              child: Text(_tr('payment_credit_card')),
                             ),
                             DropdownMenuItem(
                               value: 'furikomi',
-                              child: Text(dialogT.translate('payment_furikomi')),
+                              child: Text(_tr('payment_furikomi')),
                             ),
                             DropdownMenuItem(
                               value: 'paypay',
-                              child: Text(dialogT.translate('payment_paypay')),
+                              child: Text(_tr('payment_paypay')),
                             ),
                             DropdownMenuItem(
                               value: 'other',
-                              child: Text(dialogT.translate('payment_other')),
+                              child: Text(_tr('payment_other')),
                             ),
                           ],
                           onChanged: (value) {
@@ -1077,7 +1325,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           controller: _notesController,
                           minLines: 2,
                           maxLines: 4,
-                          decoration: _fieldDecoration(dialogT.translate('notes')),
+                          decoration: _fieldDecoration(_tr('notes')),
                         ),
                         const SizedBox(height: 16),
                         TextField(
@@ -1085,22 +1333,22 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: _fieldDecoration(dialogT.translate('tax_rate')),
+                          decoration: _fieldDecoration(_tr('tax_rate')),
                         ),
                         const SizedBox(height: 10),
                         _quickTaxRateButtons(setStateDialog),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _taxInclusionType,
-                          decoration: _fieldDecoration(dialogT.translate('tax_type')),
+                          decoration: _fieldDecoration(_tr('tax_type')),
                           items: [
                             DropdownMenuItem(
                               value: 'external',
-                              child: Text(dialogT.translate('tax_external')),
+                              child: Text(_tr('tax_external')),
                             ),
                             DropdownMenuItem(
                               value: 'inclusive',
-                              child: Text(dialogT.translate('tax_inclusive')),
+                              child: Text(_tr('tax_inclusive')),
                             ),
                           ],
                           onChanged: (value) {
@@ -1123,13 +1371,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  '${dialogT.translate('date')}: ${_formatDate(_selectedDate.toIso8601String())}',
+                                  '${_tr('date')}: ${_formatDate(_selectedDate.toIso8601String())}',
                                   style: const TextStyle(fontSize: 15),
                                 ),
                               ),
                               ElevatedButton(
                                 onPressed: () => _selectDate(setStateDialog),
-                                child: Text(dialogT.translate('change')),
+                                child: Text(_tr('change')),
                               ),
                             ],
                           ),
@@ -1145,7 +1393,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           children: [
                             TextButton(
                               onPressed: () => Navigator.pop(dialogContext, false),
-                              child: Text(dialogT.translate('cancel')),
+                              child: Text(_tr('cancel')),
                             ),
                             const SizedBox(width: 12),
                             ElevatedButton(
@@ -1158,7 +1406,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                 if (description.isEmpty || amount == null || amount <= 0) {
                                   ScaffoldMessenger.of(this.context).showSnackBar(
                                     SnackBar(
-                                      content: Text(dialogT.translate('invalid_data')),
+                                      content: Text(_tr('invalid_data')),
                                     ),
                                   );
                                   return;
@@ -1208,7 +1456,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                 if (!mounted) return;
                                 Navigator.pop(dialogContext, true);
                               },
-                              child: Text(dialogT.translate('save')),
+                              child: Text(_tr('save')),
                             ),
                           ],
                         ),
@@ -1227,7 +1475,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
     if (result == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t.translate('expense_updated'))),
+        SnackBar(content: Text(_tr('expense_updated'))),
       );
       await _refresh();
     }
@@ -1237,16 +1485,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(t.translate('delete_expense_title')),
-        content: Text(t.translate('delete_expense_confirm')),
+        title: Text(_tr('delete_expense_title')),
+        content: Text(_tr('delete_expense_confirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(t.translate('cancel')),
+            child: Text(_tr('cancel')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(t.translate('delete')),
+            child: Text(_tr('delete')),
           ),
         ],
       ),
@@ -1259,7 +1507,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(t.translate('expense_deleted'))),
+      SnackBar(content: Text(_tr('expense_deleted'))),
     );
 
     await _refresh();
@@ -1292,7 +1540,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              description.isEmpty ? t.translate('no_description') : description,
+              description.isEmpty ? _tr('no_description') : description,
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -1311,16 +1559,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (vendor.isNotEmpty) _chip('${t.translate('vendor')}: $vendor'),
-                _chip('${t.translate('payment')}: $paymentMethod'),
-                _chip('${t.translate('tax')}: $taxRate'),
+                if (vendor.isNotEmpty) _chip('${_tr('vendor')}: $vendor'),
+                _chip('${_tr('payment')}: $paymentMethod'),
+                _chip('${_tr('tax')}: $taxRate'),
                 _chip(taxInclusion),
               ],
             ),
             if (notes.isNotEmpty) ...[
               const SizedBox(height: 10),
               Text(
-                '${t.translate('obs_short')}: $notes',
+                '${_tr('obs_short')}: $notes',
                 style: TextStyle(
                   color: Colors.grey.shade800,
                   fontSize: 13,
@@ -1341,7 +1589,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 ),
                 if (receipt.isNotEmpty)
                   IconButton(
-                    tooltip: t.translate('view'),
+                    tooltip: _tr('view'),
                     icon: const Icon(
                       Icons.receipt_long,
                       color: Colors.green,
@@ -1349,12 +1597,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     onPressed: () => _showReceiptPreview(receipt),
                   ),
                 IconButton(
-                  tooltip: t.translate('edit'),
+                  tooltip: _tr('edit'),
                   icon: const Icon(Icons.edit_outlined),
                   onPressed: () => _editExpense(expense),
                 ),
                 IconButton(
-                  tooltip: t.translate('delete'),
+                  tooltip: _tr('delete'),
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () => _deleteExpense(expense['id'].toString()),
                 ),
@@ -1380,7 +1628,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              t.translate('no_expenses_registered'),
+              _tr('no_expenses_registered'),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -1388,7 +1636,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
             ),
             const SizedBox(height: 6),
             Text(
-              t.translate('expenses_will_appear_here'),
+              _tr('expenses_will_appear_here'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.grey.shade700,
@@ -1404,7 +1652,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(t.translate('expenses')),
+        title: Text(_tr('expenses')),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -1412,7 +1660,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            tooltip: t.translate('new_expense_tooltip'),
+            tooltip: _tr('new_expense_tooltip'),
             onPressed: _openAddDialog,
           ),
           IconButton(
