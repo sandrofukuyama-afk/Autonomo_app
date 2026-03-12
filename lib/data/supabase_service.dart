@@ -28,15 +28,14 @@ class SupabaseService {
 
   Future<List<String>> getClosedFiscalMonths() async {
     final settings = await getAppSettings();
-
     final raw = settings['closed_fiscal_months'];
 
     if (raw == null) return [];
 
     if (raw is List) {
       return raw
-          .map((e) => e.toString())
-          .where((e) => e.trim().isNotEmpty)
+          .map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
           .toList();
     }
 
@@ -49,12 +48,24 @@ class SupabaseService {
     }
 
     if (value is DateTime) {
-      return "${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}";
+      final year = value.year.toString().padLeft(4, '0');
+      final month = value.month.toString().padLeft(2, '0');
+      return '$year-$month';
     }
 
-    final text = value.toString();
+    final text = value.toString().trim();
+    if (text.isEmpty) {
+      throw Exception('Data fiscal inválida.');
+    }
 
-    if (text.length >= 7) {
+    final parsed = DateTime.tryParse(text);
+    if (parsed != null) {
+      final year = parsed.year.toString().padLeft(4, '0');
+      final month = parsed.month.toString().padLeft(2, '0');
+      return '$year-$month';
+    }
+
+    if (text.length >= 7 && text[4] == '-') {
       return text.substring(0, 7);
     }
 
@@ -66,7 +77,6 @@ class SupabaseService {
     required String errorMessage,
   }) async {
     final fiscalMonth = _extractFiscalMonth(dateValue);
-
     final closedMonths = await getClosedFiscalMonths();
 
     if (closedMonths.contains(fiscalMonth)) {
@@ -120,16 +130,16 @@ class SupabaseService {
   }
 
   Future<void> updateEntry(String id, Map<String, dynamic> data) async {
-    final date = data['entry_date'] ?? data['date'];
+    final dateValue = data['entry_date'] ?? data['date'];
 
     await _assertFiscalMonthOpen(
-      dateValue: date,
+      dateValue: dateValue,
       errorMessage:
           'Este mês fiscal está fechado. Não é possível editar entradas.',
     );
 
     await _client.from('entries_v2').update({
-      'entry_date': data['entry_date'],
+      'entry_date': data['entry_date'] ?? data['date'],
       'description': data['description'],
       'amount': data['amount'],
       'payment_method': _normalizePaymentMethod(data['payment_method']),
@@ -141,7 +151,7 @@ class SupabaseService {
 
     final row = await _client
         .from('entries_v2')
-        .select('entry_date')
+        .select('id, company_id, entry_date')
         .eq('id', id)
         .eq('company_id', companyId)
         .maybeSingle();
@@ -154,19 +164,22 @@ class SupabaseService {
           'Este mês fiscal está fechado. Não é possível excluir entradas.',
     );
 
-    await _client.from('entries_v2').delete().eq('id', id);
+    await _client
+        .from('entries_v2')
+        .delete()
+        .eq('id', id)
+        .eq('company_id', companyId);
   }
 
   Future<void> addExpense(Map<String, dynamic> data) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
+    final receiptUrl = data['receipt_url'];
 
     await _assertFiscalMonthOpen(
       dateValue: data['date'],
       errorMessage:
           'Este mês fiscal está fechado. Não é possível adicionar despesas.',
     );
-
-    final receiptUrl = data['receipt_url'];
 
     final inserted = await _client
         .from('expenses_v2')
@@ -249,13 +262,13 @@ class SupabaseService {
 
   Future<void> updateExpense(String id, Map<String, dynamic> data) async {
     await _assertFiscalMonthOpen(
-      dateValue: data['date'] ?? data['expense_date'],
+      dateValue: data['expense_date'] ?? data['date'],
       errorMessage:
           'Este mês fiscal está fechado. Não é possível editar despesas.',
     );
 
     await _client.from('expenses_v2').update({
-      'expense_date': data['date'],
+      'expense_date': data['date'] ?? data['expense_date'],
       'store_name': data['store_name'],
       'description': data['description'],
       'category': _normalizeExpenseCategory(data['category']),
@@ -270,12 +283,36 @@ class SupabaseService {
     }).eq('id', id);
   }
 
+  Future<void> attachReceiptToExpense(
+    String expenseId,
+    Map<String, dynamic> data,
+  ) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final receiptUrl = data['receipt_url'];
+
+    if (receiptUrl == null || receiptUrl.toString().trim().isEmpty) return;
+
+    await _client
+        .from('expenses_v2')
+        .update({
+          'receipt_status': 'uploaded',
+        })
+        .eq('id', expenseId)
+        .eq('company_id', companyId);
+
+    await _insertExpenseReceipt(
+      expenseId: expenseId,
+      companyId: companyId,
+      data: data,
+    );
+  }
+
   Future<void> deleteExpense(String id) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
 
     final row = await _client
         .from('expenses_v2')
-        .select('expense_date')
+        .select('id, company_id, expense_date')
         .eq('id', id)
         .eq('company_id', companyId)
         .maybeSingle();
@@ -288,8 +325,17 @@ class SupabaseService {
           'Este mês fiscal está fechado. Não é possível excluir despesas.',
     );
 
-    await _client.from('expense_receipts').delete().eq('expense_id', id);
-    await _client.from('expenses_v2').delete().eq('id', id);
+    await _client
+        .from('expense_receipts')
+        .delete()
+        .eq('expense_id', id)
+        .eq('company_id', companyId);
+
+    await _client
+        .from('expenses_v2')
+        .delete()
+        .eq('id', id)
+        .eq('company_id', companyId);
   }
 
   Future<void> _insertExpenseReceipt({
