@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
@@ -240,6 +241,127 @@ class _ExpensesPageState extends State<ExpensesPage> {
       return '${rate.toStringAsFixed(0)}%';
     }
     return '${rate.toStringAsFixed(1)}%';
+  }
+
+  String _normalizeOcrCategorySuggestion(dynamic value) {
+    final raw = (value ?? '').toString().trim().toLowerCase();
+
+    switch (raw) {
+      case 'food':
+      case 'transport':
+      case 'rent':
+      case 'services':
+      case 'fees':
+      case 'other':
+        return raw;
+      case 'office_supplies':
+        return 'other';
+      case 'communication':
+      case 'utilities':
+      case 'insurance':
+      case 'software':
+      case 'equipment':
+      case 'professional_fees':
+      case 'advertising':
+      case 'taxes':
+        return 'services';
+      default:
+        return 'other';
+    }
+  }
+
+  DateTime? _parseOcrDate(dynamic value) {
+    final raw = (value ?? '').toString().trim();
+    if (raw.isEmpty) return null;
+
+    final parsed = DateTime.tryParse(raw);
+    if (parsed != null) return parsed;
+
+    final normalized = raw.replaceAll('/', '-').replaceAll('.', '-');
+    return DateTime.tryParse(normalized);
+  }
+
+  String _calculateOcrTaxRate({
+    required dynamic amountValue,
+    required dynamic taxAmountValue,
+  }) {
+    final amount = _parseDouble(amountValue);
+    final taxAmount = _parseDouble(taxAmountValue);
+
+    if (amount <= 0 || taxAmount <= 0 || taxAmount >= amount) {
+      return '';
+    }
+
+    final taxableBase = amount - taxAmount;
+    if (taxableBase <= 0) return '';
+
+    final rate = (taxAmount / taxableBase) * 100;
+    if (rate <= 0) return '';
+
+    if ((rate - rate.roundToDouble()).abs() < 0.15) {
+      return rate.round().toString();
+    }
+
+    return rate.toStringAsFixed(1);
+  }
+
+  Future<void> _applyOCRSuggestions({
+    required String expenseId,
+    required StateSetter setStateDialog,
+  }) async {
+    try {
+      final row = await Supabase.instance.client
+          .from('expense_receipts')
+          .select(
+            'ocr_status, ocr_store_name, ocr_amount, ocr_date, ocr_tax_amount, ocr_category_suggestion',
+          )
+          .eq('expense_id', expenseId)
+          .order('uploaded_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (row == null) return;
+      final status = (row['ocr_status'] ?? '').toString().toLowerCase();
+      if (status != 'processed') return;
+
+      final storeName = (row['ocr_store_name'] ?? '').toString().trim();
+      final ocrAmount = _parseDouble(row['ocr_amount']);
+      final ocrDate = _parseOcrDate(row['ocr_date']);
+      final ocrTaxRate = _calculateOcrTaxRate(
+        amountValue: row['ocr_amount'],
+        taxAmountValue: row['ocr_tax_amount'],
+      );
+      final ocrCategory = _normalizeOcrCategorySuggestion(
+        row['ocr_category_suggestion'],
+      );
+
+      if (!mounted) return;
+
+      setStateDialog(() {
+        if (_vendorController.text.trim().isEmpty && storeName.isNotEmpty) {
+          _vendorController.text = storeName;
+        }
+        if (_storeController.text.trim().isEmpty && storeName.isNotEmpty) {
+          _storeController.text = storeName;
+        }
+        if (_amountController.text.trim().isEmpty && ocrAmount > 0) {
+          _amountController.text = ocrAmount == ocrAmount.roundToDouble()
+              ? ocrAmount.toStringAsFixed(0)
+              : ocrAmount.toStringAsFixed(2);
+        }
+        if (ocrDate != null && _formatDate(_selectedDate.toIso8601String()) == _formatDate(DateTime.now().toIso8601String())) {
+          _selectedDate = ocrDate;
+        }
+        if (_taxRateController.text.trim().isEmpty && ocrTaxRate.isNotEmpty) {
+          _taxRateController.text = ocrTaxRate;
+        }
+        if (_category == 'other' && ocrCategory != 'other') {
+          _category = ocrCategory;
+        }
+      });
+    } catch (_) {
+      // Mantém o fluxo atual caso OCR ainda não esteja disponível.
+    }
   }
 
   Future<void> _selectDate(StateSetter setStateDialog) async {
@@ -496,6 +618,17 @@ class _ExpensesPageState extends State<ExpensesPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             final dialogT = AppLocalizations.of(context);
+
+            if (!ocrSuggestionsRequested) {
+              ocrSuggestionsRequested = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _applyOCRSuggestions(
+                  expenseId: expense['id'].toString(),
+                  setStateDialog: setStateDialog,
+                );
+              });
+            }
+
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -800,6 +933,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
     _clearSelectedReceipt();
 
     final existingReceiptUrl = (expense['receipt_url'] ?? '').toString();
+    var ocrSuggestionsRequested = false;
 
     final result = await showDialog<bool>(
       context: context,
