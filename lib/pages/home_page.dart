@@ -42,6 +42,8 @@ class _HomePageState extends State<HomePage> {
 
   List<Map<String, dynamic>> _recentEntries = [];
   List<Map<String, dynamic>> _recentExpenses = [];
+  List<String> _closedFiscalMonths = [];
+  bool _closingFiscalMonth = false;
 
   @override
   void initState() {
@@ -57,6 +59,7 @@ class _HomePageState extends State<HomePage> {
       await _loadDashboard(companyId);
       await _loadExpenseReviewCount(companyId);
       await _loadFiscalDashboard(companyId);
+      await _loadClosedFiscalMonths(companyId);
 
       if (!mounted) return;
 
@@ -136,6 +139,26 @@ class _HomePageState extends State<HomePage> {
         .toList();
   }
 
+  Future<void> _loadClosedFiscalMonths(String companyId) async {
+    final Map<String, dynamic>? settings = await _client
+        .from('app_settings')
+        .select('closed_fiscal_months')
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+    final raw = settings?['closed_fiscal_months'];
+
+    if (raw is List) {
+      _closedFiscalMonths = raw
+          .map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      return;
+    }
+
+    _closedFiscalMonths = [];
+  }
+
   double _toDouble(dynamic value) {
     if (value == null) return 0;
     if (value is num) return value.toDouble();
@@ -173,6 +196,90 @@ class _HomePageState extends State<HomePage> {
     return '${now.year}-$month';
   }
 
+  bool _isFiscalMonthClosed(String month) {
+    return _closedFiscalMonths.contains(month);
+  }
+
+  Future<void> _closeCurrentFiscalMonth() async {
+    if (_companyId == null || _closingFiscalMonth) return;
+
+    final month = _currentMonthLabel();
+
+    if (_isFiscalMonthClosed(month)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This fiscal month is already closed.'),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Close fiscal month'),
+              content: Text(
+                'Do you want to close fiscal month $month?\n\n'
+                'After closing, entries and expenses in this month can no longer be edited or deleted.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Close month'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed) return;
+
+    setState(() {
+      _closingFiscalMonth = true;
+    });
+
+    try {
+      final updatedMonths = [..._closedFiscalMonths, month]..sort();
+
+      await _client
+          .from('app_settings')
+          .update({'closed_fiscal_months': updatedMonths})
+          .eq('company_id', _companyId!);
+
+      await _loadClosedFiscalMonths(_companyId!);
+
+      if (!mounted) return;
+
+      setState(() {
+        _closingFiscalMonth = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Fiscal month $month closed successfully.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _closingFiscalMonth = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to close fiscal month: $e'),
+        ),
+      );
+    }
+  }
+
   Future<void> _handleLogout() async {
     await AuthService.instance.signOut();
   }
@@ -189,6 +296,7 @@ class _HomePageState extends State<HomePage> {
       await _loadDashboard(_companyId!);
       await _loadExpenseReviewCount(_companyId!);
       await _loadFiscalDashboard(_companyId!);
+      await _loadClosedFiscalMonths(_companyId!);
 
       if (!mounted) return;
 
@@ -232,7 +340,6 @@ class _HomePageState extends State<HomePage> {
     await _refreshDashboard();
   }
 
-
   Future<void> _openExpenseReviewPage() async {
     if (_companyId == null) return;
 
@@ -256,48 +363,47 @@ class _HomePageState extends State<HomePage> {
     _pendingExpenseReviews = reviewExpenses.length;
   }
 
+  Future<void> _loadFiscalDashboard(String companyId) async {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    final nextMonthStart = DateTime(now.year, now.month + 1, 1);
 
-Future<void> _loadFiscalDashboard(String companyId) async {
-  final now = DateTime.now();
-  final monthStart = DateTime(now.year, now.month, 1);
-  final nextMonthStart = DateTime(now.year, now.month + 1, 1);
+    final String startIso = monthStart.toIso8601String().split('T').first;
+    final String endIso = nextMonthStart.toIso8601String().split('T').first;
 
-  final String startIso = monthStart.toIso8601String().split('T').first;
-  final String endIso = nextMonthStart.toIso8601String().split('T').first;
+    final List<dynamic> expenses = await _client
+        .from('expenses_v2')
+        .select('amount, deductibility_status, expense_date')
+        .eq('company_id', companyId)
+        .gte('expense_date', startIso)
+        .lt('expense_date', endIso);
 
-  final List<dynamic> expenses = await _client
-      .from('expenses_v2')
-      .select('amount, deductibility_status, expense_date')
-      .eq('company_id', companyId)
-      .gte('expense_date', startIso)
-      .lt('expense_date', endIso);
+    double monthTotal = 0;
+    double deductible = 0;
+    double partiallyDeductible = 0;
+    double nonDeductible = 0;
 
-  double monthTotal = 0;
-  double deductible = 0;
-  double partiallyDeductible = 0;
-  double nonDeductible = 0;
+    for (final raw in expenses) {
+      final Map<String, dynamic> item = Map<String, dynamic>.from(raw as Map);
+      final double amount = _toDouble(item['amount']);
+      final String status = (item['deductibility_status'] ?? '').toString();
 
-  for (final raw in expenses) {
-    final Map<String, dynamic> item = Map<String, dynamic>.from(raw as Map);
-    final double amount = _toDouble(item['amount']);
-    final String status = (item['deductibility_status'] ?? '').toString();
+      monthTotal += amount;
 
-    monthTotal += amount;
-
-    if (status == 'deductible') {
-      deductible += amount;
-    } else if (status == 'partially_deductible') {
-      partiallyDeductible += amount;
-    } else if (status == 'non_deductible') {
-      nonDeductible += amount;
+      if (status == 'deductible') {
+        deductible += amount;
+      } else if (status == 'partially_deductible') {
+        partiallyDeductible += amount;
+      } else if (status == 'non_deductible') {
+        nonDeductible += amount;
+      }
     }
-  }
 
-  _fiscalMonthExpenses = monthTotal;
-  _deductibleExpenses = deductible + (partiallyDeductible * 0.5);
-  _nonDeductibleExpenses = nonDeductible;
-  _estimatedTaxImpact = _deductibleExpenses * 0.30;
-}
+    _fiscalMonthExpenses = monthTotal;
+    _deductibleExpenses = deductible + (partiallyDeductible * 0.5);
+    _nonDeductibleExpenses = nonDeductible;
+    _estimatedTaxImpact = _deductibleExpenses * 0.30;
+  }
 
   String _languageLabel(AppLocalizations t, String code) {
     switch (code) {
@@ -1116,7 +1222,6 @@ Future<void> _loadFiscalDashboard(String companyId) async {
     );
   }
 
-
   Widget _buildExpenseReviewAlertCard() {
     final t = AppLocalizations.of(context);
 
@@ -1181,120 +1286,291 @@ Future<void> _loadFiscalDashboard(String companyId) async {
     );
   }
 
+  Widget _buildFiscalSummaryCard({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBackground,
+    required String title,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconBackground,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildClosedMonthsChips() {
+    if (_closedFiscalMonths.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: const Text(
+          'No closed fiscal months yet.',
+          style: TextStyle(fontSize: 13),
+        ),
+      );
+    }
 
-Widget _buildFiscalSummaryCard({
-  required IconData icon,
-  required Color iconColor,
-  required Color iconBackground,
-  required String title,
-  required String value,
-}) {
-  return Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF8FAFC),
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: Colors.grey.shade200),
-    ),
-    child: Row(
+    final months = [..._closedFiscalMonths]..sort((a, b) => b.compareTo(a));
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: months.map((month) {
+        final isCurrent = month == _currentMonthLabel();
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isCurrent ? Colors.green.shade50 : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isCurrent ? Colors.green.shade200 : Colors.grey.shade300,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.lock_outline,
+                size: 16,
+                color: isCurrent ? Colors.green.shade700 : Colors.grey.shade700,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                month,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color:
+                      isCurrent ? Colors.green.shade700 : Colors.grey.shade800,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildFiscalDashboardSection() {
+    final width = MediaQuery.of(context).size.width;
+    final bool wide = width >= 900;
+    final currentMonth = _currentMonthLabel();
+    final currentClosed = _isFiscalMonthClosed(currentMonth);
+
+    final children = [
+      _buildFiscalSummaryCard(
+        icon: Icons.receipt_long,
+        iconColor: Colors.indigo.shade800,
+        iconBackground: Colors.indigo.shade100,
+        title: 'Expenses this month',
+        value: _formatYen(_fiscalMonthExpenses),
+      ),
+      _buildFiscalSummaryCard(
+        icon: Icons.check_circle,
+        iconColor: Colors.green.shade800,
+        iconBackground: Colors.green.shade100,
+        title: 'Deductible expenses',
+        value: _formatYen(_deductibleExpenses),
+      ),
+      _buildFiscalSummaryCard(
+        icon: Icons.block,
+        iconColor: Colors.red.shade800,
+        iconBackground: Colors.red.shade100,
+        title: 'Non-deductible expenses',
+        value: _formatYen(_nonDeductibleExpenses),
+      ),
+      _buildFiscalSummaryCard(
+        icon: Icons.account_balance,
+        iconColor: Colors.blue.shade800,
+        iconBackground: Colors.blue.shade100,
+        title: 'Estimated tax impact',
+        value: _formatYen(_estimatedTaxImpact),
+      ),
+    ];
+
+    final summaryGrid = wide
+        ? GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: children.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 2.8,
+            ),
+            itemBuilder: (context, index) => children[index],
+          )
+        : Column(
+            children: [
+              for (int i = 0; i < children.length; i++) ...[
+                children[i],
+                if (i != children.length - 1) const SizedBox(height: 12),
+              ],
+            ],
+          );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: iconBackground,
-            borderRadius: BorderRadius.circular(14),
+            color: currentClosed ? Colors.green.shade50 : Colors.amber.shade50,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: currentClosed
+                  ? Colors.green.shade200
+                  : Colors.amber.shade200,
+            ),
           ),
-          child: Icon(icon, color: iconColor),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: currentClosed
+                          ? Colors.green.shade100
+                          : Colors.white.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      'Current fiscal month: $currentMonth',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: currentClosed
+                            ? Colors.green.shade800
+                            : Colors.grey.shade900,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: currentClosed
+                          ? Colors.green.shade100
+                          : Colors.orange.shade100,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      currentClosed ? 'Closed' : 'Open',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: currentClosed
+                            ? Colors.green.shade800
+                            : Colors.orange.shade800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               Text(
-                title,
+                currentClosed
+                    ? 'This month is already closed. Entries and expenses are protected against edits and deletions.'
+                    : 'Close the current fiscal month after finishing your monthly review.',
                 style: TextStyle(
-                  color: Colors.grey.shade700,
+                  color: Colors.grey.shade800,
                   fontSize: 13,
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                  height: 1.1,
+              const SizedBox(height: 14),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ElevatedButton.icon(
+                  onPressed: currentClosed || _closingFiscalMonth
+                      ? null
+                      : _closeCurrentFiscalMonth,
+                  icon: _closingFiscalMonth
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.lock_clock_outlined),
+                  label: Text(
+                    currentClosed ? 'Fiscal month closed' : 'Close fiscal month',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
         ),
+        const SizedBox(height: 14),
+        summaryGrid,
+        const SizedBox(height: 14),
+        Text(
+          'Closed fiscal months',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+            color: Colors.grey.shade900,
+          ),
+        ),
+        const SizedBox(height: 10),
+        _buildClosedMonthsChips(),
       ],
-    ),
-  );
-}
-
-Widget _buildFiscalDashboardSection() {
-  final width = MediaQuery.of(context).size.width;
-  final bool wide = width >= 900;
-
-  final children = [
-    _buildFiscalSummaryCard(
-      icon: Icons.receipt_long,
-      iconColor: Colors.indigo.shade800,
-      iconBackground: Colors.indigo.shade100,
-      title: 'Expenses this month',
-      value: _formatYen(_fiscalMonthExpenses),
-    ),
-    _buildFiscalSummaryCard(
-      icon: Icons.check_circle,
-      iconColor: Colors.green.shade800,
-      iconBackground: Colors.green.shade100,
-      title: 'Deductible expenses',
-      value: _formatYen(_deductibleExpenses),
-    ),
-    _buildFiscalSummaryCard(
-      icon: Icons.block,
-      iconColor: Colors.red.shade800,
-      iconBackground: Colors.red.shade100,
-      title: 'Non-deductible expenses',
-      value: _formatYen(_nonDeductibleExpenses),
-    ),
-    _buildFiscalSummaryCard(
-      icon: Icons.account_balance,
-      iconColor: Colors.blue.shade800,
-      iconBackground: Colors.blue.shade100,
-      title: 'Estimated tax impact',
-      value: _formatYen(_estimatedTaxImpact),
-    ),
-  ];
-
-  if (wide) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: children.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 2.8,
-      ),
-      itemBuilder: (context, index) => children[index],
     );
   }
-
-  return Column(
-    children: [
-      for (int i = 0; i < children.length; i++) ...[
-        children[i],
-        if (i != children.length - 1) const SizedBox(height: 12),
-      ],
-    ],
-  );
-}
 
   Widget _buildMainContent() {
     final t = AppLocalizations.of(context);
