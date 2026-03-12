@@ -1,24 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// A simple localization class that provides translated strings for the
-/// supported languages of the application. This implementation uses an
-/// internal map to store translations for each supported locale. To add
-/// translations for a new string, add the key with its translations to
-/// the `_localizedValues` map below. The `translate` method looks up
-/// the current locale's translation for the given key and falls back to
-/// the key itself when no translation is found. This allows missing
-/// translations to be easily spotted during development.
 class AppLocalizations {
-  /// The locale that this instance should provide translations for.
   final Locale locale;
 
   AppLocalizations(this.locale);
 
-  /// A map containing all localized strings for each supported language.
-  ///
-  /// Keys represent a logical identifier for the string (e.g. `description`,
-  /// `value`) and values are the translated string in the specified
-  /// language. Add entries here for new strings you wish to localize.
   static const Map<String, Map<String, String>> _localizedValues = {
     'pt': {
       'description': 'Descrição',
@@ -51,16 +37,14 @@ class AppLocalizations {
       'monthly_report': 'Relatório Mensal',
       'annual_report': 'Relatório Anual',
       'income': 'Entradas',
-      'expenses': 'Saídas',
+      'expenses': 'Despesas',
       'balance': 'Saldo',
 
-      // Navigation bar labels
       'nav_home': 'Início',
       'nav_entries': 'Entradas',
-      'nav_expenses': 'Saídas',
+      'nav_expenses': 'Despesas',
       'nav_reports': 'Relatórios',
 
-      // Language selection and names
       'select_language': 'Idioma',
       'lang_pt': 'Português',
       'lang_en': 'Inglês',
@@ -68,10 +52,35 @@ class AppLocalizations {
       'lang_es': 'Espanhol',
       'settings': 'Configurações',
       'app_settings': 'Configurações do aplicativo',
-      'language_settings_description': 'Escolha o idioma exibido no aplicativo.',
+      'language_settings_description':
+          'Escolha o idioma exibido no aplicativo.',
       'save_changes': 'Salvar alterações',
       'cancel': 'Cancelar',
       'language_updated': 'Idioma atualizado com sucesso.',
+
+      'financial_dashboard': 'Dashboard financeiro',
+      'month_summary': 'Resumo do mês',
+      'current_result': 'Resultado atual',
+      'entries': 'Entradas',
+      'result': 'Resultado',
+      'positive_month': 'Mês positivo',
+      'balance_attention': 'Atenção ao saldo',
+      'quick_access': 'Acessos rápidos',
+      'main_navigation_subtitle': 'Navegação principal do sistema',
+      'financial_overview': 'Visão financeira',
+      'current_month_comparison': 'Comparativo do mês atual',
+      'latest_entries': 'Últimas entradas',
+      'latest_expenses': 'Últimas despesas',
+      'latest_five_records': '5 registros mais recentes',
+      'entries_shortcut_subtitle': 'Cadastrar e revisar receitas',
+      'expenses_shortcut_subtitle': 'Lançar gastos e recibos',
+      'fiscal_report': 'Relatório Fiscal',
+      'fiscal_report_shortcut_subtitle': 'Gerar resumo fiscal em PDF',
+      'loss': 'Prejuízo',
+      'no_entries_registered': 'Nenhuma entrada cadastrada.',
+      'no_expenses_registered': 'Nenhuma despesa cadastrada.',
+      'no_description': 'Sem descrição',
+      'no_category': 'Sem categoria',
     },
     'en': {
       'description': 'Description',
@@ -107,13 +116,11 @@ class AppLocalizations {
       'expenses': 'Expenses',
       'balance': 'Balance',
 
-      // Navigation bar labels
       'nav_home': 'Home',
       'nav_entries': 'Income',
       'nav_expenses': 'Expenses',
       'nav_reports': 'Reports',
 
-      // Language selection and names
       'select_language': 'Language',
       'lang_pt': 'Portuguese',
       'lang_en': 'English',
@@ -121,10 +128,35 @@ class AppLocalizations {
       'lang_es': 'Spanish',
       'settings': 'Settings',
       'app_settings': 'App Settings',
-      'language_settings_description': 'Choose the language shown in the application.',
+      'language_settings_description':
+          'Choose the language shown in the application.',
       'save_changes': 'Save changes',
       'cancel': 'Cancel',
       'language_updated': 'Language updated successfully.',
+
+      'financial_dashboard': 'Financial dashboard',
+      'month_summary': 'Month summary',
+      'current_result': 'Current result',
+      'entries': 'Income',
+      'result': 'Result',
+      'positive_month': 'Positive month',
+      'balance_attention': 'Pay attention to balance',
+      'quick_access': 'Quick access',
+      'main_navigation_subtitle': 'Main system navigation',
+      'financial_overview': 'Financial overview',
+      'current_month_comparison': 'Current month comparison',
+      'latest_entries': 'Latest income',
+      'latest_expenses': 'Latest expenses',
+      'latest_five_records': '5 most recent records',
+      'entries_shortcut_subtitle': 'Add and review income',
+      'expenses_shortcut_subtitle': 'Record expenses and receipts',
+      'fiscal_report': 'Fiscal Report',
+      'fiscal_report_shortcut_subtitle': 'Generate fiscal PDF summary',
+      'loss': 'Loss',
+      'no_entries_registered': 'No income registered.',
+      'no_expenses_registered': 'No expenses registered.',
+      'no_description': 'No description',
+      'no_category': 'No category',
     },
     'ja': {
       'description': '説明',
@@ -160,13 +192,11 @@ class AppLocalizations {
       'expenses': '支出',
       'balance': '残高',
 
-      // Navigation bar labels
       'nav_home': 'ホーム',
       'nav_entries': '収入',
       'nav_expenses': '支出',
       'nav_reports': 'レポート',
 
-      // Language selection and names
       'select_language': '言語',
       'lang_pt': 'ポルトガル語',
       'lang_en': '英語',
@@ -178,6 +208,30 @@ class AppLocalizations {
       'save_changes': '変更を保存',
       'cancel': 'キャンセル',
       'language_updated': '言語が更新されました。',
+
+      'financial_dashboard': '財務ダッシュボード',
+      'month_summary': '今月の概要',
+      'current_result': '現在の結果',
+      'entries': '収入',
+      'result': '結果',
+      'positive_month': '黒字の月',
+      'balance_attention': '残高に注意',
+      'quick_access': 'クイックアクセス',
+      'main_navigation_subtitle': 'システムの主要ナビゲーション',
+      'financial_overview': '財務概要',
+      'current_month_comparison': '今月の比較',
+      'latest_entries': '最新の収入',
+      'latest_expenses': '最新の支出',
+      'latest_five_records': '直近5件の記録',
+      'entries_shortcut_subtitle': '収入を登録・確認',
+      'expenses_shortcut_subtitle': '支出と領収書を記録',
+      'fiscal_report': '税務レポート',
+      'fiscal_report_shortcut_subtitle': '税務PDFサマリーを生成',
+      'loss': '損失',
+      'no_entries_registered': '収入はまだ登録されていません。',
+      'no_expenses_registered': '支出はまだ登録されていません。',
+      'no_description': '説明なし',
+      'no_category': 'カテゴリなし',
     },
     'es': {
       'description': 'Descripción',
@@ -195,8 +249,8 @@ class AppLocalizations {
       'error_fill_mandatory_fields': 'Complete todos los campos obligatorios',
       'error_select_payment': 'Seleccione el método de pago',
       'error_invalid_value': 'Valor inválido',
-      'entry_added': 'Ingreso agregado!',
-      'expense_added': 'Gasto agregado!',
+      'entry_added': '¡Ingreso agregado!',
+      'expense_added': '¡Gasto agregado!',
       'category': 'Categoría',
       'category_food': 'Alimentación',
       'category_transport': 'Transporte',
@@ -213,13 +267,11 @@ class AppLocalizations {
       'expenses': 'Gastos',
       'balance': 'Saldo',
 
-      // Navigation bar labels
       'nav_home': 'Inicio',
       'nav_entries': 'Ingresos',
       'nav_expenses': 'Gastos',
       'nav_reports': 'Informes',
 
-      // Language selection and names
       'select_language': 'Idioma',
       'lang_pt': 'Portugués',
       'lang_en': 'Inglés',
@@ -227,30 +279,52 @@ class AppLocalizations {
       'lang_es': 'Español',
       'settings': 'Configuración',
       'app_settings': 'Configuración de la aplicación',
-      'language_settings_description': 'Elija el idioma que se mostrará en la aplicación.',
+      'language_settings_description':
+          'Elija el idioma que se mostrará en la aplicación.',
       'save_changes': 'Guardar cambios',
       'cancel': 'Cancelar',
       'language_updated': 'Idioma actualizado correctamente.',
+
+      'financial_dashboard': 'Panel financiero',
+      'month_summary': 'Resumen del mes',
+      'current_result': 'Resultado actual',
+      'entries': 'Ingresos',
+      'result': 'Resultado',
+      'positive_month': 'Mes positivo',
+      'balance_attention': 'Atención al saldo',
+      'quick_access': 'Accesos rápidos',
+      'main_navigation_subtitle': 'Navegación principal del sistema',
+      'financial_overview': 'Visión financiera',
+      'current_month_comparison': 'Comparación del mes actual',
+      'latest_entries': 'Últimos ingresos',
+      'latest_expenses': 'Últimos gastos',
+      'latest_five_records': '5 registros más recientes',
+      'entries_shortcut_subtitle': 'Registrar y revisar ingresos',
+      'expenses_shortcut_subtitle': 'Registrar gastos y recibos',
+      'fiscal_report': 'Informe Fiscal',
+      'fiscal_report_shortcut_subtitle': 'Generar resumen fiscal en PDF',
+      'loss': 'Pérdida',
+      'no_entries_registered': 'No hay ingresos registrados.',
+      'no_expenses_registered': 'No hay gastos registrados.',
+      'no_description': 'Sin descripción',
+      'no_category': 'Sin categoría',
     },
   };
 
-  /// Returns the translated string for the given key. If no translation
-  /// exists for the current locale, the key itself is returned as a fallback.
   String translate(String key) {
     return _localizedValues[locale.languageCode]?[key] ?? key;
   }
 
-  /// Shortcut to access the localization from the widget tree.
   static AppLocalizations of(BuildContext context) {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  /// A localization delegate that instantiates `AppLocalizations` for
-  /// supported locales.
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
