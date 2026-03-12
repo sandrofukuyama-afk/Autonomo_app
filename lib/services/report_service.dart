@@ -15,6 +15,10 @@ class ReportService {
     required double nationalTax,
     required double residentTax,
     required double totalTax,
+    int? expenseCount,
+    double? deductibleExpenses,
+    double? nonDeductibleExpenses,
+    double? estimatedTaxImpact,
   }) async {
     final pdf = pw.Document();
 
@@ -44,6 +48,26 @@ class ReportService {
               _row('Receita total', _yen(entries)),
               _row('Despesas totais', _yen(expenses)),
               _row('Lucro tributável', _yen(profit), bold: true),
+              if (expenseCount != null ||
+                  deductibleExpenses != null ||
+                  nonDeductibleExpenses != null ||
+                  estimatedTaxImpact != null) ...[
+                pw.SizedBox(height: 24),
+                _sectionTitle('Resumo fiscal'),
+                pw.SizedBox(height: 10),
+                if (expenseCount != null)
+                  _row('Quantidade de despesas', expenseCount.toString()),
+                if (deductibleExpenses != null)
+                  _row('Despesas dedutíveis', _yen(deductibleExpenses)),
+                if (nonDeductibleExpenses != null)
+                  _row('Despesas não dedutíveis', _yen(nonDeductibleExpenses)),
+                if (estimatedTaxImpact != null)
+                  _row(
+                    'Impacto fiscal estimado',
+                    _yen(estimatedTaxImpact),
+                    bold: true,
+                  ),
+              ],
               pw.SizedBox(height: 24),
               _sectionTitle('Estimativa de imposto'),
               pw.SizedBox(height: 10),
