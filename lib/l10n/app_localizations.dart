@@ -91,7 +91,17 @@ class AppLocalizations {
       'deductible_expenses': 'Despesas dedutíveis',
       'non_deductible_expenses': 'Despesas não dedutíveis',
       'estimated_tax_impact': 'Impacto fiscal estimado',
+
+      'current_month_tax_overview': 'Visão fiscal do mês atual',
+      'status_closed': 'Fechado',
+      'status_open': 'Aberto',
+      'current_month_closed_description':
+          'Este mês já foi fechado. Entradas e despesas estão protegidas contra edição ou exclusão.',
+      'current_month_open_description':
+          'Feche o mês fiscal após concluir a revisão mensal.',
+      'no_closed_fiscal_months_yet': 'Nenhum mês fiscal fechado ainda.',
     },
+
     'en': {
       'description': 'Description',
       'value': 'Amount',
@@ -177,7 +187,17 @@ class AppLocalizations {
       'deductible_expenses': 'Deductible expenses',
       'non_deductible_expenses': 'Non-deductible expenses',
       'estimated_tax_impact': 'Estimated tax impact',
+
+      'current_month_tax_overview': 'Current month tax overview',
+      'status_closed': 'Closed',
+      'status_open': 'Open',
+      'current_month_closed_description':
+          'This month is already closed. Entries and expenses are protected from edits or deletions.',
+      'current_month_open_description':
+          'Close the fiscal month after finishing the monthly review.',
+      'no_closed_fiscal_months_yet': 'No closed fiscal months yet.',
     },
+
     'ja': {
       'description': '説明',
       'value': '金額',
@@ -262,7 +282,17 @@ class AppLocalizations {
       'deductible_expenses': '控除可能経費',
       'non_deductible_expenses': '控除不可経費',
       'estimated_tax_impact': '推定税負担',
+
+      'current_month_tax_overview': '今月の税務概要',
+      'status_closed': '締め済み',
+      'status_open': '未締め',
+      'current_month_closed_description':
+          'この月はすでに締められています。収入と支出は編集または削除できません。',
+      'current_month_open_description':
+          '月次レビュー完了後に会計月を締めてください。',
+      'no_closed_fiscal_months_yet': 'まだ締められた会計月はありません。',
     },
+
     'es': {
       'description': 'Descripción',
       'value': 'Valor',
@@ -348,6 +378,15 @@ class AppLocalizations {
       'deductible_expenses': 'Gastos deducibles',
       'non_deductible_expenses': 'Gastos no deducibles',
       'estimated_tax_impact': 'Impacto fiscal estimado',
+
+      'current_month_tax_overview': 'Resumen fiscal del mes actual',
+      'status_closed': 'Cerrado',
+      'status_open': 'Abierto',
+      'current_month_closed_description':
+          'Este mes ya está cerrado. Los ingresos y gastos no pueden editarse ni eliminarse.',
+      'current_month_open_description':
+          'Cierre el mes fiscal después de terminar la revisión mensual.',
+      'no_closed_fiscal_months_yet': 'Aún no hay meses fiscales cerrados.',
     },
   };
 
