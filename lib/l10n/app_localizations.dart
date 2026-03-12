@@ -99,9 +99,36 @@ class AppLocalizations {
           'Este mês já foi fechado. Entradas e despesas estão protegidas contra edição ou exclusão.',
       'current_month_open_description':
           'Feche o mês fiscal após concluir a revisão mensal.',
+      'close_month_after_review_description':
+          'Feche o mês fiscal após concluir a revisão mensal.',
       'no_closed_fiscal_months_yet': 'Nenhum mês fiscal fechado ainda.',
-    },
+      'fiscal_month_already_closed': 'Este mês fiscal já está fechado.',
+      'confirm_close_fiscal_month': 'Deseja fechar o mês fiscal',
+      'close_fiscal_month_warning':
+          'Após o fechamento, entradas e despesas deste mês não poderão mais ser editadas ou excluídas.',
+      'confirm_close_month': 'Fechar mês',
+      'fiscal_month_closed_success':
+          'Mês fiscal fechado com sucesso:',
+      'failed_to_close_fiscal_month': 'Falha ao fechar o mês fiscal',
+      'expenses_need_fiscal_review': 'despesas precisam de revisão fiscal',
+      'tap_to_open': 'Toque para abrir',
 
+      'new_expense': 'Nova despesa',
+      'take_photo': 'Tirar foto',
+      'choose_file': 'Escolher arquivo',
+      'store': 'Loja',
+      'fiscal_basic_data': 'Dados fiscais básicos',
+      'vendor': 'Fornecedor',
+      'notes': 'Observações',
+      'tax_rate': 'Taxa de imposto',
+      'tax_type': 'Tipo de imposto',
+      'tax_external': 'Imposto externo',
+      'change': 'Alterar',
+
+      'income_tax': 'Imposto de renda',
+      'resident_tax': 'Imposto municipal',
+      'estimated_total_tax': 'Total estimado',
+    },
     'en': {
       'description': 'Description',
       'value': 'Amount',
@@ -195,9 +222,37 @@ class AppLocalizations {
           'This month is already closed. Entries and expenses are protected from edits or deletions.',
       'current_month_open_description':
           'Close the fiscal month after finishing the monthly review.',
+      'close_month_after_review_description':
+          'Close the fiscal month after finishing the monthly review.',
       'no_closed_fiscal_months_yet': 'No closed fiscal months yet.',
-    },
+      'fiscal_month_already_closed':
+          'This fiscal month is already closed.',
+      'confirm_close_fiscal_month': 'Do you want to close fiscal month',
+      'close_fiscal_month_warning':
+          'After closing, entries and expenses in this month can no longer be edited or deleted.',
+      'confirm_close_month': 'Close month',
+      'fiscal_month_closed_success':
+          'Fiscal month closed successfully:',
+      'failed_to_close_fiscal_month': 'Failed to close fiscal month',
+      'expenses_need_fiscal_review': 'expenses need fiscal review',
+      'tap_to_open': 'Tap to open',
 
+      'new_expense': 'New expense',
+      'take_photo': 'Take photo',
+      'choose_file': 'Choose file',
+      'store': 'Store',
+      'fiscal_basic_data': 'Basic fiscal data',
+      'vendor': 'Vendor',
+      'notes': 'Notes',
+      'tax_rate': 'Tax rate',
+      'tax_type': 'Tax type',
+      'tax_external': 'External tax',
+      'change': 'Change',
+
+      'income_tax': 'Income tax',
+      'resident_tax': 'Resident tax',
+      'estimated_total_tax': 'Estimated total',
+    },
     'ja': {
       'description': '説明',
       'value': '金額',
@@ -290,9 +345,35 @@ class AppLocalizations {
           'この月はすでに締められています。収入と支出は編集または削除できません。',
       'current_month_open_description':
           '月次レビュー完了後に会計月を締めてください。',
+      'close_month_after_review_description':
+          '月次レビュー完了後に会計月を締めてください。',
       'no_closed_fiscal_months_yet': 'まだ締められた会計月はありません。',
-    },
+      'fiscal_month_already_closed': 'この会計月はすでに締められています。',
+      'confirm_close_fiscal_month': '会計月を締めますか',
+      'close_fiscal_month_warning':
+          '締め処理後、この月の収入と支出は編集または削除できなくなります。',
+      'confirm_close_month': '月を締める',
+      'fiscal_month_closed_success': '会計月が正常に締められました:',
+      'failed_to_close_fiscal_month': '会計月の締め処理に失敗しました',
+      'expenses_need_fiscal_review': '件の経費に税務レビューが必要です',
+      'tap_to_open': 'タップして開く',
 
+      'new_expense': '新しい経費',
+      'take_photo': '写真を撮る',
+      'choose_file': 'ファイルを選択',
+      'store': '店舗',
+      'fiscal_basic_data': '基本税務データ',
+      'vendor': '仕入先',
+      'notes': 'メモ',
+      'tax_rate': '税率',
+      'tax_type': '税タイプ',
+      'tax_external': '外税',
+      'change': '変更',
+
+      'income_tax': '所得税',
+      'resident_tax': '住民税',
+      'estimated_total_tax': '推定合計税額',
+    },
     'es': {
       'description': 'Descripción',
       'value': 'Valor',
@@ -386,7 +467,36 @@ class AppLocalizations {
           'Este mes ya está cerrado. Los ingresos y gastos no pueden editarse ni eliminarse.',
       'current_month_open_description':
           'Cierre el mes fiscal después de terminar la revisión mensual.',
+      'close_month_after_review_description':
+          'Cierre el mes fiscal después de terminar la revisión mensual.',
       'no_closed_fiscal_months_yet': 'Aún no hay meses fiscales cerrados.',
+      'fiscal_month_already_closed': 'Este mes fiscal ya está cerrado.',
+      'confirm_close_fiscal_month': '¿Desea cerrar el mes fiscal',
+      'close_fiscal_month_warning':
+          'Después del cierre, los ingresos y gastos de este mes ya no podrán editarse ni eliminarse.',
+      'confirm_close_month': 'Cerrar mes',
+      'fiscal_month_closed_success':
+          'Mes fiscal cerrado correctamente:',
+      'failed_to_close_fiscal_month': 'Error al cerrar el mes fiscal',
+      'expenses_need_fiscal_review':
+          'gastos necesitan revisión fiscal',
+      'tap_to_open': 'Toque para abrir',
+
+      'new_expense': 'Nuevo gasto',
+      'take_photo': 'Tomar foto',
+      'choose_file': 'Elegir archivo',
+      'store': 'Tienda',
+      'fiscal_basic_data': 'Datos fiscales básicos',
+      'vendor': 'Proveedor',
+      'notes': 'Notas',
+      'tax_rate': 'Tasa de impuesto',
+      'tax_type': 'Tipo de impuesto',
+      'tax_external': 'Impuesto externo',
+      'change': 'Cambiar',
+
+      'income_tax': 'Impuesto sobre la renta',
+      'resident_tax': 'Impuesto municipal',
+      'estimated_total_tax': 'Total estimado',
     },
   };
 
