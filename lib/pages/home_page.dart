@@ -220,7 +220,6 @@ class _HomePageState extends State<HomePage> {
     await _refreshDashboard();
   }
 
-
   String _languageLabel(AppLocalizations t, String code) {
     switch (code) {
       case 'pt':
@@ -238,8 +237,14 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _openSettingsDialog() async {
     final t = AppLocalizations.of(context);
-    String selectedLanguage = widget.currentLocale?.languageCode ??
-        Localizations.localeOf(context).languageCode;
+    String selectedLanguage =
+        widget.currentLocale?.languageCode.isNotEmpty == true
+            ? widget.currentLocale!.languageCode
+            : Localizations.localeOf(context).languageCode;
+
+    if (!['pt', 'es', 'en', 'ja'].contains(selectedLanguage)) {
+      selectedLanguage = 'pt';
+    }
 
     final saved = await showDialog<bool>(
       context: context,
@@ -269,17 +274,12 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      items: const ['pt', 'es', 'en', 'ja'].map((code) {
+                      items: ['pt', 'es', 'en', 'ja'].map((code) {
                         return DropdownMenuItem<String>(
                           value: code,
-                          child: Text(code),
+                          child: Text(_languageLabel(t, code)),
                         );
                       }).toList(),
-                      selectedItemBuilder: (context) {
-                        return ['pt', 'es', 'en', 'ja'].map((code) {
-                          return Text(_languageLabel(t, code));
-                        }).toList();
-                      },
                       onChanged: (value) {
                         if (value == null) return;
                         setStateDialog(() {
@@ -293,8 +293,12 @@ class _HomePageState extends State<HomePage> {
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: Icon(
-                          selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                          color: selected ? Theme.of(context).colorScheme.primary : Colors.grey,
+                          selected
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                          color: selected
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.grey,
                         ),
                         title: Text(_languageLabel(t, code)),
                         onTap: () {
@@ -315,7 +319,7 @@ class _HomePageState extends State<HomePage> {
                 ElevatedButton(
                   onPressed: () async {
                     await widget.onLocaleChanged(Locale(selectedLanguage));
-                    if (!context.mounted) return;
+                    if (!dialogContext.mounted) return;
                     Navigator.pop(dialogContext, true);
                   },
                   child: Text(t.translate('save_changes')),
@@ -408,7 +412,9 @@ class _HomePageState extends State<HomePage> {
                 label: 'Despesas ${_formatYen(_monthExpensesTotal)}',
               ),
               _heroChip(
-                icon: positive ? Icons.check_circle_outline : Icons.warning_amber,
+                icon: positive
+                    ? Icons.check_circle_outline
+                    : Icons.warning_amber,
                 label: positive ? 'Mês positivo' : 'Atenção ao saldo',
               ),
             ],
@@ -700,7 +706,8 @@ class _HomePageState extends State<HomePage> {
               color: Colors.white,
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
                   CircleAvatar(
