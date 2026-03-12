@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../data/supabase_service.dart';
+import '../l10n/app_localizations.dart';
 import '../services/report_service.dart';
 
 class ReportsPage extends StatefulWidget {
@@ -43,8 +45,8 @@ class _ReportsPageState extends State<ReportsPage> {
       end = DateTime(_year, 12, 31, 23, 59, 59);
     } else {
       final now = DateTime.now();
-      start = DateTime(now.year, now.month, now.day)
-          .subtract(const Duration(days: 365));
+      start =
+          DateTime(now.year, now.month, now.day).subtract(const Duration(days: 365));
       end = DateTime(now.year, now.month, now.day, 23, 59, 59);
     }
 
@@ -57,9 +59,7 @@ class _ReportsPageState extends State<ReportsPage> {
           ? (e['amount'] as num).toDouble()
           : double.tryParse((e['amount'] ?? '0').toString()) ?? 0;
 
-      if (date != null &&
-          !date.isBefore(start) &&
-          !date.isAfter(end)) {
+      if (date != null && !date.isBefore(start) && !date.isAfter(end)) {
         totalEntries += amount;
       }
     }
@@ -70,9 +70,7 @@ class _ReportsPageState extends State<ReportsPage> {
           ? (e['amount'] as num).toDouble()
           : double.tryParse((e['amount'] ?? '0').toString()) ?? 0;
 
-      if (date != null &&
-          !date.isBefore(start) &&
-          !date.isAfter(end)) {
+      if (date != null && !date.isBefore(start) && !date.isAfter(end)) {
         totalExpenses += amount;
       }
     }
@@ -109,14 +107,47 @@ class _ReportsPageState extends State<ReportsPage> {
     return '¥${buffer.toString().split('').reversed.join()}';
   }
 
-  String _periodLabel() {
-    if (_period == 'year') {
-      return 'Relatório do ano $_year';
+  String _tr(BuildContext context, String key, String pt, String en, String ja, String es) {
+    final t = AppLocalizations.of(context);
+    final translated = t.translate(key);
+    if (translated != key) return translated;
+
+    switch (Localizations.localeOf(context).languageCode) {
+      case 'en':
+        return en;
+      case 'ja':
+        return ja;
+      case 'es':
+        return es;
+      case 'pt':
+      default:
+        return pt;
     }
-    return 'Relatório dos últimos 12 meses';
   }
 
-  Widget _summaryHeader() {
+  String _periodLabel(BuildContext context) {
+    if (_period == 'year') {
+      return '${_tr(
+        context,
+        'year_report_label',
+        'Relatório do ano',
+        'Report for year',
+        '年次レポート',
+        'Informe del año',
+      )} $_year';
+    }
+
+    return _tr(
+      context,
+      'last_12_months_report_label',
+      'Relatório dos últimos 12 meses',
+      'Report for the last 12 months',
+      '過去12か月のレポート',
+      'Informe de los últimos 12 meses',
+    );
+  }
+
+  Widget _summaryHeader(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -128,16 +159,23 @@ class _ReportsPageState extends State<ReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Resumo fiscal',
-            style: TextStyle(
+          Text(
+            _tr(
+              context,
+              'fiscal_summary',
+              'Resumo fiscal',
+              'Fiscal summary',
+              '税務サマリー',
+              'Resumen fiscal',
+            ),
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            _periodLabel(),
+            _periodLabel(context),
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey.shade700,
@@ -203,7 +241,7 @@ class _ReportsPageState extends State<ReportsPage> {
     );
   }
 
-  Widget _taxBox(Map<String, dynamic> data) {
+  Widget _taxBox(BuildContext context, Map<String, dynamic> data) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -215,20 +253,54 @@ class _ReportsPageState extends State<ReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Estimativa de imposto',
-            style: TextStyle(
+          Text(
+            _tr(
+              context,
+              'estimated_tax',
+              'Estimativa de imposto',
+              'Tax estimate',
+              '税額見込み',
+              'Estimación de impuesto',
+            ),
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 14),
-          _taxRow('Income Tax', _yen((data['nationalTax'] as num).toDouble())),
-          const Divider(height: 22),
-          _taxRow('Resident Tax', _yen((data['residentTax'] as num).toDouble())),
+          _taxRow(
+            _tr(
+              context,
+              'income_tax',
+              'Imposto de renda',
+              'Income tax',
+              '所得税',
+              'Impuesto sobre la renta',
+            ),
+            _yen((data['nationalTax'] as num).toDouble()),
+          ),
           const Divider(height: 22),
           _taxRow(
-            'Total estimado',
+            _tr(
+              context,
+              'resident_tax',
+              'Imposto municipal',
+              'Resident tax',
+              '住民税',
+              'Impuesto municipal',
+            ),
+            _yen((data['residentTax'] as num).toDouble()),
+          ),
+          const Divider(height: 22),
+          _taxRow(
+            _tr(
+              context,
+              'estimated_total_tax',
+              'Total estimado',
+              'Estimated total',
+              '推定合計税額',
+              'Total estimado',
+            ),
             _yen((data['totalTax'] as num).toDouble()),
             isTotal: true,
           ),
@@ -261,7 +333,7 @@ class _ReportsPageState extends State<ReportsPage> {
     );
   }
 
-  Widget _periodSelector() {
+  Widget _periodSelector(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -274,18 +346,43 @@ class _ReportsPageState extends State<ReportsPage> {
           Expanded(
             child: DropdownButtonFormField<String>(
               value: _period,
-              decoration: const InputDecoration(
-                labelText: 'Período',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: _tr(
+                  context,
+                  'period',
+                  'Período',
+                  'Period',
+                  '期間',
+                  'Período',
+                ),
+                border: const OutlineInputBorder(),
               ),
-              items: const [
+              items: [
                 DropdownMenuItem(
                   value: 'year',
-                  child: Text('Ano específico'),
+                  child: Text(
+                    _tr(
+                      context,
+                      'specific_year',
+                      'Ano específico',
+                      'Specific year',
+                      '特定の年',
+                      'Año específico',
+                    ),
+                  ),
                 ),
                 DropdownMenuItem(
                   value: '12m',
-                  child: Text('Últimos 12 meses'),
+                  child: Text(
+                    _tr(
+                      context,
+                      'last_12_months',
+                      'Últimos 12 meses',
+                      'Last 12 months',
+                      '過去12か月',
+                      'Últimos 12 meses',
+                    ),
+                  ),
                 ),
               ],
               onChanged: (v) {
@@ -303,9 +400,16 @@ class _ReportsPageState extends State<ReportsPage> {
               width: 130,
               child: DropdownButtonFormField<int>(
                 value: _year,
-                decoration: const InputDecoration(
-                  labelText: 'Ano',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: _tr(
+                    context,
+                    'year',
+                    'Ano',
+                    'Year',
+                    '年',
+                    'Año',
+                  ),
+                  border: const OutlineInputBorder(),
                 ),
                 items: List.generate(
                   5,
@@ -344,12 +448,19 @@ class _ReportsPageState extends State<ReportsPage> {
     );
   }
 
-  Widget _errorState(Object error) {
+  Widget _errorState(BuildContext context, Object error) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
-          'Erro ao carregar relatório: $error',
+          '${_tr(
+            context,
+            'error_loading_report',
+            'Erro ao carregar relatório',
+            'Error loading report',
+            'レポートの読み込みエラー',
+            'Error al cargar el informe',
+          )}: $error',
           textAlign: TextAlign.center,
         ),
       ),
@@ -360,7 +471,16 @@ class _ReportsPageState extends State<ReportsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Relatório Fiscal'),
+        title: Text(
+          _tr(
+            context,
+            'fiscal_report',
+            'Relatório Fiscal',
+            'Fiscal Report',
+            '税務レポート',
+            'Informe Fiscal',
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -376,7 +496,7 @@ class _ReportsPageState extends State<ReportsPage> {
           }
 
           if (snapshot.hasError) {
-            return _errorState(snapshot.error!);
+            return _errorState(context, snapshot.error!);
           }
 
           final data = snapshot.data!;
@@ -386,38 +506,68 @@ class _ReportsPageState extends State<ReportsPage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _summaryHeader(),
+                _summaryHeader(context),
                 const SizedBox(height: 16),
-                _periodSelector(),
+                _periodSelector(context),
                 const SizedBox(height: 18),
                 _valueCard(
-                  title: 'Receita total',
+                  title: _tr(
+                    context,
+                    'total_income',
+                    'Receita total',
+                    'Total income',
+                    '総収入',
+                    'Ingreso total',
+                  ),
                   value: _yen((data['entries'] as num).toDouble()),
                   icon: Icons.trending_up,
                   valueColor: Colors.green.shade700,
                 ),
                 const SizedBox(height: 12),
                 _valueCard(
-                  title: 'Despesas totais',
+                  title: _tr(
+                    context,
+                    'total_expenses',
+                    'Despesas totais',
+                    'Total expenses',
+                    '総支出',
+                    'Gastos totales',
+                  ),
                   value: _yen((data['expenses'] as num).toDouble()),
                   icon: Icons.trending_down,
                   valueColor: Colors.red.shade700,
                 ),
                 const SizedBox(height: 12),
                 _valueCard(
-                  title: 'Lucro tributável',
+                  title: _tr(
+                    context,
+                    'taxable_profit',
+                    'Lucro tributável',
+                    'Taxable profit',
+                    '課税利益',
+                    'Ganancia imponible',
+                  ),
                   value: _yen((data['profit'] as num).toDouble()),
                   icon: Icons.account_balance_wallet_outlined,
                   valueColor: Colors.blue.shade700,
                 ),
                 const SizedBox(height: 18),
-                _taxBox(data),
+                _taxBox(context, data),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.picture_as_pdf),
-                    label: const Text('Gerar PDF Fiscal'),
+                    label: Text(
+                      _tr(
+                        context,
+                        'generate_fiscal_pdf',
+                        'Gerar PDF Fiscal',
+                        'Generate Fiscal PDF',
+                        '税務PDFを生成',
+                        'Generar PDF Fiscal',
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
