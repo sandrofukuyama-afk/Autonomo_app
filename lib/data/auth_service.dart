@@ -19,6 +19,8 @@ class AuthService {
 
   String? _cachedCompanyId;
   String? _cachedCompanyUserId;
+  String? _cachedLanguageCode;
+  String? _cachedLanguageUserId;
 
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
@@ -39,7 +41,7 @@ class AuthService {
       throw Exception('Informe sua senha.');
     }
 
-    _clearCompanyCache();
+    _clearCaches();
 
     await _client.auth.signInWithPassword(
       email: cleanEmail,
@@ -89,7 +91,9 @@ class AuthService {
     );
   }
 
-  Future<String> getCurrentCompanyId({bool forceRefresh = false}) async {
+  Future<Map<String, dynamic>> getCurrentProfile({
+    bool forceRefresh = false,
+  }) async {
     final user = currentUser;
 
     if (user == null) {
@@ -98,13 +102,18 @@ class AuthService {
 
     if (!forceRefresh &&
         _cachedCompanyId != null &&
-        _cachedCompanyUserId == user.id) {
-      return _cachedCompanyId!;
+        _cachedCompanyUserId == user.id &&
+        _cachedLanguageUserId == user.id) {
+      return {
+        'id': user.id,
+        'company_id': _cachedCompanyId,
+        'language_code': _cachedLanguageCode ?? 'pt',
+      };
     }
 
     final profile = await _client
         .from('profiles')
-        .select('id, company_id')
+        .select('id, company_id, language_code')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -118,19 +127,69 @@ class AuthService {
       throw Exception('Usuário não possui empresa vinculada.');
     }
 
-    _cachedCompanyId = companyId;
-    _cachedCompanyUserId = user.id;
+    final languageCode = (profile['language_code'] ?? 'pt').toString();
 
-    return companyId;
+    _cachedCompanyId = companyId.toString();
+    _cachedCompanyUserId = user.id;
+    _cachedLanguageCode = languageCode;
+    _cachedLanguageUserId = user.id;
+
+    return {
+      'id': user.id,
+      'company_id': _cachedCompanyId,
+      'language_code': _cachedLanguageCode,
+    };
   }
 
-  void _clearCompanyCache() {
+  Future<String> getCurrentCompanyId({bool forceRefresh = false}) async {
+    final profile = await getCurrentProfile(forceRefresh: forceRefresh);
+    final companyId = profile['company_id'];
+
+    if (companyId == null) {
+      throw Exception('Usuário não possui empresa vinculada.');
+    }
+
+    return companyId.toString();
+  }
+
+  Future<String> getCurrentLanguageCode({bool forceRefresh = false}) async {
+    final profile = await getCurrentProfile(forceRefresh: forceRefresh);
+    final languageCode = (profile['language_code'] ?? 'pt').toString();
+
+    if (languageCode.isEmpty) return 'pt';
+    return languageCode;
+  }
+
+  Future<void> updateCurrentLanguageCode(String languageCode) async {
+    final user = currentUser;
+
+    if (user == null) {
+      throw Exception('Usuário não autenticado.');
+    }
+
+    const allowed = ['pt', 'es', 'en', 'ja'];
+
+    if (!allowed.contains(languageCode)) {
+      throw Exception('Idioma inválido.');
+    }
+
+    await _client
+        .from('profiles')
+        .update({'language_code': languageCode}).eq('id', user.id);
+
+    _cachedLanguageCode = languageCode;
+    _cachedLanguageUserId = user.id;
+  }
+
+  void _clearCaches() {
     _cachedCompanyId = null;
     _cachedCompanyUserId = null;
+    _cachedLanguageCode = null;
+    _cachedLanguageUserId = null;
   }
 
   Future<void> signOut() async {
-    _clearCompanyCache();
+    _clearCaches();
     await _client.auth.signOut();
   }
 }
