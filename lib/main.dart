@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,7 +15,8 @@ Future<void> main() async {
 
   await Supabase.initialize(
     url: 'https://dzazwpgjncowkudkdhca.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6YXp3cGdqbmNvd2t1ZGtkaGNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MDIyODAsImV4cCI6MjA4ODM3ODI4MH0.mQBxjBlgPQpxb5-QyFNhgitM_WOnWlkEzFStYZPr5Pk',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6YXp3cGdqbmNvd2t1ZGtkaGNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MDIyODAsImV4cCI6MjA4ODM3ODI4MH0.mQBxjBlgPQpxb5-QyFNhgitM_WOnWlkEzFStYZPr5Pk',
   );
 
   runApp(const MyApp());
@@ -31,30 +34,93 @@ class _MyAppState extends State<MyApp> {
 
   Locale? _locale;
   bool _localeReady = false;
+  StreamSubscription<AuthState>? _authSubscription;
+
+  static const List<String> _allowedLanguageCodes = [
+    'pt',
+    'es',
+    'en',
+    'ja',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadSavedLocale();
+    _initializeLocale();
+    _listenToAuthChanges();
   }
 
-  Future<void> _loadSavedLocale() async {
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _listenToAuthChanges() {
+    _authSubscription = AuthService.instance.authStateChanges.listen((_) async {
+      await _syncLocaleFromUserProfile();
+    });
+  }
+
+  Future<void> _initializeLocale() async {
     final prefs = await SharedPreferences.getInstance();
     final savedCode = prefs.getString(_localeStorageKey);
+
+    Locale? initialLocale;
+    if (savedCode != null &&
+        savedCode.isNotEmpty &&
+        _allowedLanguageCodes.contains(savedCode)) {
+      initialLocale = Locale(savedCode);
+    }
 
     if (!mounted) return;
 
     setState(() {
-      _locale = (savedCode != null && savedCode.isNotEmpty)
-          ? Locale(savedCode)
-          : null;
+      _locale = initialLocale;
       _localeReady = true;
     });
+
+    await _syncLocaleFromUserProfile();
+  }
+
+  Future<void> _syncLocaleFromUserProfile() async {
+    final user = AuthService.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final languageCode =
+          await AuthService.instance.getCurrentLanguageCode(forceRefresh: true);
+
+      if (!_allowedLanguageCodes.contains(languageCode)) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_localeStorageKey, languageCode);
+
+      if (!mounted) return;
+
+      setState(() {
+        _locale = Locale(languageCode);
+      });
+    } catch (_) {
+      // Mantém o locale atual/fallback local sem quebrar a inicialização.
+    }
   }
 
   Future<void> _setLocale(Locale locale) async {
+    if (!_allowedLanguageCodes.contains(locale.languageCode)) return;
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_localeStorageKey, locale.languageCode);
+
+    if (AuthService.instance.currentUser != null) {
+      try {
+        await AuthService.instance.updateCurrentLanguageCode(
+          locale.languageCode,
+        );
+      } catch (_) {
+        // Mantém a troca local mesmo se falhar a persistência no banco.
+      }
+    }
 
     if (!mounted) return;
 
@@ -101,6 +167,7 @@ class _MyAppState extends State<MyApp> {
           if (user == null) {
             return const AuthPage();
           }
+
           return HomePage(
             currentLocale: _locale,
             onLocaleChanged: _setLocale,
