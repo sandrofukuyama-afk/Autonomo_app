@@ -10,8 +10,8 @@ class EntriesPage extends StatefulWidget {
 
 class _EntriesPageState extends State<EntriesPage> {
   List<Map<String, dynamic>> _entries = [];
-  List<String> _closedFiscalMonths = [];
   bool _loading = true;
+  List<String> _closedFiscalMonths = [];
 
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
@@ -22,6 +22,7 @@ class _EntriesPageState extends State<EntriesPage> {
   @override
   void initState() {
     super.initState();
+    _loadClosedMonths();
     _loadEntries();
   }
 
@@ -32,17 +33,80 @@ class _EntriesPageState extends State<EntriesPage> {
     super.dispose();
   }
 
+
+  Future<void> _loadClosedMonths() async {
+    try {
+      final months = await SupabaseService.instance.getClosedFiscalMonths();
+      if (!mounted) return;
+      setState(() {
+        _closedFiscalMonths = months;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _closedFiscalMonths = [];
+      });
+    }
+  }
+
+  String _extractFiscalMonth(dynamic rawDate) {
+    if (rawDate == null) return '';
+
+    if (rawDate is DateTime) {
+      final year = rawDate.year.toString().padLeft(4, '0');
+      final month = rawDate.month.toString().padLeft(2, '0');
+      return '$year-$month';
+    }
+
+    final parsed = DateTime.tryParse(rawDate.toString());
+    if (parsed != null) {
+      final year = parsed.year.toString().padLeft(4, '0');
+      final month = parsed.month.toString().padLeft(2, '0');
+      return '$year-$month';
+    }
+
+    final text = rawDate.toString().trim();
+    if (text.length >= 7 && text[4] == '-') {
+      return text.substring(0, 7);
+    }
+
+    return '';
+  }
+
+  bool _isClosedMonth(dynamic rawDate) {
+    final fiscalMonth = _extractFiscalMonth(rawDate);
+    if (fiscalMonth.isEmpty) return false;
+    return _closedFiscalMonths.contains(fiscalMonth);
+  }
+
+  bool _isCurrentMonthClosed() {
+    return _isClosedMonth(DateTime.now());
+  }
+
+  String _friendlyBlockedMessage([String? month]) {
+    if (month != null && month.isNotEmpty) {
+      return 'O mês fiscal $month está fechado. Esta operação não é permitida.';
+    }
+    return 'Este mês fiscal está fechado. Esta operação não é permitida.';
+  }
+
+  void _showMessage(String message, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: error ? Colors.red.shade700 : null,
+      ),
+    );
+  }
+
   Future<void> _loadEntries() async {
-    final results = await Future.wait([
-      SupabaseService.instance.getEntries(),
-      SupabaseService.instance.getClosedFiscalMonths(),
-    ]);
+    final data = await SupabaseService.instance.getEntries();
 
     if (!mounted) return;
 
     setState(() {
-      _entries = List<Map<String, dynamic>>.from(results[0] as List);
-      _closedFiscalMonths = List<String>.from(results[1] as List);
+      _entries = List<Map<String, dynamic>>.from(data);
       _loading = false;
     });
   }
@@ -51,6 +115,7 @@ class _EntriesPageState extends State<EntriesPage> {
     setState(() {
       _loading = true;
     });
+    await _loadClosedMonths();
     await _loadEntries();
   }
 
@@ -65,27 +130,6 @@ class _EntriesPageState extends State<EntriesPage> {
     final d = parsed.day.toString().padLeft(2, '0');
 
     return '$y-$m-$d';
-  }
-
-  bool _isClosedMonth(dynamic rawDate) {
-    if (rawDate == null) return false;
-
-    final parsed = rawDate is DateTime
-        ? rawDate
-        : DateTime.tryParse(rawDate.toString());
-
-    if (parsed == null) {
-      final value = rawDate.toString();
-      if (value.length >= 7 && value[4] == '-') {
-        return _closedFiscalMonths.contains(value.substring(0, 7));
-      }
-      return false;
-    }
-
-    final fiscalMonth =
-        '${parsed.year.toString().padLeft(4, '0')}-${parsed.month.toString().padLeft(2, '0')}';
-
-    return _closedFiscalMonths.contains(fiscalMonth);
   }
 
   String _formatYen(dynamic value) {
@@ -151,6 +195,14 @@ class _EntriesPageState extends State<EntriesPage> {
   }
 
   Future<void> _openAddDialog() async {
+    if (_isCurrentMonthClosed()) {
+      _showMessage(
+        _friendlyBlockedMessage(_extractFiscalMonth(DateTime.now())),
+        error: true,
+      );
+      return;
+    }
+
     _descController.clear();
     _amountController.clear();
     _selectedDate = DateTime.now();
@@ -284,6 +336,20 @@ class _EntriesPageState extends State<EntriesPage> {
                                   return;
                                 }
 
+                                if (_isClosedMonth(_selectedDate)) {
+                                  ScaffoldMessenger.of(this.context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        _friendlyBlockedMessage(
+                                          _extractFiscalMonth(_selectedDate),
+                                        ),
+                                      ),
+                                      backgroundColor: Colors.red.shade700,
+                                    ),
+                                  );
+                                  return;
+                                }
+
                                 try {
                                   await SupabaseService.instance.addEntry({
                                     'date': _selectedDate.toIso8601String(),
@@ -297,7 +363,10 @@ class _EntriesPageState extends State<EntriesPage> {
                                 } catch (e) {
                                   if (!mounted) return;
                                   ScaffoldMessenger.of(this.context).showSnackBar(
-                                    SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+                                    SnackBar(
+                                      content: Text(e.toString().replaceFirst('Exception: ', '')),
+                                      backgroundColor: Colors.red.shade700,
+                                    ),
                                   );
                                 }
                               },
@@ -325,6 +394,14 @@ class _EntriesPageState extends State<EntriesPage> {
   }
 
   Future<void> _editEntry(Map<String, dynamic> entry) async {
+    if (_isClosedMonth(entry['date'])) {
+      _showMessage(
+        _friendlyBlockedMessage(_extractFiscalMonth(entry['date'])),
+        error: true,
+      );
+      return;
+    }
+
     _descController.text = (entry['description'] ?? '').toString();
     _amountController.text = (entry['amount'] ?? '').toString();
     _selectedDate =
@@ -459,6 +536,20 @@ class _EntriesPageState extends State<EntriesPage> {
                                   return;
                                 }
 
+                                if (_isClosedMonth(_selectedDate)) {
+                                  ScaffoldMessenger.of(this.context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        _friendlyBlockedMessage(
+                                          _extractFiscalMonth(_selectedDate),
+                                        ),
+                                      ),
+                                      backgroundColor: Colors.red.shade700,
+                                    ),
+                                  );
+                                  return;
+                                }
+
                                 try {
                                   await SupabaseService.instance.updateEntry(
                                     entry['id'].toString(),
@@ -476,7 +567,10 @@ class _EntriesPageState extends State<EntriesPage> {
                                 } catch (e) {
                                   if (!mounted) return;
                                   ScaffoldMessenger.of(this.context).showSnackBar(
-                                    SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+                                    SnackBar(
+                                      content: Text(e.toString().replaceFirst('Exception: ', '')),
+                                      backgroundColor: Colors.red.shade700,
+                                    ),
                                   );
                                 }
                               },
@@ -503,7 +597,15 @@ class _EntriesPageState extends State<EntriesPage> {
     }
   }
 
-  Future<void> _deleteEntry(String id) async {
+  Future<void> _deleteEntry(String id, {dynamic entryDate}) async {
+    if (_isClosedMonth(entryDate)) {
+      _showMessage(
+        _friendlyBlockedMessage(_extractFiscalMonth(entryDate)),
+        error: true,
+      );
+      return;
+    }
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -535,9 +637,9 @@ class _EntriesPageState extends State<EntriesPage> {
 
       await _refresh();
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      _showMessage(
+        e.toString().replaceFirst('Exception: ', ''),
+        error: true,
       );
     }
   }
@@ -546,10 +648,10 @@ class _EntriesPageState extends State<EntriesPage> {
     final description = (entry['description'] ?? '').toString();
     final date = _formatDate(entry['date']);
     final amount = _formatYen(entry['amount']);
-    final isClosed = _isClosedMonth(entry['date']);
     final paymentMethod = _paymentLabel(
       (entry['payment_method'] ?? '').toString(),
     );
+    final isClosed = _isClosedMonth(entry['date']);
 
     return Card(
       elevation: 0,
@@ -592,11 +694,9 @@ class _EntriesPageState extends State<EntriesPage> {
                 if (isClosed)
                   Tooltip(
                     message: 'Mês fiscal fechado',
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.lock_outline),
+                    child: Icon(
+                      Icons.lock_outline,
+                      color: Colors.orange.shade700,
                     ),
                   ),
                 if (!isClosed)
@@ -609,12 +709,59 @@ class _EntriesPageState extends State<EntriesPage> {
                   IconButton(
                     tooltip: 'Excluir',
                     icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _deleteEntry(entry['id'].toString()),
+                    onPressed: () => _deleteEntry(
+                      entry['id'].toString(),
+                      entryDate: entry['date'],
+                    ),
                   ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+
+  Widget _closedMonthBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.lock_clock_outlined,
+            color: Colors.orange.shade800,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mês fiscal fechado',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Novas entradas, edição e exclusão ficam bloqueadas para o mês atual.',
+                  style: TextStyle(
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -664,9 +811,14 @@ class _EntriesPageState extends State<EntriesPage> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Nova entrada',
-            onPressed: _openAddDialog,
+            icon: Icon(
+              Icons.add,
+              color: _isCurrentMonthClosed() ? Colors.grey.shade400 : null,
+            ),
+            tooltip: _isCurrentMonthClosed()
+                ? 'Mês fiscal fechado'
+                : 'Nova entrada',
+            onPressed: _isCurrentMonthClosed() ? null : _openAddDialog,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -676,22 +828,29 @@ class _EntriesPageState extends State<EntriesPage> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _entries.isEmpty
-              ? _emptyState()
-              : RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _entries.length,
-                    itemBuilder: (context, index) {
-                      final entry = Map<String, dynamic>.from(_entries[index]);
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _entryCard(entry),
-                      );
-                    },
-                  ),
+          : Column(
+              children: [
+                if (_isCurrentMonthClosed()) _closedMonthBanner(),
+                Expanded(
+                  child: _entries.isEmpty
+                      ? _emptyState()
+                      : RefreshIndicator(
+                          onRefresh: _refresh,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _entries.length,
+                            itemBuilder: (context, index) {
+                              final entry = Map<String, dynamic>.from(_entries[index]);
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _entryCard(entry),
+                              );
+                            },
+                          ),
+                        ),
                 ),
+              ],
+            ),
     );
   }
 }
