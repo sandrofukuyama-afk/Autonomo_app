@@ -204,6 +204,75 @@ class _HomePageState extends State<HomePage> {
     return _isFiscalMonthClosed(_currentMonthLabel());
   }
 
+
+
+  Future<Map<String, dynamic>> _buildCurrentFiscalSnapshot() async {
+    if (_companyId == null) {
+      throw Exception('Company not found.');
+    }
+
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    final nextMonthStart = DateTime(now.year, now.month + 1, 1);
+
+    final String monthLabel = _currentMonthLabel();
+    final String startIso = monthStart.toIso8601String().split('T').first;
+    final String endIso = nextMonthStart.toIso8601String().split('T').first;
+
+    final List<dynamic> entries = await _client
+        .from('entries_v2')
+        .select('id, amount')
+        .eq('company_id', _companyId!)
+        .gte('entry_date', startIso)
+        .lt('entry_date', endIso);
+
+    final List<dynamic> expenses = await _client
+        .from('expenses_v2')
+        .select('id, amount')
+        .eq('company_id', _companyId!)
+        .gte('expense_date', startIso)
+        .lt('expense_date', endIso);
+
+    final List<dynamic> receipts = await _client
+        .from('expense_receipts')
+        .select('id, expense_id, expenses_v2!inner(id, expense_date, company_id)')
+        .eq('expenses_v2.company_id', _companyId!)
+        .gte('expenses_v2.expense_date', startIso)
+        .lt('expenses_v2.expense_date', endIso);
+
+    double totalEntries = 0;
+    for (final item in entries) {
+      totalEntries += _toDouble((item as Map)['amount']);
+    }
+
+    double totalExpenses = 0;
+    for (final item in expenses) {
+      totalExpenses += _toDouble((item as Map)['amount']);
+    }
+
+    final double profit = totalEntries - totalExpenses;
+    final double taxableProfit = profit > 0 ? profit : 0;
+    final double estimatedNationalTax = taxableProfit * 0.10;
+    final double estimatedResidentTax = taxableProfit * 0.10;
+    final double estimatedTotalTax =
+        estimatedNationalTax + estimatedResidentTax;
+
+    return {
+      'company_id': _companyId,
+      'fiscal_month': monthLabel,
+      'total_entries': totalEntries,
+      'total_expenses': totalExpenses,
+      'profit': profit,
+      'estimated_national_tax': estimatedNationalTax,
+      'estimated_resident_tax': estimatedResidentTax,
+      'estimated_total_tax': estimatedTotalTax,
+      'entries_count': entries.length,
+      'expenses_count': expenses.length,
+      'receipts_count': receipts.length,
+      'closed_at': DateTime.now().toIso8601String(),
+    };
+  }
+
   Future<void> _closeCurrentFiscalMonth() async {
     if (_companyId == null || _closingFiscalMonth) return;
 
@@ -251,6 +320,11 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final updatedMonths = [..._closedFiscalMonths, month]..sort();
+      final snapshot = await _buildCurrentFiscalSnapshot();
+
+      await _client
+          .from('monthly_fiscal_snapshots')
+          .upsert(snapshot, onConflict: 'company_id,fiscal_month');
 
       await _client
           .from('app_settings')
