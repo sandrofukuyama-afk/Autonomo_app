@@ -20,6 +20,7 @@ dependencies:
   printing: ^5.14.2
   intl: ^0.20.2
   file_picker: ^10.3.10
+  archive: ^3.6.1
 
 dev_dependencies:
   flutter_test:
