@@ -18,7 +18,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
   List<Map<String, dynamic>> _expenses = [];
   bool _loading = true;
   String _reviewFilter = 'all';
-
   List<String> _closedFiscalMonths = [];
 
   final TextEditingController _descController = TextEditingController();
@@ -111,6 +110,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
         'filter_review_pending': 'Pendentes de revisão',
         'filter_reviewed': 'Revisadas',
         'review_filter': 'Filtro de revisão',
+        'fiscal_month_closed': 'Mês fiscal fechado',
+        'fiscal_month_closed_message': 'Este mês fiscal está fechado. Não é possível criar, editar ou excluir despesas.',
+        'cannot_edit_closed_month': 'Este mês fiscal está fechado. Não é possível editar esta despesa.',
+        'cannot_delete_closed_month': 'Este mês fiscal está fechado. Não é possível excluir esta despesa.',
+        'cannot_add_closed_month': 'O mês fiscal atual está fechado. Não é possível cadastrar nova despesa.',
+        'cannot_save_closed_month': 'O mês selecionado está fechado. Não é possível salvar esta despesa.',
       },
       'en': {
         'cancel': 'Cancel',
@@ -174,6 +179,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
         'filter_review_pending': 'Pending review',
         'filter_reviewed': 'Reviewed',
         'review_filter': 'Review filter',
+        'fiscal_month_closed': 'Fiscal month closed',
+        'fiscal_month_closed_message': 'This fiscal month is closed. You cannot create, edit, or delete expenses.',
+        'cannot_edit_closed_month': 'This fiscal month is closed. You cannot edit this expense.',
+        'cannot_delete_closed_month': 'This fiscal month is closed. You cannot delete this expense.',
+        'cannot_add_closed_month': 'The current fiscal month is closed. You cannot create a new expense.',
+        'cannot_save_closed_month': 'The selected month is closed. You cannot save this expense.',
       },
       'ja': {
         'cancel': 'キャンセル',
@@ -233,6 +244,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
         'value': '金額',
         'vendor': '仕入先',
         'view': '表示',
+        'filter_all': 'すべて',
+        'filter_review_pending': 'レビュー待ち',
+        'filter_reviewed': 'レビュー済み',
+        'review_filter': 'レビューフィルター',
+        'fiscal_month_closed': '会計月が締め済みです',
+        'fiscal_month_closed_message': 'この会計月は締め済みのため、経費の新規作成・編集・削除はできません。',
+        'cannot_edit_closed_month': 'この会計月は締め済みのため、この経費は編集できません。',
+        'cannot_delete_closed_month': 'この会計月は締め済みのため、この経費は削除できません。',
+        'cannot_add_closed_month': '現在の会計月は締め済みのため、新しい経費は登録できません。',
+        'cannot_save_closed_month': '選択した月は締め済みのため、この経費は保存できません。',
       },
       'es': {
         'cancel': 'Cancelar',
@@ -296,6 +317,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
         'filter_review_pending': 'Pendientes de revisión',
         'filter_reviewed': 'Revisadas',
         'review_filter': 'Filtro de revisión',
+        'fiscal_month_closed': 'Mes fiscal cerrado',
+        'fiscal_month_closed_message': 'Este mes fiscal está cerrado. No es posible crear, editar ni eliminar gastos.',
+        'cannot_edit_closed_month': 'Este mes fiscal está cerrado. No es posible editar este gasto.',
+        'cannot_delete_closed_month': 'Este mes fiscal está cerrado. No es posible eliminar este gasto.',
+        'cannot_add_closed_month': 'El mes fiscal actual está cerrado. No es posible registrar un nuevo gasto.',
+        'cannot_save_closed_month': 'El mes seleccionado está cerrado. No es posible guardar este gasto.',
       },
     };
 
@@ -320,7 +347,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
     super.dispose();
   }
 
-  
   Future<void> _loadClosedMonths() async {
     try {
       final months = await SupabaseService.instance.getClosedFiscalMonths();
@@ -328,15 +354,100 @@ class _ExpensesPageState extends State<ExpensesPage> {
       setState(() {
         _closedFiscalMonths = months;
       });
-    } catch (_) {}
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _closedFiscalMonths = [];
+      });
+    }
+  }
+
+  String _extractFiscalMonth(dynamic value) {
+    if (value == null) return '';
+
+    if (value is DateTime) {
+      final year = value.year.toString().padLeft(4, '0');
+      final month = value.month.toString().padLeft(2, '0');
+      return '$year-$month';
+    }
+
+    final text = value.toString().trim();
+    if (text.isEmpty) return '';
+
+    final parsed = DateTime.tryParse(text);
+    if (parsed != null) {
+      final year = parsed.year.toString().padLeft(4, '0');
+      final month = parsed.month.toString().padLeft(2, '0');
+      return '$year-$month';
+    }
+
+    if (text.length >= 7 && text[4] == '-') {
+      return text.substring(0, 7);
+    }
+
+    return '';
   }
 
   bool _isClosedMonth(dynamic dateValue) {
-    if (dateValue == null) return false;
-    final parsed = DateTime.tryParse(dateValue.toString());
-    if (parsed == null) return false;
-    final key = '${parsed.year.toString().padLeft(4,'0')}-${parsed.month.toString().padLeft(2,'0')}';
-    return _closedFiscalMonths.contains(key);
+    final fiscalMonth = _extractFiscalMonth(dateValue);
+    if (fiscalMonth.isEmpty) return false;
+    return _closedFiscalMonths.contains(fiscalMonth);
+  }
+
+  bool _isCurrentMonthClosed() {
+    return _isClosedMonth(DateTime.now());
+  }
+
+  void _showFiscalClosedSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Widget _fiscalClosedBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4E5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFD8A8)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(Icons.lock_outline, color: Color(0xFFB45309)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _tr('fiscal_month_closed'),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF92400E),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _tr('fiscal_month_closed_message'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF92400E),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadExpenses() async {
@@ -355,7 +466,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
       _loading = true;
     });
     await _loadClosedMonths();
-    _loadExpenses();
+    await _loadExpenses();
   }
 
   void _clearSelectedReceipt() {
@@ -882,6 +993,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
   }
 
   Future<void> _openAddDialog() async {
+    if (_isCurrentMonthClosed()) {
+      _showFiscalClosedSnackBar(_tr('cannot_add_closed_month'));
+      return;
+    }
+
     _descController.clear();
     _amountController.clear();
     _storeController.clear();
@@ -1133,6 +1249,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                   return;
                                 }
 
+                                if (_isClosedMonth(_selectedDate)) {
+                                  _showFiscalClosedSnackBar(
+                                    _tr('cannot_save_closed_month'),
+                                  );
+                                  return;
+                                }
+
                                 final receiptPayload = await _uploadSelectedReceiptIfNeeded();
 
                                 await SupabaseService.instance.addExpense({
@@ -1180,6 +1303,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
   }
 
   Future<void> _editExpense(Map<String, dynamic> expense) async {
+    if (_isClosedMonth(expense['date'])) {
+      _showFiscalClosedSnackBar(_tr('cannot_edit_closed_month'));
+      return;
+    }
+
     _descController.text = (expense['description'] ?? '').toString();
     _amountController.text = (expense['amount'] ?? '').toString();
     _storeController.text = (expense['store_name'] ?? '').toString();
@@ -1448,6 +1576,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                   return;
                                 }
 
+                                if (_isClosedMonth(_selectedDate)) {
+                                  _showFiscalClosedSnackBar(
+                                    _tr('cannot_save_closed_month'),
+                                  );
+                                  return;
+                                }
+
                                 await SupabaseService.instance.updateExpense(
                                   expense['id'].toString(),
                                   {
@@ -1517,7 +1652,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
     }
   }
 
-  Future<void> _deleteExpense(String id) async {
+  Future<void> _deleteExpense(String id, {dynamic expenseDate}) async {
+    if (_isClosedMonth(expenseDate)) {
+      _showFiscalClosedSnackBar(_tr('cannot_delete_closed_month'));
+      return;
+    }
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -1621,6 +1761,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
   }
 
   Widget _expenseCard(Map<String, dynamic> expense) {
+    final locked = _isClosedMonth(expense['date']);
     final description = (expense['description'] ?? '').toString();
     final category = _categoryLabel((expense['category'] ?? 'other').toString());
     final date = _formatDate(expense['date']);
@@ -1703,25 +1844,30 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     ),
                     onPressed: () => _showReceiptPreview(receipt),
                   ),
-                if (!_isClosedMonth(expense['date']))
+                if (locked)
+                  Tooltip(
+                    message: _tr('fiscal_month_closed'),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Icon(
+                        Icons.lock_outline,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ),
+                if (!locked)
                   IconButton(
                     tooltip: _tr('edit'),
                     icon: const Icon(Icons.edit_outlined),
                     onPressed: () => _editExpense(expense),
                   ),
-                if (!_isClosedMonth(expense['date']))
+                if (!locked)
                   IconButton(
                     tooltip: _tr('delete'),
                     icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _deleteExpense(expense['id'].toString()),
-                  ),
-                if (_isClosedMonth(expense['date']))
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6),
-                    child: Icon(
-                      Icons.lock,
-                      size: 20,
-                      color: Colors.grey,
+                    onPressed: () => _deleteExpense(
+                      expense['id'].toString(),
+                      expenseDate: expense['date'],
                     ),
                   ),
               ],
@@ -1779,7 +1925,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: _tr('new_expense_tooltip'),
-            onPressed: _openAddDialog,
+            onPressed: _isCurrentMonthClosed() ? null : _openAddDialog,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -1794,7 +1940,19 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 final visibleExpenses = _filteredExpenses();
 
                 if (_expenses.isEmpty) {
-                  return _emptyState();
+                  return ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      if (_isCurrentMonthClosed()) ...[
+                        _fiscalClosedBanner(),
+                        const SizedBox(height: 16),
+                      ],
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.6,
+                        child: _emptyState(),
+                      ),
+                    ],
+                  );
                 }
 
                 return RefreshIndicator(
@@ -1806,7 +1964,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       if (index == 0) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16),
-                          child: _reviewFilterBar(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (_isCurrentMonthClosed()) ...[
+                                _fiscalClosedBanner(),
+                                const SizedBox(height: 16),
+                              ],
+                              _reviewFilterBar(),
+                            ],
+                          ),
                         );
                       }
 
