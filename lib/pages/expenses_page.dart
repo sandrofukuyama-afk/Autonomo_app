@@ -19,6 +19,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
   bool _loading = true;
   String _reviewFilter = 'all';
 
+  List<String> _closedFiscalMonths = [];
+
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _storeController = TextEditingController();
@@ -303,6 +305,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
   @override
   void initState() {
     super.initState();
+    _loadClosedMonths();
     _loadExpenses();
   }
 
@@ -315,6 +318,25 @@ class _ExpensesPageState extends State<ExpensesPage> {
     _notesController.dispose();
     _taxRateController.dispose();
     super.dispose();
+  }
+
+  
+  Future<void> _loadClosedMonths() async {
+    try {
+      final months = await SupabaseService.instance.getClosedFiscalMonths();
+      if (!mounted) return;
+      setState(() {
+        _closedFiscalMonths = months;
+      });
+    } catch (_) {}
+  }
+
+  bool _isClosedMonth(dynamic dateValue) {
+    if (dateValue == null) return false;
+    final parsed = DateTime.tryParse(dateValue.toString());
+    if (parsed == null) return false;
+    final key = '${parsed.year.toString().padLeft(4,'0')}-${parsed.month.toString().padLeft(2,'0')}';
+    return _closedFiscalMonths.contains(key);
   }
 
   Future<void> _loadExpenses() async {
@@ -332,7 +354,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
     setState(() {
       _loading = true;
     });
-    await _loadExpenses();
+    await _loadClosedMonths();
+    _loadExpenses();
   }
 
   void _clearSelectedReceipt() {
@@ -1680,16 +1703,27 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     ),
                     onPressed: () => _showReceiptPreview(receipt),
                   ),
-                IconButton(
-                  tooltip: _tr('edit'),
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () => _editExpense(expense),
-                ),
-                IconButton(
-                  tooltip: _tr('delete'),
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => _deleteExpense(expense['id'].toString()),
-                ),
+                if (!_isClosedMonth(expense['date']))
+                  IconButton(
+                    tooltip: _tr('edit'),
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => _editExpense(expense),
+                  ),
+                if (!_isClosedMonth(expense['date']))
+                  IconButton(
+                    tooltip: _tr('delete'),
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _deleteExpense(expense['id'].toString()),
+                  ),
+                if (_isClosedMonth(expense['date']))
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6),
+                    child: Icon(
+                      Icons.lock,
+                      size: 20,
+                      color: Colors.grey,
+                    ),
+                  ),
               ],
             ),
           ],
