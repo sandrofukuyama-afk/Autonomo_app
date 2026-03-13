@@ -320,7 +320,7 @@ class SupabaseService {
     );
 
     await _client.from('expenses_v2').update({
-      'expense_date': nextDateValue,
+      'expense_date': data['date'] ?? data['expense_date'],
       'store_name': data['store_name'],
       'description': data['description'],
       'category': _normalizeExpenseCategory(data['category']),
