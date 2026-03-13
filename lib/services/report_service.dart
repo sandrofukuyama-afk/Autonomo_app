@@ -205,8 +205,8 @@ class ReportService {
       return sum + amount;
     });
 
-    final nonDeductibleExpenses =
-        (totalExpenses - deductibleExpenses).clamp(0, double.infinity);
+    final double nonDeductibleExpenses =
+        (totalExpenses - deductibleExpenses).clamp(0.0, double.infinity).toDouble();
 
     final profit = totalEntries - totalExpenses;
 
