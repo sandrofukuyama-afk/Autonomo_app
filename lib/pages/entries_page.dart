@@ -10,6 +10,7 @@ class EntriesPage extends StatefulWidget {
 
 class _EntriesPageState extends State<EntriesPage> {
   List<Map<String, dynamic>> _entries = [];
+  List<String> _closedFiscalMonths = [];
   bool _loading = true;
 
   final TextEditingController _descController = TextEditingController();
@@ -32,12 +33,16 @@ class _EntriesPageState extends State<EntriesPage> {
   }
 
   Future<void> _loadEntries() async {
-    final data = await SupabaseService.instance.getEntries();
+    final results = await Future.wait([
+      SupabaseService.instance.getEntries(),
+      SupabaseService.instance.getClosedFiscalMonths(),
+    ]);
 
     if (!mounted) return;
 
     setState(() {
-      _entries = List<Map<String, dynamic>>.from(data);
+      _entries = List<Map<String, dynamic>>.from(results[0] as List);
+      _closedFiscalMonths = List<String>.from(results[1] as List);
       _loading = false;
     });
   }
@@ -60,6 +65,27 @@ class _EntriesPageState extends State<EntriesPage> {
     final d = parsed.day.toString().padLeft(2, '0');
 
     return '$y-$m-$d';
+  }
+
+  bool _isClosedMonth(dynamic rawDate) {
+    if (rawDate == null) return false;
+
+    final parsed = rawDate is DateTime
+        ? rawDate
+        : DateTime.tryParse(rawDate.toString());
+
+    if (parsed == null) {
+      final value = rawDate.toString();
+      if (value.length >= 7 && value[4] == '-') {
+        return _closedFiscalMonths.contains(value.substring(0, 7));
+      }
+      return false;
+    }
+
+    final fiscalMonth =
+        '${parsed.year.toString().padLeft(4, '0')}-${parsed.month.toString().padLeft(2, '0')}';
+
+    return _closedFiscalMonths.contains(fiscalMonth);
   }
 
   String _formatYen(dynamic value) {
@@ -258,15 +284,22 @@ class _EntriesPageState extends State<EntriesPage> {
                                   return;
                                 }
 
-                                await SupabaseService.instance.addEntry({
-                                  'date': _selectedDate.toIso8601String(),
-                                  'description': description,
-                                  'amount': amount,
-                                  'payment_method': _paymentMethod,
-                                });
+                                try {
+                                  await SupabaseService.instance.addEntry({
+                                    'date': _selectedDate.toIso8601String(),
+                                    'description': description,
+                                    'amount': amount,
+                                    'payment_method': _paymentMethod,
+                                  });
 
-                                if (!mounted) return;
-                                Navigator.pop(dialogContext, true);
+                                  if (!mounted) return;
+                                  Navigator.pop(dialogContext, true);
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(this.context).showSnackBar(
+                                    SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+                                  );
+                                }
                               },
                               child: const Text('Salvar'),
                             ),
@@ -426,19 +459,26 @@ class _EntriesPageState extends State<EntriesPage> {
                                   return;
                                 }
 
-                                await SupabaseService.instance.updateEntry(
-                                  entry['id'].toString(),
-                                  {
-                                    'entry_date':
-                                        _selectedDate.toIso8601String(),
-                                    'description': description,
-                                    'amount': amount,
-                                    'payment_method': _paymentMethod,
-                                  },
-                                );
+                                try {
+                                  await SupabaseService.instance.updateEntry(
+                                    entry['id'].toString(),
+                                    {
+                                      'entry_date':
+                                          _selectedDate.toIso8601String(),
+                                      'description': description,
+                                      'amount': amount,
+                                      'payment_method': _paymentMethod,
+                                    },
+                                  );
 
-                                if (!mounted) return;
-                                Navigator.pop(dialogContext, true);
+                                  if (!mounted) return;
+                                  Navigator.pop(dialogContext, true);
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(this.context).showSnackBar(
+                                    SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+                                  );
+                                }
                               },
                               child: const Text('Salvar'),
                             ),
@@ -484,21 +524,29 @@ class _EntriesPageState extends State<EntriesPage> {
 
     if (confirm != true) return;
 
-    await SupabaseService.instance.deleteEntry(id);
+    try {
+      await SupabaseService.instance.deleteEntry(id);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Entrada excluída')),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Entrada excluída')),
+      );
 
-    await _refresh();
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   Widget _entryCard(Map<String, dynamic> entry) {
     final description = (entry['description'] ?? '').toString();
     final date = _formatDate(entry['date']);
     final amount = _formatYen(entry['amount']);
+    final isClosed = _isClosedMonth(entry['date']);
     final paymentMethod = _paymentLabel(
       (entry['payment_method'] ?? '').toString(),
     );
@@ -541,16 +589,28 @@ class _EntriesPageState extends State<EntriesPage> {
                     ),
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Editar',
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () => _editEntry(entry),
-                ),
-                IconButton(
-                  tooltip: 'Excluir',
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => _deleteEntry(entry['id'].toString()),
-                ),
+                if (isClosed)
+                  Tooltip(
+                    message: 'Mês fiscal fechado',
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.lock_outline),
+                    ),
+                  ),
+                if (!isClosed)
+                  IconButton(
+                    tooltip: 'Editar',
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => _editEntry(entry),
+                  ),
+                if (!isClosed)
+                  IconButton(
+                    tooltip: 'Excluir',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _deleteEntry(entry['id'].toString()),
+                  ),
               ],
             ),
           ],
