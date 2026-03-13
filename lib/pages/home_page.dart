@@ -197,14 +197,14 @@ class _HomePageState extends State<HomePage> {
       expensesTotal += _toDouble((item as Map)['amount']);
     }
 
-    final annualProfit = entriesTotal - expensesTotal;
-    final taxableAnnualProfit = annualProfit > 0 ? annualProfit : 0;
-    final annualEstimatedTax =
+    final double annualProfit = entriesTotal - expensesTotal;
+    final double taxableAnnualProfit = annualProfit > 0 ? annualProfit : 0.0;
+    final double annualEstimatedTax =
         _estimateNationalTax(taxableAnnualProfit) +
-            _estimateResidentTax(taxableAnnualProfit);
+        _estimateResidentTax(taxableAnnualProfit);
 
     final yearPrefix = '$year-';
-    final closedCount = _closedFiscalMonths
+    final int closedCount = _closedFiscalMonths
         .where((month) => month.startsWith(yearPrefix))
         .length;
 
@@ -212,8 +212,8 @@ class _HomePageState extends State<HomePage> {
     _annualExpensesTotal = expensesTotal;
     _annualProfit = annualProfit;
     _annualEstimatedTax = annualEstimatedTax;
-    _annualClosedMonthsCount = closedCount.clamp(0, 12);
-    _annualOpenMonthsCount = (12 - _annualClosedMonthsCount).clamp(0, 12);
+    _annualClosedMonthsCount = closedCount.clamp(0, 12).toInt();
+    _annualOpenMonthsCount = (12 - _annualClosedMonthsCount).clamp(0, 12).toInt();
   }
 
   double _toDouble(dynamic value) {
