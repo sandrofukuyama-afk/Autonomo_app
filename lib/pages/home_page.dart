@@ -627,14 +627,6 @@ class _HomePageState extends State<HomePage> {
                     '${t.translate('expenses')} ${_formatYen(_monthExpensesTotal)}',
               ),
               _heroChip(
-                icon: _isCurrentFiscalMonthClosed()
-                    ? Icons.lock_outline
-                    : Icons.lock_open_outlined,
-                label: _isCurrentFiscalMonthClosed()
-                    ? t.translate('fiscal_month_closed')
-                    : t.translate('status_open'),
-              ),
-              _heroChip(
                 icon: positive
                     ? Icons.check_circle_outline
                     : Icons.warning_amber,
@@ -1614,82 +1606,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildHomeFiscalStatusBanner() {
-    final t = AppLocalizations.of(context);
-    final month = _currentMonthLabel();
-    final currentClosed = _isCurrentFiscalMonthClosed();
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: currentClosed ? Colors.green.shade50 : Colors.amber.shade50,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: currentClosed ? Colors.green.shade200 : Colors.amber.shade200,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: currentClosed ? Colors.green.shade100 : Colors.amber.shade100,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              currentClosed ? Icons.lock_outline : Icons.event_available,
-              color: currentClosed ? Colors.green.shade800 : Colors.orange.shade800,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${t.translate('current_fiscal_month')}: $month',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  currentClosed
-                      ? t.translate('current_month_closed_description')
-                      : t.translate('close_month_after_review_description'),
-                  style: TextStyle(
-                    color: Colors.grey.shade800,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: currentClosed ? Colors.green.shade100 : Colors.orange.shade100,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Text(
-              currentClosed
-                  ? t.translate('fiscal_month_closed')
-                  : t.translate('status_open'),
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: currentClosed ? Colors.green.shade800 : Colors.orange.shade800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMainContent() {
     final t = AppLocalizations.of(context);
     final width = MediaQuery.of(context).size.width;
@@ -1700,8 +1616,6 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.all(16),
         children: [
           _buildHeroCard(),
-          const SizedBox(height: 16),
-          _buildHomeFiscalStatusBanner(),
           if (_pendingExpenseReviews > 0) ...[
             const SizedBox(height: 16),
             _buildExpenseReviewAlertCard(),
