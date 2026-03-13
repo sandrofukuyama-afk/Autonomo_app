@@ -319,6 +319,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _openEntriesPage() async {
+    final t = AppLocalizations.of(context);
+
+    if (_isCurrentFiscalMonthClosed()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(t.translate('fiscal_month_closed')),
+        ),
+      );
+      return;
+    }
+
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const EntriesPage()),
@@ -328,6 +339,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _openExpensesPage() async {
+    final t = AppLocalizations.of(context);
+
+    if (_isCurrentFiscalMonthClosed()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(t.translate('fiscal_month_closed')),
+        ),
+      );
+      return;
+    }
+
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const ExpensesPage()),
