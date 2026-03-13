@@ -84,6 +84,32 @@ class SupabaseService {
     }
   }
 
+  Future<Map<String, dynamic>?> _getOwnedEntryRow(String id) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final Map<String, dynamic>? row = await _client
+        .from('entries_v2')
+        .select('id, company_id, entry_date')
+        .eq('id', id)
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+    return row;
+  }
+
+  Future<Map<String, dynamic>?> _getOwnedExpenseRow(String id) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final Map<String, dynamic>? row = await _client
+        .from('expenses_v2')
+        .select('id, company_id, expense_date')
+        .eq('id', id)
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+    return row;
+  }
+
   Future<void> addEntry(Map<String, dynamic> data) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
 
@@ -130,16 +156,28 @@ class SupabaseService {
   }
 
   Future<void> updateEntry(String id, Map<String, dynamic> data) async {
-    final dateValue = data['entry_date'] ?? data['date'];
+    final existingRow = await _getOwnedEntryRow(id);
+
+    if (existingRow == null) {
+      throw Exception('Entrada não encontrada.');
+    }
+
+    final nextDateValue = data['entry_date'] ?? data['date'];
 
     await _assertFiscalMonthOpen(
-      dateValue: dateValue,
+      dateValue: existingRow['entry_date'],
       errorMessage:
           'Este mês fiscal está fechado. Não é possível editar entradas.',
     );
 
+    await _assertFiscalMonthOpen(
+      dateValue: nextDateValue,
+      errorMessage:
+          'O mês fiscal de destino está fechado. Não é possível salvar a entrada.',
+    );
+
     await _client.from('entries_v2').update({
-      'entry_date': data['entry_date'] ?? data['date'],
+      'entry_date': nextDateValue,
       'description': data['description'],
       'amount': data['amount'],
       'payment_method': _normalizePaymentMethod(data['payment_method']),
@@ -261,14 +299,28 @@ class SupabaseService {
   }
 
   Future<void> updateExpense(String id, Map<String, dynamic> data) async {
+    final existingRow = await _getOwnedExpenseRow(id);
+
+    if (existingRow == null) {
+      throw Exception('Despesa não encontrada.');
+    }
+
+    final nextDateValue = data['expense_date'] ?? data['date'];
+
     await _assertFiscalMonthOpen(
-      dateValue: data['expense_date'] ?? data['date'],
+      dateValue: existingRow['expense_date'],
       errorMessage:
           'Este mês fiscal está fechado. Não é possível editar despesas.',
     );
 
+    await _assertFiscalMonthOpen(
+      dateValue: nextDateValue,
+      errorMessage:
+          'O mês fiscal de destino está fechado. Não é possível salvar a despesa.',
+    );
+
     await _client.from('expenses_v2').update({
-      'expense_date': data['date'] ?? data['expense_date'],
+      'expense_date': nextDateValue,
       'store_name': data['store_name'],
       'description': data['description'],
       'category': _normalizeExpenseCategory(data['category']),
@@ -291,6 +343,18 @@ class SupabaseService {
     final receiptUrl = data['receipt_url'];
 
     if (receiptUrl == null || receiptUrl.toString().trim().isEmpty) return;
+
+    final existingRow = await _getOwnedExpenseRow(expenseId);
+
+    if (existingRow == null) {
+      throw Exception('Despesa não encontrada.');
+    }
+
+    await _assertFiscalMonthOpen(
+      dateValue: existingRow['expense_date'],
+      errorMessage:
+          'Este mês fiscal está fechado. Não é possível editar despesas.',
+    );
 
     await _client
         .from('expenses_v2')
