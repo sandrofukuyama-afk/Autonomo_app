@@ -16,21 +16,40 @@ class _ReportsPageState extends State<ReportsPage> {
 
   String _period = 'year';
   int _year = DateTime.now().year;
+  List<String> _closedFiscalMonths = <String>[];
 
   @override
   void initState() {
     super.initState();
     _loadReport();
+    _loadClosedFiscalMonths();
   }
 
   void _loadReport() {
     _reportFuture = _calculateReport();
   }
 
+  Future<void> _loadClosedFiscalMonths() async {
+    try {
+      final months = await SupabaseService.instance.getClosedFiscalMonths();
+      if (!mounted) return;
+      setState(() {
+        _closedFiscalMonths = months;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _closedFiscalMonths = <String>[];
+      });
+    }
+  }
+
   Future<void> _refresh() async {
     setState(() {
       _loadReport();
     });
+    await _loadClosedFiscalMonths();
+    await _reportFuture;
   }
 
   Future<Map<String, dynamic>> _calculateReport() async {
@@ -90,6 +109,17 @@ class _ReportsPageState extends State<ReportsPage> {
       'residentTax': residentTax,
       'totalTax': totalTax,
     };
+  }
+
+  String _currentFiscalMonthKey() {
+    final now = DateTime.now();
+    final year = now.year.toString().padLeft(4, '0');
+    final month = now.month.toString().padLeft(2, '0');
+    return '$year-$month';
+  }
+
+  bool _isCurrentFiscalMonthClosed() {
+    return _closedFiscalMonths.contains(_currentFiscalMonthKey());
   }
 
   String _yen(double value) {
@@ -159,26 +189,172 @@ class _ReportsPageState extends State<ReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _tr(
+                        context,
+                        'fiscal_summary',
+                        'Resumo fiscal',
+                        'Fiscal summary',
+                        '税務サマリー',
+                        'Resumen fiscal',
+                      ),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _periodLabel(context),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _fiscalStatusChip(context),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _fiscalStatusChip(BuildContext context) {
+    final isClosed = _isCurrentFiscalMonthClosed();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isClosed ? Colors.orange.shade50 : Colors.green.shade50,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: isClosed ? Colors.orange.shade300 : Colors.green.shade300,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isClosed ? Icons.lock_outline : Icons.check_circle_outline,
+            size: 16,
+            color: isClosed ? Colors.orange.shade800 : Colors.green.shade800,
+          ),
+          const SizedBox(width: 6),
           Text(
-            _tr(
-              context,
-              'fiscal_summary',
-              'Resumo fiscal',
-              'Fiscal summary',
-              '税務サマリー',
-              'Resumen fiscal',
-            ),
-            style: const TextStyle(
-              fontSize: 22,
+            isClosed
+                ? _tr(
+                    context,
+                    'fiscal_month_closed',
+                    'Mês fiscal fechado',
+                    'Fiscal month closed',
+                    '会計月は締め済み',
+                    'Mes fiscal cerrado',
+                  )
+                : _tr(
+                    context,
+                    'fiscal_month_open',
+                    'Mês fiscal aberto',
+                    'Fiscal month open',
+                    '会計月はオープン',
+                    'Mes fiscal abierto',
+                  ),
+            style: TextStyle(
+              fontSize: 12,
               fontWeight: FontWeight.w700,
+              color: isClosed ? Colors.orange.shade800 : Colors.green.shade800,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            _periodLabel(context),
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade700,
+        ],
+      ),
+    );
+  }
+
+  Widget _fiscalInfoBanner(BuildContext context) {
+    final isClosed = _isCurrentFiscalMonthClosed();
+    final currentMonth = _currentFiscalMonthKey();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isClosed ? Colors.orange.shade50 : Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isClosed ? Colors.orange.shade200 : Colors.blue.shade200,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isClosed ? Icons.lock_clock_outlined : Icons.info_outline,
+            color: isClosed ? Colors.orange.shade800 : Colors.blue.shade800,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isClosed
+                      ? _tr(
+                          context,
+                          'fiscal_month_closed_title',
+                          'Mês fiscal encerrado',
+                          'Fiscal month closed',
+                          '会計月は締め済みです',
+                          'Mes fiscal cerrado',
+                        )
+                      : _tr(
+                          context,
+                          'fiscal_month_open_title',
+                          'Mês fiscal em aberto',
+                          'Fiscal month open',
+                          '会計月はオープン中です',
+                          'Mes fiscal abierto',
+                        ),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: isClosed ? Colors.orange.shade900 : Colors.blue.shade900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  isClosed
+                      ? '${_tr(
+                          context,
+                          'fiscal_reports_closed_info',
+                          'O mês atual está fechado para alterações. Os relatórios continuam disponíveis para consulta e exportação.',
+                          'The current month is closed for changes. Reports remain available for review and export.',
+                          '今月は変更できません。レポートは引き続き閲覧・出力できます。',
+                          'El mes actual está cerrado para cambios. Los informes siguen disponibles para consulta y exportación.',
+                        )} ($currentMonth)'
+                      : '${_tr(
+                          context,
+                          'fiscal_reports_open_info',
+                          'O mês atual ainda está aberto. Os relatórios exibem os dados mais recentes para acompanhamento fiscal.',
+                          'The current month is still open. Reports show the latest data for fiscal monitoring.',
+                          '今月はまだオープンです。レポートには最新の会計データが表示されます。',
+                          'El mes actual sigue abierto. Los informes muestran los datos más recientes para el seguimiento fiscal.',
+                        )} ($currentMonth)',
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.35,
+                    color: isClosed ? Colors.orange.shade900 : Colors.blue.shade900,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -507,6 +683,8 @@ class _ReportsPageState extends State<ReportsPage> {
               padding: const EdgeInsets.all(16),
               children: [
                 _summaryHeader(context),
+                const SizedBox(height: 16),
+                _fiscalInfoBanner(context),
                 const SizedBox(height: 16),
                 _periodSelector(context),
                 const SizedBox(height: 18),
