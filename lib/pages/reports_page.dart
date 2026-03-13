@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
@@ -13,6 +14,7 @@ class ReportsPage extends StatefulWidget {
 
 class _ReportsPageState extends State<ReportsPage> {
   late Future<Map<String, dynamic>> _reportFuture;
+  final SupabaseClient _client = Supabase.instance.client;
 
   String _period = 'year';
   int _year = DateTime.now().year;
@@ -69,37 +71,72 @@ class _ReportsPageState extends State<ReportsPage> {
       end = DateTime(now.year, now.month, now.day, 23, 59, 59);
     }
 
+    final snapshotMap = await _loadSnapshotsForRange(start, end);
     double totalEntries = 0;
     double totalExpenses = 0;
+    double nationalTax = 0;
+    double residentTax = 0;
+    double totalTax = 0;
+    final consumedMonths = <String>{};
+
+    for (DateTime cursor = DateTime(start.year, start.month, 1);
+        !cursor.isAfter(DateTime(end.year, end.month, 1));
+        cursor = DateTime(cursor.year, cursor.month + 1, 1)) {
+      final monthKey = _monthKey(cursor);
+      final snapshot = snapshotMap[monthKey];
+      if (_closedFiscalMonths.contains(monthKey) && snapshot != null) {
+        totalEntries += _num(snapshot['total_entries']);
+        totalExpenses += _num(snapshot['total_expenses']);
+        nationalTax += _num(snapshot['estimated_national_tax']);
+        residentTax += _num(snapshot['estimated_resident_tax']);
+        totalTax += _num(snapshot['estimated_total_tax']);
+        consumedMonths.add(monthKey);
+      }
+    }
 
     for (final e in entries) {
       final date = DateTime.tryParse((e['date'] ?? '').toString());
-      final amount = e['amount'] is num
-          ? (e['amount'] as num).toDouble()
-          : double.tryParse((e['amount'] ?? '0').toString()) ?? 0;
+      final amount = _num(e['amount']);
 
       if (date != null && !date.isBefore(start) && !date.isAfter(end)) {
-        totalEntries += amount;
+        final monthKey = _monthKey(date);
+        if (!consumedMonths.contains(monthKey)) {
+          totalEntries += amount;
+        }
       }
     }
 
     for (final e in expenses) {
       final date = DateTime.tryParse((e['date'] ?? '').toString());
-      final amount = e['amount'] is num
-          ? (e['amount'] as num).toDouble()
-          : double.tryParse((e['amount'] ?? '0').toString()) ?? 0;
+      final amount = _num(e['amount']);
 
       if (date != null && !date.isBefore(start) && !date.isAfter(end)) {
-        totalExpenses += amount;
+        final monthKey = _monthKey(date);
+        if (!consumedMonths.contains(monthKey)) {
+          totalExpenses += amount;
+        }
       }
     }
 
     final profit = totalEntries - totalExpenses;
-    final taxableProfit = profit > 0 ? profit : 0.0;
 
-    final nationalTax = taxableProfit * 0.10;
-    final residentTax = taxableProfit * 0.10;
-    final totalTax = nationalTax + residentTax;
+    if (consumedMonths.isEmpty) {
+      final taxableProfit = profit > 0 ? profit : 0.0;
+      nationalTax = taxableProfit * 0.10;
+      residentTax = taxableProfit * 0.10;
+      totalTax = nationalTax + residentTax;
+    } else {
+      final openProfit = profit - snapshotMap.entries
+          .where((entry) => consumedMonths.contains(entry.key))
+          .fold<double>(0, (sum, entry) => sum + (_num(entry.value['total_entries']) - _num(entry.value['total_expenses'])));
+      if (openProfit > 0) {
+        nationalTax += openProfit * 0.10;
+        residentTax += openProfit * 0.10;
+        totalTax = nationalTax + residentTax;
+      } else {
+        totalTax = nationalTax + residentTax;
+      }
+    }
 
     return {
       'entries': totalEntries,
@@ -109,6 +146,41 @@ class _ReportsPageState extends State<ReportsPage> {
       'residentTax': residentTax,
       'totalTax': totalTax,
     };
+  }
+
+  Future<Map<String, Map<String, dynamic>>> _loadSnapshotsForRange(
+    DateTime start,
+    DateTime end,
+  ) async {
+    final startKey = _monthKey(start);
+    final endKey = _monthKey(end);
+
+    final rows = await _client
+        .from('monthly_fiscal_snapshots')
+        .select()
+        .gte('fiscal_month', startKey)
+        .lte('fiscal_month', endKey)
+        .order('fiscal_month');
+
+    final result = <String, Map<String, dynamic>>{};
+    for (final row in rows) {
+      final fiscalMonth = (row['fiscal_month'] ?? '').toString();
+      if (fiscalMonth.isNotEmpty) {
+        result[fiscalMonth] = Map<String, dynamic>.from(row);
+      }
+    }
+    return result;
+  }
+
+  double _num(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse((value ?? '0').toString()) ?? 0;
+  }
+
+  String _monthKey(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$year-$month';
   }
 
   String _currentFiscalMonthKey() {
