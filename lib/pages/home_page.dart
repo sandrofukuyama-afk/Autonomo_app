@@ -40,6 +40,13 @@ class _HomePageState extends State<HomePage> {
   double _nonDeductibleExpenses = 0;
   double _estimatedTaxImpact = 0;
 
+  double _annualEntriesTotal = 0;
+  double _annualExpensesTotal = 0;
+  double _annualProfit = 0;
+  double _annualEstimatedTax = 0;
+  int _annualClosedMonthsCount = 0;
+  int _annualOpenMonthsCount = 12;
+
   List<Map<String, dynamic>> _recentEntries = [];
   List<Map<String, dynamic>> _recentExpenses = [];
   List<String> _closedFiscalMonths = [];
@@ -60,6 +67,7 @@ class _HomePageState extends State<HomePage> {
       await _loadExpenseReviewCount(companyId);
       await _loadFiscalDashboard(companyId);
       await _loadClosedFiscalMonths(companyId);
+      await _loadAnnualFiscalDashboard(companyId);
 
       if (!mounted) return;
 
@@ -159,10 +167,76 @@ class _HomePageState extends State<HomePage> {
     _closedFiscalMonths = [];
   }
 
+  Future<void> _loadAnnualFiscalDashboard(String companyId) async {
+    final now = DateTime.now();
+    final year = now.year;
+    final yearStart = '$year-01-01';
+    final nextYearStart = '${year + 1}-01-01';
+
+    final List<dynamic> annualEntries = await _client
+        .from('entries_v2')
+        .select('amount')
+        .eq('company_id', companyId)
+        .gte('entry_date', yearStart)
+        .lt('entry_date', nextYearStart);
+
+    final List<dynamic> annualExpenses = await _client
+        .from('expenses_v2')
+        .select('amount')
+        .eq('company_id', companyId)
+        .gte('expense_date', yearStart)
+        .lt('expense_date', nextYearStart);
+
+    double entriesTotal = 0;
+    for (final item in annualEntries) {
+      entriesTotal += _toDouble((item as Map)['amount']);
+    }
+
+    double expensesTotal = 0;
+    for (final item in annualExpenses) {
+      expensesTotal += _toDouble((item as Map)['amount']);
+    }
+
+    final annualProfit = entriesTotal - expensesTotal;
+    final taxableAnnualProfit = annualProfit > 0 ? annualProfit : 0;
+    final annualEstimatedTax =
+        _estimateNationalTax(taxableAnnualProfit) +
+            _estimateResidentTax(taxableAnnualProfit);
+
+    final yearPrefix = '$year-';
+    final closedCount = _closedFiscalMonths
+        .where((month) => month.startsWith(yearPrefix))
+        .length;
+
+    _annualEntriesTotal = entriesTotal;
+    _annualExpensesTotal = expensesTotal;
+    _annualProfit = annualProfit;
+    _annualEstimatedTax = annualEstimatedTax;
+    _annualClosedMonthsCount = closedCount.clamp(0, 12);
+    _annualOpenMonthsCount = (12 - _annualClosedMonthsCount).clamp(0, 12);
+  }
+
   double _toDouble(dynamic value) {
     if (value == null) return 0;
     if (value is num) return value.toDouble();
     return double.tryParse(value.toString()) ?? 0;
+  }
+
+  double _estimateNationalTax(double profit) {
+    if (profit <= 0) return 0;
+
+    if (profit <= 1950000) return profit * 0.05;
+    if (profit <= 3300000) return (profit * 0.10) - 97500;
+    if (profit <= 6950000) return (profit * 0.20) - 427500;
+    if (profit <= 9000000) return (profit * 0.23) - 636000;
+    if (profit <= 18000000) return (profit * 0.33) - 1536000;
+    if (profit <= 40000000) return (profit * 0.40) - 2796000;
+    return (profit * 0.45) - 4796000;
+  }
+
+  double _estimateResidentTax(double profit) {
+    if (profit <= 0) return 0;
+    return profit * 0.10;
   }
 
   String _formatYen(double value) {
@@ -203,8 +277,6 @@ class _HomePageState extends State<HomePage> {
   bool _isCurrentFiscalMonthClosed() {
     return _isFiscalMonthClosed(_currentMonthLabel());
   }
-
-
 
   Future<Map<String, dynamic>> _buildCurrentFiscalSnapshot() async {
     if (_companyId == null) {
@@ -332,6 +404,7 @@ class _HomePageState extends State<HomePage> {
           .eq('company_id', _companyId!);
 
       await _loadClosedFiscalMonths(_companyId!);
+      await _loadAnnualFiscalDashboard(_companyId!);
 
       if (!mounted) return;
 
@@ -376,6 +449,7 @@ class _HomePageState extends State<HomePage> {
       await _loadExpenseReviewCount(_companyId!);
       await _loadFiscalDashboard(_companyId!);
       await _loadClosedFiscalMonths(_companyId!);
+      await _loadAnnualFiscalDashboard(_companyId!);
 
       if (!mounted) return;
 
@@ -629,6 +703,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildHeroCard() {
     final t = AppLocalizations.of(context);
     final bool positive = _monthProfit >= 0;
+    final bool currentMonthClosed = _isCurrentFiscalMonthClosed();
 
     return Container(
       width: double.infinity,
@@ -707,6 +782,12 @@ class _HomePageState extends State<HomePage> {
                 label: positive
                     ? t.translate('positive_month')
                     : t.translate('balance_attention'),
+              ),
+              _heroChip(
+                icon: currentMonthClosed ? Icons.lock : Icons.lock_open,
+                label: currentMonthClosed
+                    ? t.translate('status_closed')
+                    : t.translate('status_open'),
               ),
             ],
           ),
@@ -1680,6 +1761,83 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildAnnualFiscalDashboardSection() {
+    final now = DateTime.now();
+    final width = MediaQuery.of(context).size.width;
+    final bool wide = width >= 900;
+
+    final children = [
+      _buildFiscalSummaryCard(
+        icon: Icons.calendar_month,
+        iconColor: Colors.green.shade800,
+        iconBackground: Colors.green.shade100,
+        title: 'Receitas ${now.year}',
+        value: _formatYen(_annualEntriesTotal),
+      ),
+      _buildFiscalSummaryCard(
+        icon: Icons.receipt_long,
+        iconColor: Colors.red.shade800,
+        iconBackground: Colors.red.shade100,
+        title: 'Despesas ${now.year}',
+        value: _formatYen(_annualExpensesTotal),
+      ),
+      _buildFiscalSummaryCard(
+        icon: _annualProfit >= 0 ? Icons.savings : Icons.warning_amber,
+        iconColor:
+            _annualProfit >= 0 ? Colors.blue.shade800 : Colors.orange.shade800,
+        iconBackground:
+            _annualProfit >= 0 ? Colors.blue.shade100 : Colors.orange.shade100,
+        title: 'Lucro ${now.year}',
+        value: _formatYen(_annualProfit),
+      ),
+      _buildFiscalSummaryCard(
+        icon: Icons.account_balance,
+        iconColor: Colors.indigo.shade800,
+        iconBackground: Colors.indigo.shade100,
+        title: 'Imposto estimado ${now.year}',
+        value: _formatYen(_annualEstimatedTax),
+      ),
+      _buildFiscalSummaryCard(
+        icon: Icons.lock_outline,
+        iconColor: Colors.green.shade800,
+        iconBackground: Colors.green.shade100,
+        title: 'Meses fechados',
+        value: _annualClosedMonthsCount.toString(),
+      ),
+      _buildFiscalSummaryCard(
+        icon: Icons.lock_open,
+        iconColor: Colors.orange.shade800,
+        iconBackground: Colors.orange.shade100,
+        title: 'Meses em aberto',
+        value: _annualOpenMonthsCount.toString(),
+      ),
+    ];
+
+    if (wide) {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: children.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 2.8,
+        ),
+        itemBuilder: (context, index) => children[index],
+      );
+    }
+
+    return Column(
+      children: [
+        for (int i = 0; i < children.length; i++) ...[
+          children[i],
+          if (i != children.length - 1) const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+
   Widget _buildMainContent() {
     final t = AppLocalizations.of(context);
     final width = MediaQuery.of(context).size.width;
@@ -1701,6 +1859,12 @@ class _HomePageState extends State<HomePage> {
             title: t.translate('fiscal_dashboard'),
             subtitle: t.translate('current_month_tax_overview'),
             child: _buildFiscalDashboardSection(),
+          ),
+          const SizedBox(height: 12),
+          _buildSectionCard(
+            title: 'Dashboard fiscal anual',
+            subtitle: 'Resumo consolidado do ano atual',
+            child: _buildAnnualFiscalDashboardSection(),
           ),
           const SizedBox(height: 14),
           _buildSectionCard(
@@ -1746,6 +1910,12 @@ class _HomePageState extends State<HomePage> {
           title: t.translate('fiscal_dashboard'),
           subtitle: t.translate('current_month_tax_overview'),
           child: _buildFiscalDashboardSection(),
+        ),
+        const SizedBox(height: 12),
+        _buildSectionCard(
+          title: 'Dashboard fiscal anual',
+          subtitle: 'Resumo consolidado do ano atual',
+          child: _buildAnnualFiscalDashboardSection(),
         ),
         const SizedBox(height: 14),
         Row(
