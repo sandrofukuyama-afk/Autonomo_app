@@ -29,9 +29,17 @@ class _SettingsPageState extends State<SettingsPage> {
   final _occupation = TextEditingController();
   final _businessType = TextEditingController();
   final _invoiceNumber = TextEditingController();
+  final _fiscalNotes = TextEditingController();
 
+  String _language = 'pt';
+  String _currency = 'JPY';
   String _filingType = 'white_return';
+  String _consumptionTaxStatus = 'exempt';
+  String _bookkeepingMethod = 'simple';
+  int _fiscalYearStartMonth = 1;
   bool _invoiceRegistered = false;
+  bool _handlesReducedTaxRate = true;
+  bool _useTwoTenthsSpecialRule = false;
 
   @override
   void initState() {
@@ -52,13 +60,13 @@ class _SettingsPageState extends State<SettingsPage> {
     _occupation.dispose();
     _businessType.dispose();
     _invoiceNumber.dispose();
+    _fiscalNotes.dispose();
     super.dispose();
   }
 
   Future<void> _loadSettings() async {
     try {
       final companyId = await AuthService.instance.getCurrentCompanyId();
-
       _companyId = companyId;
 
       final data = await _client
@@ -77,10 +85,49 @@ class _SettingsPageState extends State<SettingsPage> {
       _address2.text = (data['address_line2'] ?? '').toString();
       _occupation.text = (data['occupation'] ?? '').toString();
       _businessType.text = (data['business_type'] ?? '').toString();
-
-      _filingType = (data['filing_type'] ?? 'white_return').toString();
-      _invoiceRegistered = (data['invoice_registered'] ?? false) == true;
       _invoiceNumber.text = (data['invoice_registration_no'] ?? '').toString();
+      _fiscalNotes.text = (data['fiscal_notes'] ?? '').toString();
+
+      _language = _normalizeString(
+        data['language'],
+        allowed: const ['pt', 'en', 'ja', 'es'],
+        fallback: 'pt',
+      );
+      _currency = _normalizeString(
+        data['currency'],
+        allowed: const ['JPY'],
+        fallback: 'JPY',
+      );
+      _filingType = _normalizeString(
+        data['filing_type'],
+        allowed: const ['white_return', 'blue_return'],
+        fallback: 'white_return',
+      );
+      _consumptionTaxStatus = _normalizeString(
+        data['consumption_tax_status'],
+        allowed: const ['exempt', 'taxable'],
+        fallback: 'exempt',
+      );
+      _bookkeepingMethod = _normalizeString(
+        data['bookkeeping_method'],
+        allowed: const ['simple', 'double_entry'],
+        fallback: 'simple',
+      );
+
+      final monthValue = data['fiscal_year_start_month'];
+      if (monthValue is int && monthValue >= 1 && monthValue <= 12) {
+        _fiscalYearStartMonth = monthValue;
+      } else if (monthValue is num) {
+        final parsed = monthValue.toInt();
+        if (parsed >= 1 && parsed <= 12) {
+          _fiscalYearStartMonth = parsed;
+        }
+      }
+
+      _invoiceRegistered = (data['invoice_registered'] ?? false) == true;
+      _handlesReducedTaxRate = (data['handles_reduced_tax_rate'] ?? true) == true;
+      _useTwoTenthsSpecialRule =
+          (data['use_two_tenths_special_rule'] ?? false) == true;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -92,6 +139,16 @@ class _SettingsPageState extends State<SettingsPage> {
         setState(() => _loading = false);
       }
     }
+  }
+
+  String _normalizeString(
+    dynamic value, {
+    required List<String> allowed,
+    required String fallback,
+  }) {
+    final text = (value ?? '').toString();
+    if (allowed.contains(text)) return text;
+    return fallback;
   }
 
   Future<void> _save() async {
@@ -111,10 +168,20 @@ class _SettingsPageState extends State<SettingsPage> {
         'address_line2': _address2.text.trim(),
         'occupation': _occupation.text.trim(),
         'business_type': _businessType.text.trim(),
+        'language': _language,
+        'currency': _currency,
+        'fiscal_year_start_month': _fiscalYearStartMonth,
         'filing_type': _filingType,
+        'consumption_tax_status': _consumptionTaxStatus,
         'invoice_registered': _invoiceRegistered,
         'invoice_registration_no':
             _invoiceRegistered ? _invoiceNumber.text.trim() : null,
+        'handles_reduced_tax_rate': _handlesReducedTaxRate,
+        'use_two_tenths_special_rule': _useTwoTenthsSpecialRule,
+        'bookkeeping_method': _bookkeepingMethod,
+        'fiscal_notes': _fiscalNotes.text.trim().isEmpty
+            ? null
+            : _fiscalNotes.text.trim(),
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('company_id', _companyId!);
 
@@ -136,14 +203,63 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Widget _field(String label, TextEditingController controller) {
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _field(
+    String label,
+    TextEditingController controller, {
+    int maxLines = 1,
+    TextInputType? keyboardType,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
         controller: controller,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+
+  Widget _dropdown<T>({
+    required String label,
+    required T value,
+    required List<DropdownMenuItem<T>> items,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DropdownButtonFormField<T>(
+        value: value,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
+        items: items,
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildCard(List<Widget> children) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: children,
         ),
       ),
     );
@@ -166,63 +282,160 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Dados pessoais',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          _buildCard([
+            _sectionTitle('Dados pessoais'),
+            _field('Nome completo', _fullName),
+            _field('Nome exibido', _displayName),
+            _field('Telefone', _phone, keyboardType: TextInputType.phone),
+            _field('CEP', _postalCode, keyboardType: TextInputType.text),
+            _field('Província / Prefeitura', _prefecture),
+            _field('Cidade', _city),
+            _field('Endereço', _address1),
+            _field('Complemento', _address2),
+          ]),
           const SizedBox(height: 12),
-          _field('Nome completo', _fullName),
-          _field('Nome exibido', _displayName),
-          _field('Telefone', _phone),
-          _field('CEP', _postalCode),
-          _field('Província / Prefeitura', _prefecture),
-          _field('Cidade', _city),
-          _field('Endereço', _address1),
-          _field('Complemento', _address2),
-          const SizedBox(height: 24),
-          const Text(
-            'Dados fiscais',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            value: _filingType,
-            decoration: const InputDecoration(
-              labelText: 'Tipo de declaração',
-              border: OutlineInputBorder(),
+          _buildCard([
+            _sectionTitle('Dados fiscais'),
+            _dropdown<String>(
+              label: 'Tipo de declaração',
+              value: _filingType,
+              items: const [
+                DropdownMenuItem(
+                  value: 'white_return',
+                  child: Text('White Return'),
+                ),
+                DropdownMenuItem(
+                  value: 'blue_return',
+                  child: Text('Blue Return'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _filingType = value);
+              },
             ),
-            items: const [
-              DropdownMenuItem(
-                value: 'white_return',
-                child: Text('White Return'),
-              ),
-              DropdownMenuItem(
-                value: 'blue_return',
-                child: Text('Blue Return'),
-              ),
-            ],
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() => _filingType = value);
-            },
-          ),
+            _dropdown<String>(
+              label: 'Status do imposto sobre consumo',
+              value: _consumptionTaxStatus,
+              items: const [
+                DropdownMenuItem(
+                  value: 'exempt',
+                  child: Text('Isento'),
+                ),
+                DropdownMenuItem(
+                  value: 'taxable',
+                  child: Text('Tributável'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _consumptionTaxStatus = value);
+              },
+            ),
+            _dropdown<String>(
+              label: 'Método de escrituração',
+              value: _bookkeepingMethod,
+              items: const [
+                DropdownMenuItem(
+                  value: 'simple',
+                  child: Text('Simples'),
+                ),
+                DropdownMenuItem(
+                  value: 'double_entry',
+                  child: Text('Partidas dobradas'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _bookkeepingMethod = value);
+              },
+            ),
+            _field('Ocupação', _occupation),
+            _field('Tipo de negócio', _businessType),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _invoiceRegistered,
+              title: const Text('Emissor de Invoice Qualificado'),
+              onChanged: (value) {
+                setState(() => _invoiceRegistered = value);
+              },
+            ),
+            if (_invoiceRegistered) _field('Número do Invoice', _invoiceNumber),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _handlesReducedTaxRate,
+              title: const Text('Usa taxa reduzida'),
+              onChanged: (value) {
+                setState(() => _handlesReducedTaxRate = value);
+              },
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _useTwoTenthsSpecialRule,
+              title: const Text('Usar regra especial 2/10'),
+              onChanged: (value) {
+                setState(() => _useTwoTenthsSpecialRule = value);
+              },
+            ),
+            _field('Observações fiscais', _fiscalNotes, maxLines: 4),
+          ]),
           const SizedBox(height: 12),
-          _field('Ocupação', _occupation),
-          _field('Tipo de negócio', _businessType),
-          const SizedBox(height: 12),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: _invoiceRegistered,
-            title: const Text('Emissor de Invoice Qualificado'),
-            onChanged: (value) {
-              setState(() => _invoiceRegistered = value);
-            },
-          ),
-          if (_invoiceRegistered)
-            _field('Número do Invoice', _invoiceNumber),
-          const SizedBox(height: 24),
+          _buildCard([
+            _sectionTitle('Preferências'),
+            _dropdown<String>(
+              label: 'Idioma do app',
+              value: _language,
+              items: const [
+                DropdownMenuItem(value: 'pt', child: Text('Português')),
+                DropdownMenuItem(value: 'en', child: Text('English')),
+                DropdownMenuItem(value: 'ja', child: Text('日本語')),
+                DropdownMenuItem(value: 'es', child: Text('Español')),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _language = value);
+              },
+            ),
+            _dropdown<String>(
+              label: 'Moeda',
+              value: _currency,
+              items: const [
+                DropdownMenuItem(value: 'JPY', child: Text('JPY')),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _currency = value);
+              },
+            ),
+            _dropdown<int>(
+              label: 'Mês inicial do ano fiscal',
+              value: _fiscalYearStartMonth,
+              items: const [
+                DropdownMenuItem(value: 1, child: Text('1 - Janeiro')),
+                DropdownMenuItem(value: 2, child: Text('2 - Fevereiro')),
+                DropdownMenuItem(value: 3, child: Text('3 - Março')),
+                DropdownMenuItem(value: 4, child: Text('4 - Abril')),
+                DropdownMenuItem(value: 5, child: Text('5 - Maio')),
+                DropdownMenuItem(value: 6, child: Text('6 - Junho')),
+                DropdownMenuItem(value: 7, child: Text('7 - Julho')),
+                DropdownMenuItem(value: 8, child: Text('8 - Agosto')),
+                DropdownMenuItem(value: 9, child: Text('9 - Setembro')),
+                DropdownMenuItem(value: 10, child: Text('10 - Outubro')),
+                DropdownMenuItem(value: 11, child: Text('11 - Novembro')),
+                DropdownMenuItem(value: 12, child: Text('12 - Dezembro')),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _fiscalYearStartMonth = value);
+              },
+            ),
+          ]),
+          const SizedBox(height: 16),
           ElevatedButton(
             onPressed: _saving ? null : _save,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
             child: _saving
                 ? const SizedBox(
                     width: 18,
