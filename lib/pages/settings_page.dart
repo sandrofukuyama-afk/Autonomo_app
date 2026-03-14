@@ -15,6 +15,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final SupabaseClient _client = Supabase.instance.client;
 
   bool _loading = true;
+  bool _saving = false;
   String? _companyId;
 
   final _fullName = TextEditingController();
@@ -27,10 +28,10 @@ class _SettingsPageState extends State<SettingsPage> {
   final _address2 = TextEditingController();
   final _occupation = TextEditingController();
   final _businessType = TextEditingController();
+  final _invoiceNumber = TextEditingController();
 
   String _filingType = 'white_return';
   bool _invoiceRegistered = false;
-  String? _invoiceNumber;
 
   @override
   void initState() {
@@ -38,14 +39,25 @@ class _SettingsPageState extends State<SettingsPage> {
     _loadSettings();
   }
 
+  @override
+  void dispose() {
+    _fullName.dispose();
+    _displayName.dispose();
+    _phone.dispose();
+    _postalCode.dispose();
+    _prefecture.dispose();
+    _city.dispose();
+    _address1.dispose();
+    _address2.dispose();
+    _occupation.dispose();
+    _businessType.dispose();
+    _invoiceNumber.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadSettings() async {
     try {
-      final companyId = await AuthService.instance.getCompanyId();
-
-      if (companyId == null) {
-        setState(() => _loading = false);
-        return;
-      }
+      final companyId = await AuthService.instance.getCurrentCompanyId();
 
       _companyId = companyId;
 
@@ -55,51 +67,72 @@ class _SettingsPageState extends State<SettingsPage> {
           .eq('company_id', companyId)
           .single();
 
-      _fullName.text = data['full_name'] ?? '';
-      _displayName.text = data['display_name'] ?? '';
-      _phone.text = data['phone'] ?? '';
-      _postalCode.text = data['postal_code'] ?? '';
-      _prefecture.text = data['prefecture'] ?? '';
-      _city.text = data['city'] ?? '';
-      _address1.text = data['address_line1'] ?? '';
-      _address2.text = data['address_line2'] ?? '';
-      _occupation.text = data['occupation'] ?? '';
-      _businessType.text = data['business_type'] ?? '';
+      _fullName.text = (data['full_name'] ?? '').toString();
+      _displayName.text = (data['display_name'] ?? '').toString();
+      _phone.text = (data['phone'] ?? '').toString();
+      _postalCode.text = (data['postal_code'] ?? '').toString();
+      _prefecture.text = (data['prefecture'] ?? '').toString();
+      _city.text = (data['city'] ?? '').toString();
+      _address1.text = (data['address_line1'] ?? '').toString();
+      _address2.text = (data['address_line2'] ?? '').toString();
+      _occupation.text = (data['occupation'] ?? '').toString();
+      _businessType.text = (data['business_type'] ?? '').toString();
 
-      _filingType = data['filing_type'] ?? 'white_return';
-      _invoiceRegistered = data['invoice_registered'] ?? false;
-      _invoiceNumber = data['invoice_registration_no'];
-
-      setState(() => _loading = false);
+      _filingType = (data['filing_type'] ?? 'white_return').toString();
+      _invoiceRegistered = (data['invoice_registered'] ?? false) == true;
+      _invoiceNumber.text = (data['invoice_registration_no'] ?? '').toString();
     } catch (e) {
-      setState(() => _loading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao carregar configurações: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
   Future<void> _save() async {
     if (_companyId == null) return;
 
-    await _client.from('app_settings').update({
-      'full_name': _fullName.text,
-      'display_name': _displayName.text,
-      'phone': _phone.text,
-      'postal_code': _postalCode.text,
-      'prefecture': _prefecture.text,
-      'city': _city.text,
-      'address_line1': _address1.text,
-      'address_line2': _address2.text,
-      'occupation': _occupation.text,
-      'business_type': _businessType.text,
-      'filing_type': _filingType,
-      'invoice_registered': _invoiceRegistered,
-      'invoice_registration_no': _invoiceNumber,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('company_id', _companyId!);
+    setState(() => _saving = true);
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Configurações salvas')),
-      );
+    try {
+      await _client.from('app_settings').update({
+        'full_name': _fullName.text.trim(),
+        'display_name': _displayName.text.trim(),
+        'phone': _phone.text.trim(),
+        'postal_code': _postalCode.text.trim(),
+        'prefecture': _prefecture.text.trim(),
+        'city': _city.text.trim(),
+        'address_line1': _address1.text.trim(),
+        'address_line2': _address2.text.trim(),
+        'occupation': _occupation.text.trim(),
+        'business_type': _businessType.text.trim(),
+        'filing_type': _filingType,
+        'invoice_registered': _invoiceRegistered,
+        'invoice_registration_no':
+            _invoiceRegistered ? _invoiceNumber.text.trim() : null,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('company_id', _companyId!);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Configurações salvas com sucesso')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar configurações: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
@@ -118,7 +151,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
+    AppLocalizations.of(context);
 
     if (_loading) {
       return const Scaffold(
@@ -138,25 +171,20 @@ class _SettingsPageState extends State<SettingsPage> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-
           _field('Nome completo', _fullName),
           _field('Nome exibido', _displayName),
           _field('Telefone', _phone),
           _field('CEP', _postalCode),
-          _field('Prefecture', _prefecture),
+          _field('Província / Prefeitura', _prefecture),
           _field('Cidade', _city),
           _field('Endereço', _address1),
           _field('Complemento', _address2),
-
           const SizedBox(height: 24),
-
           const Text(
             'Dados fiscais',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-
           const SizedBox(height: 12),
-
           DropdownButtonFormField<String>(
             value: _filingType,
             decoration: const InputDecoration(
@@ -173,39 +201,35 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: Text('Blue Return'),
               ),
             ],
-            onChanged: (v) => setState(() => _filingType = v!),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _filingType = value);
+            },
           ),
-
           const SizedBox(height: 12),
-
           _field('Ocupação', _occupation),
           _field('Tipo de negócio', _businessType),
-
           const SizedBox(height: 12),
-
           SwitchListTile(
+            contentPadding: EdgeInsets.zero,
             value: _invoiceRegistered,
             title: const Text('Emissor de Invoice Qualificado'),
-            onChanged: (v) => setState(() => _invoiceRegistered = v),
+            onChanged: (value) {
+              setState(() => _invoiceRegistered = value);
+            },
           ),
-
           if (_invoiceRegistered)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Número do Invoice',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (v) => _invoiceNumber = v,
-              ),
-            ),
-
+            _field('Número do Invoice', _invoiceNumber),
           const SizedBox(height: 24),
-
           ElevatedButton(
-            onPressed: _save,
-            child: const Text('Salvar'),
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Salvar'),
           ),
         ],
       ),
