@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
 
 import '../data/auth_service.dart';
 import '../l10n/app_localizations.dart';
@@ -202,7 +205,7 @@ class _HomePageState extends State<HomePage> {
     final double taxableAnnualProfit = annualProfit > 0 ? annualProfit : 0.0;
     final double annualEstimatedTax =
         _estimateNationalTax(taxableAnnualProfit) +
-        _estimateResidentTax(taxableAnnualProfit);
+            _estimateResidentTax(taxableAnnualProfit);
 
     final yearPrefix = '$year-';
     final int closedCount = _closedFiscalMonths
@@ -214,7 +217,8 @@ class _HomePageState extends State<HomePage> {
     _annualProfit = annualProfit;
     _annualEstimatedTax = annualEstimatedTax;
     _annualClosedMonthsCount = closedCount.clamp(0, 12).toInt();
-    _annualOpenMonthsCount = (12 - _annualClosedMonthsCount).clamp(0, 12).toInt();
+    _annualOpenMonthsCount =
+        (12 - _annualClosedMonthsCount).clamp(0, 12).toInt();
   }
 
   double _toDouble(dynamic value) {
@@ -308,7 +312,8 @@ class _HomePageState extends State<HomePage> {
 
     final List<dynamic> receipts = await _client
         .from('expense_receipts')
-        .select('id, expense_id, expenses_v2!inner(id, expense_date, company_id)')
+        .select(
+            'id, expense_id, expenses_v2!inner(id, expense_date, company_id)')
         .eq('expenses_v2.company_id', _companyId!)
         .gte('expenses_v2.expense_date', startIso)
         .lt('expenses_v2.expense_date', endIso);
@@ -415,7 +420,8 @@ class _HomePageState extends State<HomePage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${t.translate('fiscal_month_closed_success')} $month.'),
+          content:
+              Text('${t.translate('fiscal_month_closed_success')} $month.'),
         ),
       );
     } catch (e) {
@@ -603,6 +609,229 @@ class _HomePageState extends State<HomePage> {
     );
 
     await _refreshDashboard();
+  }
+
+  String _apiBaseUrl() {
+    final uri = Uri.base;
+    return '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
+  }
+
+  String _currentLanguageCode() {
+    final code = widget.currentLocale?.languageCode ?? 'pt';
+    if (code == 'pt' || code == 'en' || code == 'ja' || code == 'es') {
+      return code;
+    }
+    return 'pt';
+  }
+
+  String _helpButtonLabel() {
+    switch (_currentLanguageCode()) {
+      case 'ja':
+        return '質問する';
+      case 'en':
+        return 'Ask AI';
+      case 'es':
+        return 'Sacar duda';
+      default:
+        return 'Tirar dúvida';
+    }
+  }
+
+  String _helpDialogTitle() {
+    switch (_currentLanguageCode()) {
+      case 'ja':
+        return 'AIに質問';
+      case 'en':
+        return 'Ask AI';
+      case 'es':
+        return 'Consultar IA';
+      default:
+        return 'Tirar dúvida';
+    }
+  }
+
+  String _helpDialogHint() {
+    switch (_currentLanguageCode()) {
+      case 'ja':
+        return 'アプリや日本の税務について質問してください';
+      case 'en':
+        return 'Ask about the app or taxes in Japan';
+      case 'es':
+        return 'Pregunta sobre la app o impuestos en Japón';
+      default:
+        return 'Pergunte sobre o app ou imposto no Japão';
+    }
+  }
+
+  String _helpSendLabel() {
+    switch (_currentLanguageCode()) {
+      case 'ja':
+        return 'Enviar';
+      case 'en':
+        return 'Send';
+      case 'es':
+        return 'Enviar';
+      default:
+        return 'Enviar';
+    }
+  }
+
+  String _helpEmptyQuestionLabel() {
+    switch (_currentLanguageCode()) {
+      case 'ja':
+        return 'Digite uma pergunta.';
+      case 'en':
+        return 'Type a question.';
+      case 'es':
+        return 'Escribe una pregunta.';
+      default:
+        return 'Digite uma pergunta.';
+    }
+  }
+
+  String _helpErrorLabel() {
+    switch (_currentLanguageCode()) {
+      case 'ja':
+        return 'Não foi possível obter resposta agora.';
+      case 'en':
+        return 'Could not get an answer right now.';
+      case 'es':
+        return 'No fue posible obtener respuesta ahora.';
+      default:
+        return 'Não foi possível obter resposta agora.';
+    }
+  }
+
+  Future<String> _askAiHelp(String question) async {
+    final response = await http.post(
+      Uri.parse('${_apiBaseUrl()}/api/ai-help'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'question': question,
+        'language': _currentLanguageCode(),
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_helpErrorLabel());
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final answer = (data['answer'] ?? '').toString().trim();
+
+    if (answer.isEmpty) {
+      throw Exception(_helpErrorLabel());
+    }
+
+    return answer;
+  }
+
+  Future<void> _openAiHelp() async {
+    final TextEditingController questionController = TextEditingController();
+    String answer = '';
+    bool sending = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(_helpDialogTitle()),
+              content: SizedBox(
+                width: 520,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: questionController,
+                        minLines: 3,
+                        maxLines: 6,
+                        decoration: InputDecoration(
+                          hintText: _helpDialogHint(),
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (sending)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                      if (!sending && answer.isNotEmpty) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: SelectableText(
+                            answer,
+                            style: const TextStyle(fontSize: 14, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(
+                    AppLocalizations.of(context).translate('cancel'),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: sending
+                      ? null
+                      : () async {
+                          final question = questionController.text.trim();
+                          if (question.isEmpty) {
+                            ScaffoldMessenger.of(this.context).showSnackBar(
+                              SnackBar(
+                                content: Text(_helpEmptyQuestionLabel()),
+                              ),
+                            );
+                            return;
+                          }
+
+                          setDialogState(() {
+                            sending = true;
+                            answer = '';
+                          });
+
+                          try {
+                            final result = await _askAiHelp(question);
+                            setDialogState(() {
+                              answer = result;
+                              sending = false;
+                            });
+                          } catch (e) {
+                            setDialogState(() {
+                              sending = false;
+                              answer = e.toString().replaceFirst('Exception: ', '');
+                            });
+                          }
+                        },
+                  child: Text(_helpSendLabel()),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    questionController.dispose();
   }
 
   Widget _buildHeroCard() {
@@ -986,8 +1215,7 @@ class _HomePageState extends State<HomePage> {
               color: Colors.white,
             ),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
                   CircleAvatar(
@@ -1091,9 +1319,8 @@ class _HomePageState extends State<HomePage> {
         'color': Colors.red,
       },
       {
-        'label': _monthProfit >= 0
-            ? t.translate('result')
-            : t.translate('loss'),
+        'label':
+            _monthProfit >= 0 ? t.translate('result') : t.translate('loss'),
         'value': _monthProfit.abs(),
         'color': _monthProfit >= 0 ? Colors.blue : Colors.orange,
       },
@@ -1568,8 +1795,8 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: currentClosed
                           ? Colors.green.shade100
@@ -1587,8 +1814,8 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: currentClosed
                           ? Colors.green.shade100
@@ -1953,6 +2180,13 @@ class _HomePageState extends State<HomePage> {
             icon: const Icon(Icons.assessment),
             label: Text(t.translate('nav_reports')),
             onPressed: _openReportsPage,
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
+            heroTag: 'ai_help',
+            icon: const Icon(Icons.smart_toy_outlined),
+            label: Text(_helpButtonLabel()),
+            onPressed: _openAiHelp,
           ),
         ],
       ),
