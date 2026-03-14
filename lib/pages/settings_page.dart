@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/auth_service.dart';
+import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -18,6 +19,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _loading = true;
   bool _saving = false;
   bool _submitted = false;
+  bool _updatingFiscalLock = false;
   String? _companyId;
 
   final _fullName = TextEditingController();
@@ -42,6 +44,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _invoiceRegistered = false;
   bool _handlesReducedTaxRate = true;
   bool _useTwoTenthsSpecialRule = false;
+  List<String> _closedFiscalMonths = [];
 
   static const List<String> _supportedLanguages = ['pt', 'en', 'ja', 'es'];
   static const List<String> _supportedCurrencies = ['JPY'];
@@ -96,6 +99,9 @@ class _SettingsPageState extends State<SettingsPage> {
         'section_preferences': 'Preferências',
         'section_preferences_subtitle':
             'Idioma, moeda e início do ano fiscal usados no aplicativo.',
+        'section_fiscal_lock': 'Fechamento fiscal',
+        'section_fiscal_lock_subtitle':
+            'Bloqueia alterações em meses já finalizados para manter consistência contábil.',
         'full_name': 'Nome completo',
         'display_name': 'Nome exibido',
         'phone': 'Telefone',
@@ -129,6 +135,8 @@ class _SettingsPageState extends State<SettingsPage> {
         'handles_reduced_tax_rate_helper':
             'Mostra que o negócio opera com itens sujeitos a alíquota reduzida.',
         'use_two_tenths_special_rule': 'Usar regra especial 2/10',
+        'use_two_tenthsSpecial_rule_helper':
+            'Habilite somente se essa regra especial realmente se aplicar ao seu caso.',
         'use_two_tenths_special_rule_helper':
             'Habilite somente se essa regra especial realmente se aplicar ao seu caso.',
         'fiscal_notes': 'Observações fiscais',
@@ -169,6 +177,14 @@ class _SettingsPageState extends State<SettingsPage> {
         'month_10': '10 - Outubro',
         'month_11': '11 - Novembro',
         'month_12': '12 - Dezembro',
+        'close_current_month': 'Fechar mês atual',
+        'closed_months': 'Meses fechados',
+        'no_closed_months': 'Nenhum mês fechado até o momento.',
+        'reopen': 'Reabrir',
+        'current_month': 'Mês atual',
+        'fiscal_month_closed_success': 'Mês fechado com sucesso.',
+        'fiscal_month_reopened_success': 'Mês reaberto com sucesso.',
+        'fiscal_lock_error': 'Erro ao atualizar fechamento fiscal:',
       },
       'en': {
         'page_title': 'Settings',
@@ -183,6 +199,9 @@ class _SettingsPageState extends State<SettingsPage> {
         'section_preferences': 'Preferences',
         'section_preferences_subtitle':
             'Language, currency, and fiscal year settings used by the app.',
+        'section_fiscal_lock': 'Fiscal lock',
+        'section_fiscal_lock_subtitle':
+            'Blocks changes to finalized months to keep accounting consistency.',
         'full_name': 'Full name',
         'display_name': 'Display name',
         'phone': 'Phone',
@@ -256,6 +275,14 @@ class _SettingsPageState extends State<SettingsPage> {
         'month_10': '10 - October',
         'month_11': '11 - November',
         'month_12': '12 - December',
+        'close_current_month': 'Close current month',
+        'closed_months': 'Closed months',
+        'no_closed_months': 'No closed months yet.',
+        'reopen': 'Reopen',
+        'current_month': 'Current month',
+        'fiscal_month_closed_success': 'Month closed successfully.',
+        'fiscal_month_reopened_success': 'Month reopened successfully.',
+        'fiscal_lock_error': 'Failed to update fiscal lock:',
       },
       'ja': {
         'page_title': '設定',
@@ -266,6 +293,9 @@ class _SettingsPageState extends State<SettingsPage> {
         'section_fiscal_subtitle': '記帳に影響する税務区分とルールを設定します。',
         'section_preferences': '環境設定',
         'section_preferences_subtitle': 'アプリで使う言語、通貨、会計年度の設定です。',
+        'section_fiscal_lock': '会計締め',
+        'section_fiscal_lock_subtitle':
+            '締め済み月への変更をブロックし、会計の整合性を保ちます。',
         'full_name': '氏名',
         'display_name': '表示名',
         'phone': '電話番号',
@@ -293,9 +323,11 @@ class _SettingsPageState extends State<SettingsPage> {
             '日本の適格請求書発行事業者として登録済みの場合のみ有効にしてください。',
         'invoice_number': 'インボイス番号',
         'handles_reduced_tax_rate': '軽減税率を扱う',
-        'handles_reduced_tax_rate_helper': '軽減税率対象の商品・サービスを扱う場合に有効にします。',
+        'handles_reduced_tax_rate_helper':
+            '軽減税率対象の商品・サービスを扱う場合に有効にします。',
         'use_two_tenths_special_rule': '2割特例を使う',
-        'use_two_tenths_special_rule_helper': '実際に2割特例の対象となる場合のみ有効にしてください。',
+        'use_two_tenths_special_rule_helper':
+            '実際に2割特例の対象となる場合のみ有効にしてください。',
         'fiscal_notes': '税務メモ',
         'fiscal_notes_helper': '税理士向けの重要なメモを残せます。',
         'language': 'アプリ言語',
@@ -331,6 +363,14 @@ class _SettingsPageState extends State<SettingsPage> {
         'month_10': '10 - 10月',
         'month_11': '11 - 11月',
         'month_12': '12 - 12月',
+        'close_current_month': '今月を締める',
+        'closed_months': '締め済み月',
+        'no_closed_months': '締め済みの月はまだありません。',
+        'reopen': '再開',
+        'current_month': '今月',
+        'fiscal_month_closed_success': '月を締めました。',
+        'fiscal_month_reopened_success': '月を再開しました。',
+        'fiscal_lock_error': '会計締めの更新エラー:',
       },
       'es': {
         'page_title': 'Configuración',
@@ -345,6 +385,9 @@ class _SettingsPageState extends State<SettingsPage> {
         'section_preferences': 'Preferencias',
         'section_preferences_subtitle':
             'Idioma, moneda y configuración del año fiscal usados por la app.',
+        'section_fiscal_lock': 'Cierre fiscal',
+        'section_fiscal_lock_subtitle':
+            'Bloquea cambios en meses ya finalizados para mantener consistencia contable.',
         'full_name': 'Nombre completo',
         'display_name': 'Nombre visible',
         'phone': 'Teléfono',
@@ -418,6 +461,14 @@ class _SettingsPageState extends State<SettingsPage> {
         'month_10': '10 - Octubre',
         'month_11': '11 - Noviembre',
         'month_12': '12 - Diciembre',
+        'close_current_month': 'Cerrar mes actual',
+        'closed_months': 'Meses cerrados',
+        'no_closed_months': 'Todavía no hay meses cerrados.',
+        'reopen': 'Reabrir',
+        'current_month': 'Mes actual',
+        'fiscal_month_closed_success': 'Mes cerrado correctamente.',
+        'fiscal_month_reopened_success': 'Mes reabierto correctamente.',
+        'fiscal_lock_error': 'Error al actualizar el cierre fiscal:',
       },
     };
 
@@ -485,8 +536,18 @@ class _SettingsPageState extends State<SettingsPage> {
         }
       }
 
+      final closedRaw = data['closed_fiscal_months'];
+      if (closedRaw is List) {
+        _closedFiscalMonths = closedRaw
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList()
+          ..sort();
+      }
+
       _invoiceRegistered = (data['invoice_registered'] ?? false) == true;
-      _handlesReducedTaxRate = (data['handles_reduced_tax_rate'] ?? true) == true;
+      _handlesReducedTaxRate =
+          (data['handles_reduced_tax_rate'] ?? true) == true;
       _useTwoTenthsSpecialRule =
           (data['use_two_tenths_special_rule'] ?? false) == true;
     } catch (e) {
@@ -514,6 +575,23 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   bool get _isTaxable => _consumptionTaxStatus == 'taxable';
+
+  String get _currentFiscalMonth {
+    final now = DateTime.now();
+    final year = now.year.toString().padLeft(4, '0');
+    final month = now.month.toString().padLeft(2, '0');
+    return '$year-$month';
+  }
+
+  String _formatFiscalMonth(String fiscalMonth, AppLocalizations t) {
+    final parts = fiscalMonth.split('-');
+    if (parts.length != 2) return fiscalMonth;
+
+    final month = int.tryParse(parts[1]);
+    if (month == null || month < 1 || month > 12) return fiscalMonth;
+
+    return '${parts[0]} · ${_text('month_$month', t)}';
+  }
 
   String? _requiredValidator(String? value, AppLocalizations t) {
     if ((value ?? '').trim().isEmpty) {
@@ -548,6 +626,67 @@ class _SettingsPageState extends State<SettingsPage> {
       return _text('invoice_required', t);
     }
     return null;
+  }
+
+  Future<void> _closeCurrentMonth() async {
+    final t = AppLocalizations.of(context);
+
+    setState(() => _updatingFiscalLock = true);
+
+    try {
+      final fiscalMonth = _currentFiscalMonth;
+      await SupabaseService.instance.closeFiscalMonth(fiscalMonth);
+
+      if (!_closedFiscalMonths.contains(fiscalMonth)) {
+        _closedFiscalMonths.add(fiscalMonth);
+        _closedFiscalMonths.sort();
+      }
+
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_text('fiscal_month_closed_success', t))),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${_text('fiscal_lock_error', t)} $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _updatingFiscalLock = false);
+      }
+    }
+  }
+
+  Future<void> _reopenFiscalMonth(String fiscalMonth) async {
+    final t = AppLocalizations.of(context);
+
+    setState(() => _updatingFiscalLock = true);
+
+    try {
+      await SupabaseService.instance.reopenFiscalMonth(fiscalMonth);
+      _closedFiscalMonths.remove(fiscalMonth);
+
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_text('fiscal_month_reopened_success', t))),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${_text('fiscal_lock_error', t)} $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _updatingFiscalLock = false);
+      }
+    }
   }
 
   Future<void> _save() async {
@@ -590,7 +729,8 @@ class _SettingsPageState extends State<SettingsPage> {
         'invoice_registration_no':
             _invoiceRegistered ? _invoiceNumber.text.trim() : null,
         'handles_reduced_tax_rate': _isTaxable ? _handlesReducedTaxRate : false,
-        'use_two_tenths_special_rule': _isTaxable ? _useTwoTenthsSpecialRule : false,
+        'use_two_tenths_special_rule':
+            _isTaxable ? _useTwoTenthsSpecialRule : false,
         'bookkeeping_method': _bookkeepingMethod,
         'fiscal_notes': _fiscalNotes.text.trim().isEmpty
             ? null
@@ -746,7 +886,8 @@ class _SettingsPageState extends State<SettingsPage> {
           border: Border.all(color: theme.dividerColor.withValues(alpha: 0.35)),
         ),
         child: SwitchListTile.adaptive(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           value: value,
           title: Text(_text(titleKey, t)),
           subtitle: Text(_text(helperKey, t)),
@@ -785,6 +926,8 @@ class _SettingsPageState extends State<SettingsPage> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+
+    final currentMonthClosed = _closedFiscalMonths.contains(_currentFiscalMonth);
 
     return Scaffold(
       appBar: AppBar(
@@ -1081,6 +1224,92 @@ class _SettingsPageState extends State<SettingsPage> {
                   setState(() => _fiscalYearStartMonth = value);
                 },
               ),
+            ]),
+            const SizedBox(height: 12),
+            _buildCard([
+              _sectionHeader(
+                context,
+                t,
+                icon: Icons.lock_outline,
+                titleKey: 'section_fiscal_lock',
+                subtitleKey: 'section_fiscal_lock_subtitle',
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${_text('current_month', t)}: ${_formatFiscalMonth(_currentFiscalMonth, t)}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Chip(
+                    avatar: Icon(
+                      currentMonthClosed ? Icons.lock : Icons.lock_open,
+                      size: 18,
+                    ),
+                    label: Text(
+                      currentMonthClosed ? '🔒' : '—',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: (_updatingFiscalLock || currentMonthClosed)
+                    ? null
+                    : _closeCurrentMonth,
+                icon: const Icon(Icons.lock),
+                label: Text(_text('close_current_month', t)),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _text('closed_months', t),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (_closedFiscalMonths.isEmpty)
+                Text(
+                  _text('no_closed_months', t),
+                  style: theme.textTheme.bodySmall,
+                )
+              else
+                Column(
+                  children: _closedFiscalMonths.map((month) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: theme.dividerColor.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(_formatFiscalMonth(month, t)),
+                          ),
+                          TextButton(
+                            onPressed: _updatingFiscalLock
+                                ? null
+                                : () => _reopenFiscalMonth(month),
+                            child: Text(_text('reopen', t)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
             ]),
             const SizedBox(height: 18),
             FilledButton(
