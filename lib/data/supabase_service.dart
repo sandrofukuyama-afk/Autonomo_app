@@ -272,7 +272,7 @@ class SupabaseService {
           'category': _normalizeExpenseCategory(data['category']),
           'amount': data['amount'],
           'tax_amount': data['tax'],
-          'tax_type': data['tax_type'],
+          'tax_type': _normalizeTaxType(data['tax_type']),
           'payment_method': _normalizePaymentMethod(data['payment_method']),
           'notes': data['notes'],
           'receipt_status': receiptUrl != null ? 'uploaded' : 'none',
@@ -369,7 +369,7 @@ class SupabaseService {
       'category': _normalizeExpenseCategory(data['category']),
       'amount': data['amount'],
       'tax_amount': data['tax'],
-      'tax_type': data['tax_type'],
+      'tax_type': _normalizeTaxType(data['tax_type']),
       'payment_method': _normalizePaymentMethod(data['payment_method']),
       'notes': data['notes'],
       'tax_rate': data['tax_rate'],
@@ -517,15 +517,26 @@ class SupabaseService {
   }
 
   String _normalizePaymentMethod(dynamic value) {
-    switch (value) {
+    if (value == null) return 'other';
+
+    final normalized = value.toString().trim().toLowerCase();
+
+    switch (normalized) {
       case 'cash':
         return 'cash';
+
       case 'credit_card':
-        return 'credit_card';
+      case 'card':
+        return 'card';
+
       case 'furikomi':
-        return 'furikomi';
+      case 'bank':
+      case 'bank_transfer':
+        return 'bank_transfer';
+
       case 'paypay':
         return 'paypay';
+
       default:
         return 'other';
     }
@@ -560,6 +571,27 @@ class SupabaseService {
       case 'other':
       default:
         return 'other';
+    }
+  }
+
+  String? _normalizeTaxType(dynamic value) {
+    if (value == null) return null;
+
+    final normalized = value.toString().trim().toLowerCase();
+
+    switch (normalized) {
+      case '税込':
+      case 'tax_included':
+      case 'included':
+        return '税込';
+
+      case '税抜':
+      case 'tax_excluded':
+      case 'excluded':
+        return '税抜';
+
+      default:
+        return null;
     }
   }
 }
