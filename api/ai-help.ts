@@ -78,18 +78,31 @@ ESTILO
 - quando útil, use passos numerados curtos
 - quando a dúvida for fiscal sensível, diga que a resposta é informativa e pode precisar de confirmação com contador no Japão
 
-EXEMPLOS DE TOM
-- "税込 significa que o imposto já está incluído no valor."
-- "税抜 significa que o imposto será calculado por fora."
-- "No app, o recibo deve ser anexado à despesa para melhorar a organização e a revisão fiscal."
-- "Blue Return oferece vantagens fiscais, mas a elegibilidade depende da forma de escrituração."
-
 FORMATO DE SAÍDA
 - responda em texto puro
-- sem markdown complexo
 - sem JSON
 - sem código, exceto se o usuário pedir explicitamente algo técnico
 `;
+}
+
+function extractAnswer(data: any): string {
+  if (typeof data?.output_text === 'string' && data.output_text.trim()) {
+    return data.output_text.trim();
+  }
+
+  if (Array.isArray(data?.output)) {
+    for (const item of data.output) {
+      if (!Array.isArray(item?.content)) continue;
+
+      for (const content of item.content) {
+        if (typeof content?.text === 'string' && content.text.trim()) {
+          return content.text.trim();
+        }
+      }
+    }
+  }
+
+  return '';
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -113,18 +126,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    final body = await readBody(req);
-    final question = (body?.question ?? '').toString().trim();
-    final language = (body?.language ?? 'pt').toString().trim();
+    const body = await readBody(req);
+    const question = String(body?.question ?? '').trim();
+    const language = String(body?.language ?? 'pt').trim();
 
-    if (question.isEmpty) {
+    if (!question) {
       return sendJson(res, 400, {
         error: 'missing_question',
         message: 'Pergunta não informada.',
       });
     }
 
-    final apiResponse = await fetch('https://api.openai.com/v1/responses', {
+    const apiResponse = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -156,12 +169,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }),
     });
 
-    final rawText = await apiResponse.text();
-    dynamic data;
+    const rawText = await apiResponse.text();
 
+    let data: any;
     try {
-      data = rawText.isNotEmpty ? JSON.parse(rawText) : {};
-    } catch (_) {
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch {
       return sendJson(res, 502, {
         error: 'invalid_openai_response',
         message: 'Resposta inválida da OpenAI.',
@@ -172,27 +185,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!apiResponse.ok) {
       return sendJson(res, apiResponse.status, {
         error: 'openai_request_failed',
-        message: data?['error']?['message'] ??
-            'A OpenAI retornou erro ao processar a solicitação.',
-        type: data?['error']?['type'],
-        code: data?['error']?['code'],
+        message:
+          data?.error?.message ??
+          'A OpenAI retornou erro ao processar a solicitação.',
+        type: data?.error?.type ?? null,
+        code: data?.error?.code ?? null,
       });
     }
 
-    final answer =
-        (data?['output_text'] ?? '').toString().trim().isNotEmpty
-            ? (data['output_text'] as String).trim()
-            : (((data?['output'] is List &&
-                            data['output'].isNotEmpty &&
-                            data['output'][0]?['content'] is List &&
-                            data['output'][0]['content'].isNotEmpty)
-                        ? data['output'][0]['content'][0]?['text']
-                        : '') ??
-                    '')
-                .toString()
-                .trim();
+    const answer = extractAnswer(data);
 
-    if (answer.isEmpty) {
+    if (!answer) {
       return sendJson(res, 502, {
         error: 'empty_ai_answer',
         message: 'A IA não retornou texto.',
