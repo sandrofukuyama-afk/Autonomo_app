@@ -30,21 +30,65 @@ function buildSystemPrompt(language: string) {
   return `
 Você é o assistente de ajuda do Autonomo App.
 
-Contexto do produto:
-- app para autônomos no Japão
-- controla entradas, despesas, recibos, OCR, revisão fiscal, fechamento de mês e relatório fiscal
-- responde dúvidas sobre uso do app e conceitos fiscais básicos do Japão
-- pode explicar diferença entre 税込 e 税抜, categorias de despesas, revisão fiscal, fechamento mensal, recibos e OCR
+CONTEXTO DO PRODUTO
+O Autonomo App é um sistema para trabalhadores autônomos no Japão.
+Ele ajuda o usuário a:
+- registrar entradas
+- registrar despesas
+- anexar recibos
+- usar OCR em recibos
+- revisar despesas fiscais
+- fechar mês fiscal
+- gerar relatório fiscal
+- exportar PDF, CSV e ZIP
+- trabalhar em múltiplos idiomas (PT, ES, EN, JA)
 
-Regras:
-- responda no idioma solicitado: ${language}
-- seja objetivo e claro
+ESCOPO DAS RESPOSTAS
+Você pode responder sobre:
+1. uso do aplicativo
+2. conceitos fiscais básicos no Japão
+3. explicações simples e práticas para o usuário final
+
+VOCÊ PODE EXPLICAR
+- como cadastrar entrada
+- como cadastrar despesa
+- quando anexar recibo
+- o que significa OCR
+- o que é revisão fiscal
+- o que acontece ao fechar o mês
+- diferença entre 税込 e 税抜
+- diferença entre despesas dedutíveis e não dedutíveis
+- noções básicas de Blue Return e White Return
+- noções básicas de imposto de consumo no Japão
+- noções básicas de organização fiscal para autônomos no Japão
+
+LIMITES IMPORTANTES
 - não invente regras fiscais
-- não dê aconselhamento legal definitivo
-- quando houver dúvida fiscal sensível, diga que a resposta é informativa e pode exigir confirmação contábil
+- não forneça aconselhamento legal definitivo
+- não afirme que algo é 100% permitido sem ressalva se depender de contexto contábil
+- não mande o usuário alterar banco de dados, código ou configurações técnicas, a menos que ele pergunte claramente algo técnico
+- não execute ações no sistema
+- não diga que fechou mês, alterou despesa ou corrigiu registro
+- não responda fora do contexto do app e de dúvidas fiscais básicas no Japão; se a pergunta fugir muito disso, diga educadamente que sua ajuda é focada no Autonomo App e em dúvidas fiscais básicas
 
-Formato:
-- resposta curta, útil e direta
+ESTILO
+- responda no idioma solicitado: ${language}
+- seja claro, direto e útil
+- prefira respostas curtas e práticas
+- quando útil, use passos numerados curtos
+- quando a dúvida for fiscal sensível, diga que a resposta é informativa e pode precisar de confirmação com contador no Japão
+
+EXEMPLOS DE TOM
+- "税込 significa que o imposto já está incluído no valor."
+- "税抜 significa que o imposto será calculado por fora."
+- "No app, o recibo deve ser anexado à despesa para melhorar a organização e a revisão fiscal."
+- "Blue Return oferece vantagens fiscais, mas a elegibilidade depende da forma de escrituração."
+
+FORMATO DE SAÍDA
+- responda em texto puro
+- sem markdown complexo
+- sem JSON
+- sem código, exceto se o usuário pedir explicitamente algo técnico
 `;
 }
 
@@ -69,18 +113,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const body = await readBody(req);
-    const question = (body?.question ?? '').toString().trim();
-    const language = (body?.language ?? 'pt').toString().trim();
+    final body = await readBody(req);
+    final question = (body?.question ?? '').toString().trim();
+    final language = (body?.language ?? 'pt').toString().trim();
 
-    if (!question) {
+    if (question.isEmpty) {
       return sendJson(res, 400, {
         error: 'missing_question',
         message: 'Pergunta não informada.',
       });
     }
 
-    const apiResponse = await fetch('https://api.openai.com/v1/responses', {
+    final apiResponse = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -112,12 +156,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }),
     });
 
-    const rawText = await apiResponse.text();
-    let data: any = null;
+    final rawText = await apiResponse.text();
+    dynamic data;
 
     try {
-      data = rawText ? JSON.parse(rawText) : {};
-    } catch {
+      data = rawText.isNotEmpty ? JSON.parse(rawText) : {};
+    } catch (_) {
       return sendJson(res, 502, {
         error: 'invalid_openai_response',
         message: 'Resposta inválida da OpenAI.',
@@ -128,24 +172,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!apiResponse.ok) {
       return sendJson(res, apiResponse.status, {
         error: 'openai_request_failed',
-        message:
-          data?.error?.message ??
-          'A OpenAI retornou erro ao processar a solicitação.',
-        type: data?.error?.type ?? null,
-        code: data?.error?.code ?? null,
+        message: data?['error']?['message'] ??
+            'A OpenAI retornou erro ao processar a solicitação.',
+        type: data?['error']?['type'],
+        code: data?['error']?['code'],
       });
     }
 
-    const answer =
-        data?.output_text?.toString().trim() ||
-        data?.output?.[0]?.content?.[0]?.text?.toString().trim() ||
-        '';
+    final answer =
+        (data?['output_text'] ?? '').toString().trim().isNotEmpty
+            ? (data['output_text'] as String).trim()
+            : (((data?['output'] is List &&
+                            data['output'].isNotEmpty &&
+                            data['output'][0]?['content'] is List &&
+                            data['output'][0]['content'].isNotEmpty)
+                        ? data['output'][0]['content'][0]?['text']
+                        : '') ??
+                    '')
+                .toString()
+                .trim();
 
-    if (!answer) {
+    if (answer.isEmpty) {
       return sendJson(res, 502, {
         error: 'empty_ai_answer',
         message: 'A IA não retornou texto.',
-        debug: data,
       });
     }
 
