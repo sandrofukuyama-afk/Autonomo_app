@@ -7,6 +7,7 @@ import 'entries_page.dart';
 import 'expenses_page.dart';
 import 'expense_review_page.dart';
 import 'reports_page.dart';
+import 'settings_page.dart';
 
 class HomePage extends StatefulWidget {
   final Locale? currentLocale;
@@ -593,6 +594,15 @@ class _HomePageState extends State<HomePage> {
       default:
         return code;
     }
+  }
+
+  Future<void> _openSettingsPage() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SettingsPage()),
+    );
+
+    await _refreshDashboard();
   }
 
   Future<void> _openSettingsDialog() async {
@@ -1982,7 +1992,7 @@ class _HomePageState extends State<HomePage> {
           actions: [
             IconButton(
               icon: const Icon(Icons.settings),
-              onPressed: _openSettingsDialog,
+              onPressed: _openSettingsPage,
               tooltip: t.translate('settings'),
             ),
             IconButton(
@@ -2009,7 +2019,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: _openSettingsDialog,
+            onPressed: _openSettingsPage,
             tooltip: t.translate('settings'),
           ),
           IconButton(
