@@ -532,17 +532,32 @@ class SupabaseService {
   }
 
   String _normalizeExpenseCategory(dynamic value) {
-    switch (value) {
+    if (value == null) return 'other';
+
+    final normalized = value.toString().trim().toLowerCase();
+
+    switch (normalized) {
       case 'category_food':
+      case 'food':
         return 'food';
+
       case 'category_transport':
+      case 'transport':
         return 'transport';
+
       case 'category_housing':
+      case 'rent':
         return 'rent';
+
       case 'category_entertainment':
+      case 'services':
         return 'services';
+
       case 'category_health':
+      case 'fees':
         return 'fees';
+
+      case 'other':
       default:
         return 'other';
     }
