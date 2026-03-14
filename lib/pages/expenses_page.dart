@@ -405,6 +405,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
     );
   }
 
+  void _showErrorSnackBar(Object error) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+    );
+  }
+
   Widget _fiscalClosedBanner() {
     return Container(
       width: double.infinity,
@@ -603,8 +610,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
       case 'cash':
         return _tr('payment_cash');
       case 'credit_card':
+      case 'card':
         return _tr('payment_credit_card');
       case 'furikomi':
+      case 'bank_transfer':
         return _tr('payment_furikomi');
       case 'paypay':
         return _tr('payment_paypay');
@@ -744,7 +753,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
               ? ocrAmount.toStringAsFixed(0)
               : ocrAmount.toStringAsFixed(2);
         }
-        if (ocrDate != null && _formatDate(_selectedDate.toIso8601String()) == _formatDate(DateTime.now().toIso8601String())) {
+        if (ocrDate != null &&
+            _formatDate(_selectedDate.toIso8601String()) ==
+                _formatDate(DateTime.now().toIso8601String())) {
           _selectedDate = ocrDate;
         }
         if (_taxRateController.text.trim().isEmpty && ocrTaxRate.isNotEmpty) {
@@ -809,6 +820,90 @@ class _ExpensesPageState extends State<ExpensesPage> {
       'ocr_status': 'pending',
       'receipt_review_status': 'pending',
     };
+  }
+
+  String _uiPaymentMethodValue(String value) {
+    final normalized = value.trim().toLowerCase();
+
+    switch (normalized) {
+      case 'card':
+      case 'credit_card':
+        return 'credit_card';
+      case 'bank_transfer':
+      case 'furikomi':
+        return 'furikomi';
+      case 'paypay':
+        return 'paypay';
+      case 'other':
+        return 'other';
+      default:
+        return 'cash';
+    }
+  }
+
+  String _uiTaxInclusionType(String value) {
+    final normalized = value.trim().toLowerCase();
+
+    switch (normalized) {
+      case 'inclusive':
+      case 'included':
+      case 'tax_included':
+      case '税込':
+        return 'inclusive';
+      case 'external':
+      case 'excluded':
+      case 'tax_excluded':
+      case '税抜':
+        return 'external';
+      default:
+        return 'external';
+    }
+  }
+
+  String _dbTaxTypeFromInclusion(String value) {
+    return value == 'inclusive' ? '税込' : '税抜';
+  }
+
+  Future<String> _findRecentlyCreatedExpenseId({
+    required DateTime date,
+    required String description,
+    required double amount,
+    required String storeName,
+    required String vendorName,
+  }) async {
+    final data = await SupabaseService.instance.getExpenses();
+    final expenses = List<Map<String, dynamic>>.from(data);
+
+    final targetDate = _formatDate(date.toIso8601String());
+    final targetDescription = description.trim();
+    final targetStore = storeName.trim();
+    final targetVendor = vendorName.trim();
+
+    for (final item in expenses) {
+      final sameDate = _formatDate(item['date']) == targetDate;
+      final sameDescription =
+          (item['description'] ?? '').toString().trim() == targetDescription;
+      final sameAmount = (_parseDouble(item['amount']) - amount).abs() < 0.0001;
+      final sameStore =
+          (item['store_name'] ?? '').toString().trim() == targetStore;
+      final sameVendor =
+          (item['vendor_name'] ?? '').toString().trim() == targetVendor;
+
+      if (sameDate &&
+          sameDescription &&
+          sameAmount &&
+          sameStore &&
+          sameVendor) {
+        final id = (item['id'] ?? '').toString().trim();
+        if (id.isNotEmpty) {
+          return id;
+        }
+      }
+    }
+
+    throw Exception(
+      'Despesa salva, mas não foi possível localizar o registro para anexar o recibo.',
+    );
   }
 
   Future<void> _showReceiptPreview(String url) async {
@@ -1017,7 +1112,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            final dialogT = AppLocalizations.of(context);
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -1194,6 +1288,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           onChanged: (value) {
                             setStateDialog(() {
                               _taxInclusionType = value ?? 'external';
+                              _taxType = _taxInclusionType;
                             });
                           },
                         ),
@@ -1235,47 +1330,81 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             const SizedBox(width: 12),
                             ElevatedButton(
                               onPressed: () async {
-                                final description = _descController.text.trim();
-                                final amount = double.tryParse(
-                                  _amountController.text.trim().replaceAll(',', '.'),
-                                );
-
-                                if (description.isEmpty || amount == null || amount <= 0) {
-                                  ScaffoldMessenger.of(this.context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(_tr('invalid_data')),
-                                    ),
+                                try {
+                                  final description = _descController.text.trim();
+                                  final amount = double.tryParse(
+                                    _amountController.text
+                                        .trim()
+                                        .replaceAll(',', '.'),
                                   );
-                                  return;
+
+                                  if (description.isEmpty ||
+                                      amount == null ||
+                                      amount <= 0) {
+                                    ScaffoldMessenger.of(this.context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(_tr('invalid_data')),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  if (_isClosedMonth(_selectedDate)) {
+                                    _showFiscalClosedSnackBar(
+                                      _tr('cannot_save_closed_month'),
+                                    );
+                                    return;
+                                  }
+
+                                  final basePayload = {
+                                    'date': _selectedDate.toIso8601String(),
+                                    'store_name': _storeController.text.trim(),
+                                    'description': description,
+                                    'category': _category,
+                                    'amount': amount,
+                                    'tax': _taxAmount,
+                                    'tax_type':
+                                        _dbTaxTypeFromInclusion(_taxInclusionType),
+                                    'vendor_name': _vendorController.text.trim(),
+                                    'payment_method': _paymentMethod,
+                                    'notes': _notesController.text.trim(),
+                                    'tax_rate':
+                                        _parseDouble(_taxRateController.text),
+                                    'tax_inclusion_type': _taxInclusionType,
+                                  };
+
+                                  await SupabaseService.instance
+                                      .addExpense(basePayload);
+
+                                  if (_selectedReceiptBytes != null &&
+                                      _selectedReceiptName != null) {
+                                    final receiptPayload =
+                                        await _uploadSelectedReceiptIfNeeded();
+
+                                    final expenseId =
+                                        await _findRecentlyCreatedExpenseId(
+                                      date: _selectedDate,
+                                      description: description,
+                                      amount: amount,
+                                      storeName: _storeController.text.trim(),
+                                      vendorName: _vendorController.text.trim(),
+                                    );
+
+                                    await SupabaseService.instance
+                                        .attachReceiptToExpense(
+                                      expenseId,
+                                      {
+                                        ...basePayload,
+                                        ...receiptPayload,
+                                      },
+                                    );
+                                  }
+
+                                  if (!mounted) return;
+                                  Navigator.pop(dialogContext, true);
+                                } catch (error) {
+                                  _showErrorSnackBar(error);
                                 }
-
-                                if (_isClosedMonth(_selectedDate)) {
-                                  _showFiscalClosedSnackBar(
-                                    _tr('cannot_save_closed_month'),
-                                  );
-                                  return;
-                                }
-
-                                final receiptPayload = await _uploadSelectedReceiptIfNeeded();
-
-                                await SupabaseService.instance.addExpense({
-                                  'date': _selectedDate.toIso8601String(),
-                                  'store_name': _storeController.text.trim(),
-                                  'description': description,
-                                  'category': _category,
-                                  'amount': amount,
-                                  'tax': _taxAmount,
-                                  'tax_type': _taxType,
-                                  'vendor_name': _vendorController.text.trim(),
-                                  'payment_method': _paymentMethod,
-                                  'notes': _notesController.text.trim(),
-                                  'tax_rate': _parseDouble(_taxRateController.text),
-                                  'tax_inclusion_type': _taxInclusionType,
-                                  ...receiptPayload,
-                                });
-
-                                if (!mounted) return;
-                                Navigator.pop(dialogContext, true);
                               },
                               child: Text(_tr('save')),
                             ),
@@ -1324,24 +1453,28 @@ class _ExpensesPageState extends State<ExpensesPage> {
     _selectedDate =
         DateTime.tryParse((expense['date'] ?? '').toString()) ?? DateTime.now();
     _category = (expense['category'] ?? 'other').toString();
-    _taxType = (expense['tax_type'] ?? 'external').toString();
+    _taxType = _uiTaxInclusionType(
+      (expense['tax_type'] ?? 'external').toString(),
+    );
     _taxAmount = expense['tax_amount'] is num
         ? (expense['tax_amount'] as num).toDouble()
         : double.tryParse((expense['tax_amount'] ?? '0').toString()) ?? 0;
-    _paymentMethod = (expense['payment_method'] ?? 'cash').toString();
-    _taxInclusionType =
-        (expense['tax_inclusion_type'] ?? 'external').toString();
+    _paymentMethod = _uiPaymentMethodValue(
+      (expense['payment_method'] ?? 'cash').toString(),
+    );
+    _taxInclusionType = _uiTaxInclusionType(
+      (expense['tax_inclusion_type'] ?? expense['tax_type'] ?? 'external')
+          .toString(),
+    );
     _clearSelectedReceipt();
 
     final existingReceiptUrl = (expense['receipt_url'] ?? '').toString();
-    var ocrSuggestionsRequested = false;
 
     final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            final dialogT = AppLocalizations.of(context);
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -1518,6 +1651,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           onChanged: (value) {
                             setStateDialog(() {
                               _taxInclusionType = value ?? 'external';
+                              _taxType = _taxInclusionType;
                             });
                           },
                         ),
@@ -1562,70 +1696,73 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             const SizedBox(width: 12),
                             ElevatedButton(
                               onPressed: () async {
-                                final description = _descController.text.trim();
-                                final amount = double.tryParse(
-                                  _amountController.text.trim().replaceAll(',', '.'),
-                                );
-
-                                if (description.isEmpty || amount == null || amount <= 0) {
-                                  ScaffoldMessenger.of(this.context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(_tr('invalid_data')),
-                                    ),
+                                try {
+                                  final description = _descController.text.trim();
+                                  final amount = double.tryParse(
+                                    _amountController.text
+                                        .trim()
+                                        .replaceAll(',', '.'),
                                   );
-                                  return;
-                                }
 
-                                if (_isClosedMonth(_selectedDate)) {
-                                  _showFiscalClosedSnackBar(
-                                    _tr('cannot_save_closed_month'),
-                                  );
-                                  return;
-                                }
+                                  if (description.isEmpty ||
+                                      amount == null ||
+                                      amount <= 0) {
+                                    ScaffoldMessenger.of(this.context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(_tr('invalid_data')),
+                                      ),
+                                    );
+                                    return;
+                                  }
 
-                                await SupabaseService.instance.updateExpense(
-                                  expense['id'].toString(),
-                                  {
+                                  if (_isClosedMonth(_selectedDate)) {
+                                    _showFiscalClosedSnackBar(
+                                      _tr('cannot_save_closed_month'),
+                                    );
+                                    return;
+                                  }
+
+                                  final basePayload = {
                                     'date': _selectedDate.toIso8601String(),
                                     'store_name': _storeController.text.trim(),
                                     'description': description,
                                     'category': _category,
                                     'amount': amount,
                                     'tax': _taxAmount,
-                                    'tax_type': _taxType,
+                                    'tax_type':
+                                        _dbTaxTypeFromInclusion(_taxInclusionType),
                                     'vendor_name': _vendorController.text.trim(),
                                     'payment_method': _paymentMethod,
                                     'notes': _notesController.text.trim(),
-                                    'tax_rate': _parseDouble(_taxRateController.text),
+                                    'tax_rate':
+                                        _parseDouble(_taxRateController.text),
                                     'tax_inclusion_type': _taxInclusionType,
-                                  },
-                                );
+                                  };
 
-                                final receiptPayload = await _uploadSelectedReceiptIfNeeded();
-
-                                if (receiptPayload.isNotEmpty) {
-                                  await SupabaseService.instance.attachReceiptToExpense(
+                                  await SupabaseService.instance.updateExpense(
                                     expense['id'].toString(),
-                                    {
-                                      'date': _selectedDate.toIso8601String(),
-                                      'store_name': _storeController.text.trim(),
-                                      'description': description,
-                                      'category': _category,
-                                      'amount': amount,
-                                      'tax': _taxAmount,
-                                      'tax_type': _taxType,
-                                      'vendor_name': _vendorController.text.trim(),
-                                      'payment_method': _paymentMethod,
-                                      'notes': _notesController.text.trim(),
-                                      'tax_rate': _parseDouble(_taxRateController.text),
-                                      'tax_inclusion_type': _taxInclusionType,
-                                      ...receiptPayload,
-                                    },
+                                    basePayload,
                                   );
-                                }
 
-                                if (!mounted) return;
-                                Navigator.pop(dialogContext, true);
+                                  final receiptPayload =
+                                      await _uploadSelectedReceiptIfNeeded();
+
+                                  if (receiptPayload.isNotEmpty) {
+                                    await SupabaseService.instance
+                                        .attachReceiptToExpense(
+                                      expense['id'].toString(),
+                                      {
+                                        ...basePayload,
+                                        ...receiptPayload,
+                                      },
+                                    );
+                                  }
+
+                                  if (!mounted) return;
+                                  Navigator.pop(dialogContext, true);
+                                } catch (error) {
+                                  _showErrorSnackBar(error);
+                                }
                               },
                               child: Text(_tr('save')),
                             ),
@@ -1688,7 +1825,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
     await _refresh();
   }
-
 
   bool _isReviewPending(String? status) {
     final value = (status ?? '').trim().toLowerCase();
