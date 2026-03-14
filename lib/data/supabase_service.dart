@@ -42,6 +42,49 @@ class SupabaseService {
     return [];
   }
 
+  Future<void> closeFiscalMonth(String fiscalMonth) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final currentMonths = await getClosedFiscalMonths();
+
+    final normalizedMonth = fiscalMonth.trim();
+    if (normalizedMonth.isEmpty) {
+      throw Exception('Mês fiscal inválido.');
+    }
+
+    if (!currentMonths.contains(normalizedMonth)) {
+      currentMonths.add(normalizedMonth);
+      currentMonths.sort();
+    }
+
+    await _client
+        .from('app_settings')
+        .update({
+          'closed_fiscal_months': currentMonths,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('company_id', companyId);
+  }
+
+  Future<void> reopenFiscalMonth(String fiscalMonth) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final currentMonths = await getClosedFiscalMonths();
+
+    final normalizedMonth = fiscalMonth.trim();
+    if (normalizedMonth.isEmpty) {
+      throw Exception('Mês fiscal inválido.');
+    }
+
+    currentMonths.removeWhere((month) => month == normalizedMonth);
+
+    await _client
+        .from('app_settings')
+        .update({
+          'closed_fiscal_months': currentMonths,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('company_id', companyId);
+  }
+
   String _extractFiscalMonth(dynamic value) {
     if (value == null) {
       throw Exception('Data fiscal inválida.');
