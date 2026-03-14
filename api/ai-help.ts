@@ -2,20 +2,23 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-function json(res: VercelResponse, data: unknown, status = 200) {
-  res.status(status).setHeader('Content-Type', 'application/json');
+function sendJson(res: VercelResponse, status: number, data: unknown) {
+  res.status(status);
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.send(JSON.stringify(data));
 }
 
 async function readBody(req: VercelRequest): Promise<any> {
-  if (req.body) return req.body;
+  if (req.body && typeof req.body === 'object') return req.body;
 
   return new Promise((resolve) => {
     let body = '';
-    req.on('data', chunk => (body += chunk));
+    req.on('data', (chunk) => {
+      body += chunk.toString();
+    });
     req.on('end', () => {
       try {
-        resolve(JSON.parse(body));
+        resolve(body ? JSON.parse(body) : {});
       } catch {
         resolve({});
       }
@@ -23,59 +26,61 @@ async function readBody(req: VercelRequest): Promise<any> {
   });
 }
 
+function buildSystemPrompt(language: string) {
+  return `
+Você é o assistente de ajuda do Autonomo App.
+
+Contexto do produto:
+- app para autônomos no Japão
+- controla entradas, despesas, recibos, OCR, revisão fiscal, fechamento de mês e relatório fiscal
+- responde dúvidas sobre uso do app e conceitos fiscais básicos do Japão
+- pode explicar diferença entre 税込 e 税抜, categorias de despesas, revisão fiscal, fechamento mensal, recibos e OCR
+
+Regras:
+- responda no idioma solicitado: ${language}
+- seja objetivo e claro
+- não invente regras fiscais
+- não dê aconselhamento legal definitivo
+- quando houver dúvida fiscal sensível, diga que a resposta é informativa e pode exigir confirmação contábil
+
+Formato:
+- resposta curta, útil e direta
+`;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
-    return json(res, { error: 'method_not_allowed' }, 405);
+    return sendJson(res, 405, { error: 'method_not_allowed' });
   }
 
   if (!OPENAI_API_KEY) {
-    return json(res, { error: 'missing_openai_key' }, 500);
+    return sendJson(res, 500, {
+      error: 'missing_openai_key',
+      message: 'OPENAI_API_KEY não configurada no Vercel.',
+    });
   }
-
-  const body = await readBody(req);
-  const question = body?.question ?? '';
-  const language = body?.language ?? 'pt';
-
-  if (!question) {
-    return json(res, { error: 'missing_question' }, 400);
-  }
-
-  const systemPrompt = `
-Você é um assistente do Autonomo App.
-
-O aplicativo é usado por trabalhadores autônomos no Japão para:
-
-- registrar receitas
-- registrar despesas
-- anexar recibos
-- revisar despesas fiscais
-- gerar relatório fiscal
-- preparar declaração Blue Return
-
-Você pode explicar:
-
-- como usar o aplicativo
-- categorias de despesas
-- impostos básicos no Japão
-- diferença entre 税込 e 税抜
-- quando anexar recibo
-- como funciona revisão fiscal
-
-Nunca invente regras fiscais.
-Nunca dê aconselhamento legal definitivo.
-Responda no idioma solicitado.
-`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const body = await readBody(req);
+    const question = (body?.question ?? '').toString().trim();
+    const language = (body?.language ?? 'pt').toString().trim();
+
+    if (!question) {
+      return sendJson(res, 400, {
+        error: 'missing_question',
+        message: 'Pergunta não informada.',
+      });
+    }
+
+    const apiResponse = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -83,23 +88,72 @@ Responda no idioma solicitado.
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        temperature: 0.3,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: question },
+        input: [
+          {
+            role: 'system',
+            content: [
+              {
+                type: 'input_text',
+                text: buildSystemPrompt(language),
+              },
+            ],
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'input_text',
+                text: question,
+              },
+            ],
+          },
         ],
+        temperature: 0.3,
       }),
     });
 
-    const data = await response.json();
+    const rawText = await apiResponse.text();
+    let data: any = null;
+
+    try {
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      return sendJson(res, 502, {
+        error: 'invalid_openai_response',
+        message: 'Resposta inválida da OpenAI.',
+        raw: rawText,
+      });
+    }
+
+    if (!apiResponse.ok) {
+      return sendJson(res, apiResponse.status, {
+        error: 'openai_request_failed',
+        message:
+          data?.error?.message ??
+          'A OpenAI retornou erro ao processar a solicitação.',
+        type: data?.error?.type ?? null,
+        code: data?.error?.code ?? null,
+      });
+    }
 
     const answer =
-      data?.choices?.[0]?.message?.content ??
-      'Não consegui gerar resposta no momento.';
+        data?.output_text?.toString().trim() ||
+        data?.output?.[0]?.content?.[0]?.text?.toString().trim() ||
+        '';
 
-    return json(res, { answer });
-  } catch (error) {
-    console.error(error);
-    return json(res, { error: 'ai_request_failed' }, 500);
+    if (!answer) {
+      return sendJson(res, 502, {
+        error: 'empty_ai_answer',
+        message: 'A IA não retornou texto.',
+        debug: data,
+      });
+    }
+
+    return sendJson(res, 200, { answer });
+  } catch (error: any) {
+    return sendJson(res, 500, {
+      error: 'unexpected_server_error',
+      message: error?.message ?? 'Erro interno inesperado.',
+    });
   }
 }
