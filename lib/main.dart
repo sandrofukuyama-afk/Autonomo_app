@@ -1,14 +1,13 @@
 import 'dart:async';
 
+import 'package:autonomo_app/data/auth_service.dart';
+import 'package:autonomo_app/l10n/app_localizations.dart';
+import 'package:autonomo_app/pages/auth_page.dart';
+import 'package:autonomo_app/pages/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-import 'data/auth_service.dart';
-import 'l10n/app_localizations.dart';
-import 'pages/auth_page.dart';
-import 'pages/home_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +15,7 @@ Future<void> main() async {
   await Supabase.initialize(
     url: 'https://dzazwpgjncowkudkdhca.supabase.co',
     anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6YXp3cGdqbmNvd2t1ZGtkaGNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MDIyODAsImV4cCI6MjA4ODM3ODI4MH0.mQBxjBlgPQpxb5-QyFNhgitM_WOnWlkEzFStYZPr5Pk',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6ImR6YXp3cGdqbmNvd2t1ZGtkaGNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MDIyODAsImV4cCI6MjA4ODM3ODI4MH0.mQBxjBlgPQpxb5-QyFNhgitM_WOnWlkEzFStYZPr5Pk',
   );
 
   runApp(const MyApp());
@@ -36,12 +35,7 @@ class _MyAppState extends State<MyApp> {
   bool _localeReady = false;
   StreamSubscription<AuthState>? _authSubscription;
 
-  static const List<String> _allowedLanguageCodes = [
-    'pt',
-    'es',
-    'en',
-    'ja',
-  ];
+  static const List<String> _allowedLanguageCodes = ['pt', 'es', 'en', 'ja'];
 
   @override
   void initState() {
@@ -101,9 +95,7 @@ class _MyAppState extends State<MyApp> {
       setState(() {
         _locale = Locale(languageCode);
       });
-    } catch (_) {
-      // Mantém o locale atual/fallback local sem quebrar a inicialização.
-    }
+    } catch (_) {}
   }
 
   Future<void> _setLocale(Locale locale) async {
@@ -117,9 +109,7 @@ class _MyAppState extends State<MyApp> {
         await AuthService.instance.updateCurrentLanguageCode(
           locale.languageCode,
         );
-      } catch (_) {
-        // Mantém a troca local mesmo se falhar a persistência no banco.
-      }
+      } catch (_) {}
     }
 
     if (!mounted) return;
