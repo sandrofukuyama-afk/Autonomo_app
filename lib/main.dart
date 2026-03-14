@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:autonomo_app/data/auth_service.dart';
 import 'package:autonomo_app/l10n/app_localizations.dart';
 import 'package:autonomo_app/pages/auth_page.dart';
-import 'package:autonomo_app/pages/home_page.dart' as home_page;
+import 'package:autonomo_app/pages/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,12 +35,7 @@ class _MyAppState extends State<MyApp> {
   bool _localeReady = false;
   StreamSubscription<AuthState>? _authSubscription;
 
-  static const List<String> _allowedLanguageCodes = [
-    'pt',
-    'es',
-    'en',
-    'ja',
-  ];
+  static const List<String> _allowedLanguageCodes = ['pt', 'es', 'en', 'ja'];
 
   @override
   void initState() {
@@ -100,9 +95,7 @@ class _MyAppState extends State<MyApp> {
       setState(() {
         _locale = Locale(languageCode);
       });
-    } catch (_) {
-      // Mantém o locale atual/fallback local sem quebrar a inicialização.
-    }
+    } catch (_) {}
   }
 
   Future<void> _setLocale(Locale locale) async {
@@ -116,9 +109,7 @@ class _MyAppState extends State<MyApp> {
         await AuthService.instance.updateCurrentLanguageCode(
           locale.languageCode,
         );
-      } catch (_) {
-        // Mantém a troca local mesmo se falhar a persistência no banco.
-      }
+      } catch (_) {}
     }
 
     if (!mounted) return;
@@ -163,12 +154,11 @@ class _MyAppState extends State<MyApp> {
         stream: AuthService.instance.authStateChanges,
         builder: (context, snapshot) {
           final user = Supabase.instance.client.auth.currentUser;
-
           if (user == null) {
             return const AuthPage();
           }
 
-          return home_page.HomePage(
+          return HomePage(
             currentLocale: _locale,
             onLocaleChanged: _setLocale,
           );
