@@ -29,6 +29,9 @@ class ReportService {
     double? nonDeductibleExpenses,
     double? estimatedTaxImpact,
   }) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final settings = await _loadAppSettings(companyId);
+
     final pdfBytes = await _buildFiscalPdfBytes(
       year: year,
       entries: entries,
@@ -41,6 +44,7 @@ class ReportService {
       deductibleExpenses: deductibleExpenses,
       nonDeductibleExpenses: nonDeductibleExpenses,
       estimatedTaxImpact: estimatedTaxImpact,
+      settings: settings,
     );
 
     await Printing.layoutPdf(
@@ -131,6 +135,7 @@ class ReportService {
 
   Future<Map<String, dynamic>> exportFiscalPackage(int year) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
+    final settings = await _loadAppSettings(companyId);
     final csvResult = await exportFiscalCSV(year);
 
     final startDate = '$year-01-01';
@@ -227,6 +232,7 @@ class ReportService {
       deductibleExpenses: deductibleExpenses,
       nonDeductibleExpenses: nonDeductibleExpenses,
       estimatedTaxImpact: estimatedTaxImpact,
+      settings: settings,
     );
 
     final entriesCsvBytes = await _downloadStorageFile(
@@ -319,8 +325,32 @@ class ReportService {
     double? deductibleExpenses,
     double? nonDeductibleExpenses,
     double? estimatedTaxImpact,
+    Map<String, dynamic>? settings,
   }) async {
     final pdf = pw.Document();
+
+    final fullName = (settings?['full_name'] ?? '').toString().trim();
+    final displayName = (settings?['display_name'] ?? '').toString().trim();
+    final filingType = (settings?['filing_type'] ?? '').toString().trim();
+    final bookkeepingMethod =
+        (settings?['bookkeeping_method'] ?? '').toString().trim();
+    final invoiceRegistered = settings?['invoice_registered'] == true;
+    final invoiceRegistrationNo =
+        (settings?['invoice_registration_no'] ?? '').toString().trim();
+
+    final filingTypeLabel = switch (filingType) {
+      'blue_return' => 'Blue Return',
+      'white_return' => 'White Return',
+      _ => filingType.isEmpty ? '' : filingType,
+    };
+
+    final bookkeepingLabel = switch (bookkeepingMethod) {
+      'simple' => 'Simple',
+      'double_entry' => 'Double Entry',
+      _ => bookkeepingMethod.isEmpty ? '' : bookkeepingMethod,
+    };
+
+    final invoiceStatusLabel = invoiceRegistered ? 'Registrado' : 'Não registrado';
 
     pdf.addPage(
       pw.Page(
@@ -342,6 +372,25 @@ class ReportService {
                 'Ano: $year',
                 style: const pw.TextStyle(fontSize: 14),
               ),
+              if (fullName.isNotEmpty ||
+                  displayName.isNotEmpty ||
+                  filingTypeLabel.isNotEmpty ||
+                  bookkeepingLabel.isNotEmpty ||
+                  invoiceRegistrationNo.isNotEmpty ||
+                  true) ...[
+                pw.SizedBox(height: 20),
+                _sectionTitle('Dados fiscais'),
+                pw.SizedBox(height: 10),
+                if (fullName.isNotEmpty) _row('Contribuinte', fullName),
+                if (displayName.isNotEmpty) _row('Nome comercial', displayName),
+                if (filingTypeLabel.isNotEmpty)
+                  _row('Tipo de declaração', filingTypeLabel),
+                if (bookkeepingLabel.isNotEmpty)
+                  _row('Método contábil', bookkeepingLabel),
+                _row('Invoice', invoiceStatusLabel),
+                if (invoiceRegistered && invoiceRegistrationNo.isNotEmpty)
+                  _row('Número do invoice', invoiceRegistrationNo),
+              ],
               pw.SizedBox(height: 24),
               _sectionTitle('Resumo financeiro'),
               pw.SizedBox(height: 10),
@@ -390,6 +439,17 @@ class ReportService {
     );
 
     return Uint8List.fromList(await pdf.save());
+  }
+
+  Future<Map<String, dynamic>?> _loadAppSettings(String companyId) async {
+    final data = await _client
+        .from('app_settings')
+        .select()
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+    if (data == null) return null;
+    return Map<String, dynamic>.from(data);
   }
 
   Future<void> _uploadCsv(String path, String csv) async {
