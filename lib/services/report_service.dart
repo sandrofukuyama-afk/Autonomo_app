@@ -31,6 +31,7 @@ class ReportService {
   }) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
     final settings = await _loadAppSettings(companyId);
+    final monthlySummary = await _loadMonthlySummary(companyId, year);
 
     final pdfBytes = await _buildFiscalPdfBytes(
       year: year,
@@ -45,6 +46,7 @@ class ReportService {
       nonDeductibleExpenses: nonDeductibleExpenses,
       estimatedTaxImpact: estimatedTaxImpact,
       settings: settings,
+      monthlySummary: monthlySummary,
     );
 
     await Printing.layoutPdf(
@@ -136,6 +138,7 @@ class ReportService {
   Future<Map<String, dynamic>> exportFiscalPackage(int year) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
     final settings = await _loadAppSettings(companyId);
+    final monthlySummary = await _loadMonthlySummary(companyId, year);
     final csvResult = await exportFiscalCSV(year);
 
     final startDate = '$year-01-01';
@@ -233,6 +236,7 @@ class ReportService {
       nonDeductibleExpenses: nonDeductibleExpenses,
       estimatedTaxImpact: estimatedTaxImpact,
       settings: settings,
+      monthlySummary: monthlySummary,
     );
 
     final entriesCsvBytes = await _downloadStorageFile(
@@ -326,6 +330,7 @@ class ReportService {
     double? nonDeductibleExpenses,
     double? estimatedTaxImpact,
     Map<String, dynamic>? settings,
+    List<Map<String, dynamic>> monthlySummary = const [],
   }) async {
     final pdf = pw.Document();
 
@@ -350,90 +355,98 @@ class ReportService {
       _ => bookkeepingMethod.isEmpty ? '' : bookkeepingMethod,
     };
 
-    final invoiceStatusLabel = invoiceRegistered ? 'Registrado' : 'Não registrado';
+    final invoiceStatusLabel =
+        invoiceRegistered ? 'Registrado' : 'Não registrado';
 
     pdf.addPage(
-      pw.Page(
+      pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(28),
-        build: (context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                'Relatório Fiscal',
-                style: pw.TextStyle(
-                  fontSize: 24,
-                  fontWeight: pw.FontWeight.bold,
-                ),
+        footer: (context) {
+          return pw.Padding(
+            padding: const pw.EdgeInsets.only(top: 8),
+            child: pw.Text(
+              'Relatório gerado automaticamente pelo Autonomo App',
+              style: pw.TextStyle(
+                fontSize: 10,
+                color: PdfColors.grey700,
               ),
-              pw.SizedBox(height: 6),
-              pw.Text(
-                'Ano: $year',
-                style: const pw.TextStyle(fontSize: 14),
-              ),
-              if (fullName.isNotEmpty ||
-                  displayName.isNotEmpty ||
-                  filingTypeLabel.isNotEmpty ||
-                  bookkeepingLabel.isNotEmpty ||
-                  invoiceRegistrationNo.isNotEmpty ||
-                  true) ...[
-                pw.SizedBox(height: 20),
-                _sectionTitle('Dados fiscais'),
-                pw.SizedBox(height: 10),
-                if (fullName.isNotEmpty) _row('Contribuinte', fullName),
-                if (displayName.isNotEmpty) _row('Nome comercial', displayName),
-                if (filingTypeLabel.isNotEmpty)
-                  _row('Tipo de declaração', filingTypeLabel),
-                if (bookkeepingLabel.isNotEmpty)
-                  _row('Método contábil', bookkeepingLabel),
-                _row('Invoice', invoiceStatusLabel),
-                if (invoiceRegistered && invoiceRegistrationNo.isNotEmpty)
-                  _row('Número do invoice', invoiceRegistrationNo),
-              ],
-              pw.SizedBox(height: 24),
-              _sectionTitle('Resumo financeiro'),
-              pw.SizedBox(height: 10),
-              _row('Receita total', _yen(entries)),
-              _row('Despesas totais', _yen(expenses)),
-              _row('Lucro tributável', _yen(profit), bold: true),
-              if (expenseCount != null ||
-                  deductibleExpenses != null ||
-                  nonDeductibleExpenses != null ||
-                  estimatedTaxImpact != null) ...[
-                pw.SizedBox(height: 24),
-                _sectionTitle('Resumo fiscal'),
-                pw.SizedBox(height: 10),
-                if (expenseCount != null)
-                  _row('Quantidade de despesas', expenseCount.toString()),
-                if (deductibleExpenses != null)
-                  _row('Despesas dedutíveis', _yen(deductibleExpenses)),
-                if (nonDeductibleExpenses != null)
-                  _row('Despesas não dedutíveis', _yen(nonDeductibleExpenses)),
-                if (estimatedTaxImpact != null)
-                  _row(
-                    'Impacto fiscal estimado',
-                    _yen(estimatedTaxImpact),
-                    bold: true,
-                  ),
-              ],
-              pw.SizedBox(height: 24),
-              _sectionTitle('Estimativa de imposto'),
-              pw.SizedBox(height: 10),
-              _row('Income Tax', _yen(nationalTax)),
-              _row('Resident Tax', _yen(residentTax)),
-              pw.Divider(),
-              _row('Total estimado', _yen(totalTax), bold: true),
-              pw.Spacer(),
-              pw.Text(
-                'Relatório gerado automaticamente pelo Autonomo App',
-                style: pw.TextStyle(
-                  fontSize: 10,
-                  color: PdfColors.grey700,
-                ),
-              ),
-            ],
+            ),
           );
+        },
+        build: (context) {
+          return [
+            pw.Text(
+              'Relatório Fiscal',
+              style: pw.TextStyle(
+                fontSize: 24,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 6),
+            pw.Text(
+              'Ano: $year',
+              style: const pw.TextStyle(fontSize: 14),
+            ),
+            if (fullName.isNotEmpty ||
+                displayName.isNotEmpty ||
+                filingTypeLabel.isNotEmpty ||
+                bookkeepingLabel.isNotEmpty ||
+                invoiceRegistrationNo.isNotEmpty ||
+                true) ...[
+              pw.SizedBox(height: 20),
+              _sectionTitle('Dados fiscais'),
+              pw.SizedBox(height: 10),
+              if (fullName.isNotEmpty) _row('Contribuinte', fullName),
+              if (displayName.isNotEmpty) _row('Nome comercial', displayName),
+              if (filingTypeLabel.isNotEmpty)
+                _row('Tipo de declaração', filingTypeLabel),
+              if (bookkeepingLabel.isNotEmpty)
+                _row('Método contábil', bookkeepingLabel),
+              _row('Invoice', invoiceStatusLabel),
+              if (invoiceRegistered && invoiceRegistrationNo.isNotEmpty)
+                _row('Número do invoice', invoiceRegistrationNo),
+            ],
+            pw.SizedBox(height: 24),
+            _sectionTitle('Resumo financeiro'),
+            pw.SizedBox(height: 10),
+            _row('Receita total', _yen(entries)),
+            _row('Despesas totais', _yen(expenses)),
+            _row('Lucro tributável', _yen(profit), bold: true),
+            if (monthlySummary.isNotEmpty) ...[
+              pw.SizedBox(height: 24),
+              _sectionTitle('Tabela mensal automática'),
+              pw.SizedBox(height: 10),
+              _monthlyTable(monthlySummary),
+            ],
+            if (expenseCount != null ||
+                deductibleExpenses != null ||
+                nonDeductibleExpenses != null ||
+                estimatedTaxImpact != null) ...[
+              pw.SizedBox(height: 24),
+              _sectionTitle('Resumo fiscal'),
+              pw.SizedBox(height: 10),
+              if (expenseCount != null)
+                _row('Quantidade de despesas', expenseCount.toString()),
+              if (deductibleExpenses != null)
+                _row('Despesas dedutíveis', _yen(deductibleExpenses)),
+              if (nonDeductibleExpenses != null)
+                _row('Despesas não dedutíveis', _yen(nonDeductibleExpenses)),
+              if (estimatedTaxImpact != null)
+                _row(
+                  'Impacto fiscal estimado',
+                  _yen(estimatedTaxImpact),
+                  bold: true,
+                ),
+            ],
+            pw.SizedBox(height: 24),
+            _sectionTitle('Estimativa de imposto'),
+            pw.SizedBox(height: 10),
+            _row('Income Tax', _yen(nationalTax)),
+            _row('Resident Tax', _yen(residentTax)),
+            pw.Divider(),
+            _row('Total estimado', _yen(totalTax), bold: true),
+          ];
         },
       ),
     );
@@ -450,6 +463,64 @@ class ReportService {
 
     if (data == null) return null;
     return Map<String, dynamic>.from(data);
+  }
+
+  Future<List<Map<String, dynamic>>> _loadMonthlySummary(
+    String companyId,
+    int year,
+  ) async {
+    final startDate = '$year-01-01';
+    final endDate = '$year-12-31';
+
+    final List<dynamic> rawEntries = await _client
+        .from('entries_v2')
+        .select('entry_date, amount')
+        .eq('company_id', companyId)
+        .gte('entry_date', startDate)
+        .lte('entry_date', endDate);
+
+    final List<dynamic> rawExpenses = await _client
+        .from('expenses_v2')
+        .select('expense_date, amount')
+        .eq('company_id', companyId)
+        .gte('expense_date', startDate)
+        .lte('expense_date', endDate);
+
+    final entriesByMonth = <int, double>{};
+    final expensesByMonth = <int, double>{};
+
+    for (final raw in rawEntries.whereType<Map>()) {
+      final row = Map<String, dynamic>.from(raw);
+      final date = _tryParseDate(row['entry_date']);
+      if (date == null) continue;
+
+      entriesByMonth[date.month] =
+          (entriesByMonth[date.month] ?? 0) + _toDouble(row['amount']);
+    }
+
+    for (final raw in rawExpenses.whereType<Map>()) {
+      final row = Map<String, dynamic>.from(raw);
+      final date = _tryParseDate(row['expense_date']);
+      if (date == null) continue;
+
+      expensesByMonth[date.month] =
+          (expensesByMonth[date.month] ?? 0) + _toDouble(row['amount']);
+    }
+
+    return List<Map<String, dynamic>>.generate(12, (index) {
+      final month = index + 1;
+      final monthEntries = entriesByMonth[month] ?? 0;
+      final monthExpenses = expensesByMonth[month] ?? 0;
+      final monthProfit = monthEntries - monthExpenses;
+
+      return {
+        'month': month,
+        'label': _monthLabel(month),
+        'entries': monthEntries,
+        'expenses': monthExpenses,
+        'profit': monthProfit,
+      };
+    });
   }
 
   Future<void> _uploadCsv(String path, String csv) async {
@@ -583,6 +654,96 @@ class ReportService {
         ],
       ),
     );
+  }
+
+  pw.Widget _monthlyTable(List<Map<String, dynamic>> monthlySummary) {
+    final tableHeaders = ['Mês', 'Receitas', 'Despesas', 'Lucro'];
+
+    final tableData = monthlySummary.map((row) {
+      return [
+        (row['label'] ?? '').toString(),
+        _yen(_toDouble(row['entries'])),
+        _yen(_toDouble(row['expenses'])),
+        _yen(_toDouble(row['profit'])),
+      ];
+    }).toList();
+
+    final totalEntries = monthlySummary.fold<double>(
+      0,
+      (sum, row) => sum + _toDouble(row['entries']),
+    );
+    final totalExpenses = monthlySummary.fold<double>(
+      0,
+      (sum, row) => sum + _toDouble(row['expenses']),
+    );
+    final totalProfit = monthlySummary.fold<double>(
+      0,
+      (sum, row) => sum + _toDouble(row['profit']),
+    );
+
+    tableData.add([
+      'Total',
+      _yen(totalEntries),
+      _yen(totalExpenses),
+      _yen(totalProfit),
+    ]);
+
+    return pw.TableHelper.fromTextArray(
+      headers: tableHeaders,
+      data: tableData,
+      border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.6),
+      headerStyle: pw.TextStyle(
+        fontWeight: pw.FontWeight.bold,
+        fontSize: 10,
+      ),
+      cellStyle: const pw.TextStyle(fontSize: 10),
+      headerDecoration: const pw.BoxDecoration(
+        color: PdfColors.grey300,
+      ),
+      cellAlignment: pw.Alignment.centerLeft,
+      headerAlignment: pw.Alignment.centerLeft,
+      cellPadding: const pw.EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 6,
+      ),
+      columnWidths: {
+        0: const pw.FlexColumnWidth(1.3),
+        1: const pw.FlexColumnWidth(1.6),
+        2: const pw.FlexColumnWidth(1.6),
+        3: const pw.FlexColumnWidth(1.6),
+      },
+    );
+  }
+
+  String _monthLabel(int month) {
+    switch (month) {
+      case 1:
+        return 'Jan';
+      case 2:
+        return 'Fev';
+      case 3:
+        return 'Mar';
+      case 4:
+        return 'Abr';
+      case 5:
+        return 'Mai';
+      case 6:
+        return 'Jun';
+      case 7:
+        return 'Jul';
+      case 8:
+        return 'Ago';
+      case 9:
+        return 'Set';
+      case 10:
+        return 'Out';
+      case 11:
+        return 'Nov';
+      case 12:
+        return 'Dez';
+      default:
+        return month.toString();
+    }
   }
 
   String _yen(double value) {
