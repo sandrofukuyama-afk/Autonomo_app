@@ -6,7 +6,12 @@ import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  final Future<void> Function(Locale)? onLocaleChanged;
+
+  const SettingsPage({
+    super.key,
+    this.onLocaleChanged,
+  });
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -737,6 +742,11 @@ class _SettingsPageState extends State<SettingsPage> {
             : _fiscalNotes.text.trim(),
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('company_id', _companyId!);
+
+      if (widget.onLocaleChanged != null &&
+          _supportedLanguages.contains(_language)) {
+        await widget.onLocaleChanged!(Locale(_language));
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
