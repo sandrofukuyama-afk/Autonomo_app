@@ -1728,8 +1728,10 @@ class _HomePageState extends State<HomePage> {
                     color: Colors.orange.shade100,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(Icons.warning_amber_rounded,
-                      color: Colors.orange),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1760,7 +1762,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
-      );
+      ),
     );
   }
 
