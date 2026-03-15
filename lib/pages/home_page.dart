@@ -605,7 +605,11 @@ class _HomePageState extends State<HomePage> {
   Future<void> _openSettingsPage() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const SettingsPage()),
+      MaterialPageRoute(
+        builder: (context) => SettingsPage(
+          onLocaleChanged: widget.onLocaleChanged,
+        ),
+      ),
     );
 
     await _refreshDashboard();
@@ -713,8 +717,10 @@ class _HomePageState extends State<HomePage> {
     text = text.replaceAll('### ', '');
     text = text.replaceAll('## ', '');
     text = text.replaceAll('# ', '');
-    text = text.replaceAllMapped(RegExp(r'^\s*-\s+', multiLine: true), (_) => '• ');
-    text = text.replaceAllMapped(RegExp(r'^\s*\*\s+', multiLine: true), (_) => '• ');
+    text =
+        text.replaceAllMapped(RegExp(r'^\s*-\s+', multiLine: true), (_) => '• ');
+    text =
+        text.replaceAllMapped(RegExp(r'^\s*\*\s+', multiLine: true), (_) => '• ');
     text = text.replaceAllMapped(
       RegExp(r'^\s*(\d+)\.\s+\*\*(.+?)\*\*', multiLine: true),
       (m) => '${m.group(1)}. ${m.group(2)}',
@@ -850,7 +856,8 @@ class _HomePageState extends State<HomePage> {
                           } catch (e) {
                             setDialogState(() {
                               sending = false;
-                              answer = e.toString().replaceFirst('Exception: ', '');
+                              answer =
+                                  e.toString().replaceFirst('Exception: ', '');
                             });
                           }
                         },
