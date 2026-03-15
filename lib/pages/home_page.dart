@@ -997,6 +997,131 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildFiscalLockBanner() {
+    final currentClosed = _isCurrentFiscalMonthClosed();
+    final month = _currentMonthLabel();
+
+    final title = _currentLanguageCode() == 'ja'
+        ? (currentClosed ? '会計月は締め済みです' : '会計月はまだオープンです')
+        : _currentLanguageCode() == 'en'
+            ? (currentClosed
+                ? 'Fiscal month is closed'
+                : 'Fiscal month is still open')
+            : _currentLanguageCode() == 'es'
+                ? (currentClosed
+                    ? 'El mes fiscal está cerrado'
+                    : 'El mes fiscal sigue abierto')
+                : (currentClosed
+                    ? 'Mês fiscal encerrado'
+                    : 'Mês fiscal ainda está em aberto');
+
+    final description = _currentLanguageCode() == 'ja'
+        ? (currentClosed
+            ? 'Novas entradas, despesas, edições e exclusões ficam bloqueadas para $month.'
+            : 'Ainda é possível lançar entradas e despesas em $month até o fechamento fiscal.')
+        : _currentLanguageCode() == 'en'
+            ? (currentClosed
+                ? 'New entries, expenses, edits and deletions are blocked for $month.'
+                : 'Entries and expenses can still be posted in $month until fiscal closing.')
+            : _currentLanguageCode() == 'es'
+                ? (currentClosed
+                    ? 'Nuevas entradas, gastos, ediciones y exclusiones están bloqueadas para $month.'
+                    : 'Todavía es posible registrar entradas y gastos en $month hasta el cierre fiscal.')
+                : (currentClosed
+                    ? 'Novas entradas, despesas, edições e exclusões ficam bloqueadas para $month.'
+                    : 'Ainda é possível lançar entradas e despesas em $month até o fechamento fiscal.');
+
+    final Color bgColor =
+        currentClosed ? Colors.red.shade50 : Colors.amber.shade50;
+    final Color borderColor =
+        currentClosed ? Colors.red.shade200 : Colors.amber.shade200;
+    final Color iconBgColor =
+        currentClosed ? Colors.red.shade100 : Colors.amber.shade100;
+    final Color iconColor =
+        currentClosed ? Colors.red.shade800 : Colors.amber.shade900;
+    final Color textColor =
+        currentClosed ? Colors.red.shade900 : Colors.orange.shade900;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 1.2),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              currentClosed ? Icons.lock_clock_outlined : Icons.info_outline,
+              color: iconColor,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: textColor,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: currentClosed
+                            ? Colors.red.shade100
+                            : Colors.white.withOpacity(0.72),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        month,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: textColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.35,
+                    color: textColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSummaryMiniCard({
     required String title,
     required String value,
@@ -1635,7 +1760,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
-      ),
+      );
     );
   }
 
@@ -2148,11 +2273,29 @@ class _HomePageState extends State<HomePage> {
     final width = MediaQuery.of(context).size.width;
     final bool desktop = width >= 1100;
 
+    final systemTitle = _currentLanguageCode() == 'ja'
+        ? 'Status do sistema'
+        : _currentLanguageCode() == 'en'
+            ? 'System status'
+            : _currentLanguageCode() == 'es'
+                ? 'Estado del sistema'
+                : 'Status do sistema';
+
+    final systemSubtitle = _currentLanguageCode() == 'ja'
+        ? 'Backup, banco e segurança fiscal'
+        : _currentLanguageCode() == 'en'
+            ? 'Backup, database and fiscal security'
+            : _currentLanguageCode() == 'es'
+                ? 'Backup, base de datos y seguridad fiscal'
+                : 'Backup, banco e segurança fiscal';
+
     if (!desktop) {
       return ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildHeroCard(),
+          const SizedBox(height: 14),
+          _buildFiscalLockBanner(),
           if (_pendingExpenseReviews > 0) ...[
             const SizedBox(height: 16),
             _buildExpenseReviewAlertCard(),
@@ -2173,20 +2316,8 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 12),
           _buildSectionCard(
-            title: _currentLanguageCode() == 'ja'
-                ? 'Status do sistema'
-                : _currentLanguageCode() == 'en'
-                    ? 'System status'
-                    : _currentLanguageCode() == 'es'
-                        ? 'Estado del sistema'
-                        : 'Status do sistema',
-            subtitle: _currentLanguageCode() == 'ja'
-                ? 'Backup, banco e segurança fiscal'
-                : _currentLanguageCode() == 'en'
-                    ? 'Backup, database and fiscal security'
-                    : _currentLanguageCode() == 'es'
-                        ? 'Backup, base de datos y seguridad fiscal'
-                        : 'Backup, banco e segurança fiscal',
+            title: systemTitle,
+            subtitle: systemSubtitle,
             child: _buildSystemStatusCard(),
           ),
           const SizedBox(height: 14),
@@ -2222,6 +2353,8 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.all(16),
       children: [
         _buildHeroCard(),
+        const SizedBox(height: 14),
+        _buildFiscalLockBanner(),
         if (_pendingExpenseReviews > 0) ...[
           const SizedBox(height: 16),
           _buildExpenseReviewAlertCard(),
@@ -2242,20 +2375,8 @@ class _HomePageState extends State<HomePage> {
         ),
         const SizedBox(height: 12),
         _buildSectionCard(
-          title: _currentLanguageCode() == 'ja'
-              ? 'Status do sistema'
-              : _currentLanguageCode() == 'en'
-                  ? 'System status'
-                  : _currentLanguageCode() == 'es'
-                      ? 'Estado del sistema'
-                      : 'Status do sistema',
-          subtitle: _currentLanguageCode() == 'ja'
-              ? 'Backup, banco e segurança fiscal'
-              : _currentLanguageCode() == 'en'
-                  ? 'Backup, database and fiscal security'
-                  : _currentLanguageCode() == 'es'
-                      ? 'Backup, base de datos y seguridad fiscal'
-                      : 'Backup, banco e segurança fiscal',
+          title: systemTitle,
+          subtitle: systemSubtitle,
           child: _buildSystemStatusCard(),
         ),
         const SizedBox(height: 14),
