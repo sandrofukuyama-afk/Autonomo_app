@@ -2,6 +2,7 @@
   "name": "autonomo-app-api",
   "private": true,
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
     "pdfkit": "^0.15.2",
     "sharp": "^0.33.5"
   },
