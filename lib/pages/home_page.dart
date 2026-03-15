@@ -700,7 +700,7 @@ class _HomePageState extends State<HomePage> {
       case 'en':
         return 'Could not get an answer right now.';
       case 'es':
-        return 'No fue posible obtener respuesta ahora.';
+        return 'No fue posible obtener resposta agora.';
       default:
         return 'Não foi possível obter resposta agora.';
     }
@@ -1692,6 +1692,140 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildSystemStatusLine({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBackground,
+    required String title,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: iconBackground,
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    height: 1.15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSystemStatusCard() {
+    final currentMonthClosed = _isCurrentFiscalMonthClosed();
+    final backupLabel = _currentLanguageCode() == 'ja'
+        ? 'Ativo (diário)'
+        : _currentLanguageCode() == 'en'
+            ? 'Active (daily)'
+            : _currentLanguageCode() == 'es'
+                ? 'Activo (diario)'
+                : 'Ativo (diário)';
+
+    final databaseLabel = _currentLanguageCode() == 'ja'
+        ? 'Conectado e isolado por empresa'
+        : _currentLanguageCode() == 'en'
+            ? 'Connected and isolated by company'
+            : _currentLanguageCode() == 'es'
+                ? 'Conectado y aislado por empresa'
+                : 'Conectado e isolado por empresa';
+
+    final fiscalLabel = currentMonthClosed
+        ? (_currentLanguageCode() == 'ja'
+            ? 'Mês atual protegido por bloqueio fiscal'
+            : _currentLanguageCode() == 'en'
+                ? 'Current month protected by fiscal lock'
+                : _currentLanguageCode() == 'es'
+                    ? 'Mes actual protegido por bloqueo fiscal'
+                    : 'Mês atual protegido por bloqueio fiscal')
+        : (_currentLanguageCode() == 'ja'
+            ? 'Bloqueio fiscal ativo para fechamento mensal'
+            : _currentLanguageCode() == 'en'
+                ? 'Fiscal lock active for monthly closing'
+                : _currentLanguageCode() == 'es'
+                    ? 'Bloqueo fiscal activo para cierre mensual'
+                    : 'Bloqueio fiscal ativo para fechamento mensal');
+
+    return Column(
+      children: [
+        _buildSystemStatusLine(
+          icon: Icons.backup_outlined,
+          iconColor: Colors.blue.shade800,
+          iconBackground: Colors.blue.shade100,
+          title: _currentLanguageCode() == 'ja'
+              ? 'Backup automático'
+              : _currentLanguageCode() == 'en'
+                  ? 'Automatic backup'
+                  : _currentLanguageCode() == 'es'
+                      ? 'Backup automático'
+                      : 'Backup automático',
+          value: backupLabel,
+        ),
+        const SizedBox(height: 12),
+        _buildSystemStatusLine(
+          icon: Icons.storage_rounded,
+          iconColor: Colors.green.shade800,
+          iconBackground: Colors.green.shade100,
+          title: _currentLanguageCode() == 'ja'
+              ? 'Banco de dados'
+              : _currentLanguageCode() == 'en'
+                  ? 'Database'
+                  : _currentLanguageCode() == 'es'
+                      ? 'Base de datos'
+                      : 'Banco de dados',
+          value: databaseLabel,
+        ),
+        const SizedBox(height: 12),
+        _buildSystemStatusLine(
+          icon: currentMonthClosed ? Icons.lock_outline : Icons.verified_user,
+          iconColor:
+              currentMonthClosed ? Colors.orange.shade800 : Colors.indigo.shade800,
+          iconBackground:
+              currentMonthClosed ? Colors.orange.shade100 : Colors.indigo.shade100,
+          title: _currentLanguageCode() == 'ja'
+              ? 'Segurança fiscal'
+              : _currentLanguageCode() == 'en'
+                  ? 'Fiscal security'
+                  : _currentLanguageCode() == 'es'
+                      ? 'Seguridad fiscal'
+                      : 'Segurança fiscal',
+          value: fiscalLabel,
+        ),
+      ],
+    );
+  }
+
   Widget _buildClosedMonthsChips() {
     final t = AppLocalizations.of(context);
 
@@ -2037,6 +2171,24 @@ class _HomePageState extends State<HomePage> {
             subtitle: 'Resumo consolidado do ano atual',
             child: _buildAnnualFiscalDashboardSection(),
           ),
+          const SizedBox(height: 12),
+          _buildSectionCard(
+            title: _currentLanguageCode() == 'ja'
+                ? 'Status do sistema'
+                : _currentLanguageCode() == 'en'
+                    ? 'System status'
+                    : _currentLanguageCode() == 'es'
+                        ? 'Estado del sistema'
+                        : 'Status do sistema',
+            subtitle: _currentLanguageCode() == 'ja'
+                ? 'Backup, banco e segurança fiscal'
+                : _currentLanguageCode() == 'en'
+                    ? 'Backup, database and fiscal security'
+                    : _currentLanguageCode() == 'es'
+                        ? 'Backup, base de datos y seguridad fiscal'
+                        : 'Backup, banco e segurança fiscal',
+            child: _buildSystemStatusCard(),
+          ),
           const SizedBox(height: 14),
           _buildSectionCard(
             title: t.translate('quick_access'),
@@ -2087,6 +2239,24 @@ class _HomePageState extends State<HomePage> {
           title: 'Dashboard fiscal anual',
           subtitle: 'Resumo consolidado do ano atual',
           child: _buildAnnualFiscalDashboardSection(),
+        ),
+        const SizedBox(height: 12),
+        _buildSectionCard(
+          title: _currentLanguageCode() == 'ja'
+              ? 'Status do sistema'
+              : _currentLanguageCode() == 'en'
+                  ? 'System status'
+                  : _currentLanguageCode() == 'es'
+                      ? 'Estado del sistema'
+                      : 'Status do sistema',
+          subtitle: _currentLanguageCode() == 'ja'
+              ? 'Backup, banco e segurança fiscal'
+              : _currentLanguageCode() == 'en'
+                  ? 'Backup, database and fiscal security'
+                  : _currentLanguageCode() == 'es'
+                      ? 'Backup, base de datos y seguridad fiscal'
+                      : 'Backup, banco e segurança fiscal',
+          child: _buildSystemStatusCard(),
         ),
         const SizedBox(height: 14),
         Row(
