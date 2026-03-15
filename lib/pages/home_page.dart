@@ -702,6 +702,35 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  String _cleanAiAnswer(String value) {
+    var text = value.trim();
+
+    if (text.isEmpty) return text;
+
+    text = text.replaceAll('\r\n', '\n');
+    text = text.replaceAll('**', '');
+    text = text.replaceAll('__', '');
+    text = text.replaceAll('### ', '');
+    text = text.replaceAll('## ', '');
+    text = text.replaceAll('# ', '');
+    text = text.replaceAllMapped(RegExp(r'^\s*-\s+', multiLine: true), (_) => '• ');
+    text = text.replaceAllMapped(RegExp(r'^\s*\*\s+', multiLine: true), (_) => '• ');
+    text = text.replaceAllMapped(
+      RegExp(r'^\s*(\d+)\.\s+\*\*(.+?)\*\*', multiLine: true),
+      (m) => '${m.group(1)}. ${m.group(2)}',
+    );
+    text = text.replaceAllMapped(
+      RegExp(r'^\s*(\d+)\.\s+', multiLine: true),
+      (m) => '${m.group(1)}. ',
+    );
+    text = text.replaceAllMapped(
+      RegExp(r'\n{3,}'),
+      (_) => '\n\n',
+    );
+
+    return text.trim();
+  }
+
   Future<String> _askAiHelp(String question) async {
     final response = await http.post(
       Uri.parse('${_apiBaseUrl()}/api/ai-help'),
@@ -725,7 +754,7 @@ class _HomePageState extends State<HomePage> {
       throw Exception(_helpErrorLabel());
     }
 
-    return answer;
+    return _cleanAiAnswer(answer);
   }
 
   Future<void> _openAiHelp() async {
@@ -775,7 +804,10 @@ class _HomePageState extends State<HomePage> {
                           ),
                           child: SelectableText(
                             answer,
-                            style: const TextStyle(fontSize: 14, height: 1.4),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              height: 1.55,
+                            ),
                           ),
                         ),
                       ],
