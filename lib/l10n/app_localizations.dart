@@ -14,6 +14,7 @@ class AppLocalizations {
       'payment_credit_card': 'Cartão de crédito',
       'payment_bank_transfer': 'Transferência bancária',
       'payment_other': 'Outro',
+      'payment_paypay': 'PayPay',
       'no_date_selected': 'Nenhuma data selecionada',
       'date': 'Data',
       'select_date': 'Selecionar data',
@@ -148,7 +149,12 @@ class AppLocalizations {
       'entry_category_sale': 'Produto',
       'entry_category_commission': 'Comissão',
       'entry_category_refund': 'Reembolso',
-      'entry_category_other': 'Outros',
+            'entry_category_other': 'Outros',
+      'invalid_data': 'Dados inválidos',
+      'closed_month_operation_not_allowed':
+          'Este mês fiscal está fechado. Esta operação não é permitida.',
+      'closed_month_operation_not_allowed_with_month':
+          'O mês fiscal {month} está fechado. Esta operação não é permitida.',
     },
     'en': {
       'description': 'Description',
@@ -158,6 +164,7 @@ class AppLocalizations {
       'payment_credit_card': 'Credit Card',
       'payment_bank_transfer': 'Bank Transfer',
       'payment_other': 'Other',
+      'payment_paypay': 'PayPay',
       'no_date_selected': 'No date selected',
       'date': 'Date',
       'select_date': 'Select date',
@@ -293,7 +300,12 @@ class AppLocalizations {
       'entry_category_sale': 'Product',
       'entry_category_commission': 'Commission',
       'entry_category_refund': 'Refund',
-      'entry_category_other': 'Other',
+            'entry_category_other': 'Other',
+      'invalid_data': 'Invalid data',
+      'closed_month_operation_not_allowed':
+          'This fiscal month is closed. This operation is not allowed.',
+      'closed_month_operation_not_allowed_with_month':
+          'Fiscal month {month} is closed. This operation is not allowed.',
     },
     'ja': {
       'description': '説明',
@@ -303,6 +315,7 @@ class AppLocalizations {
       'payment_credit_card': 'クレジットカード',
       'payment_bank_transfer': '銀行振込',
       'payment_other': 'その他',
+      'payment_paypay': 'PayPay',
       'no_date_selected': '日付が選択されていません',
       'date': '日付',
       'select_date': '日付を選択',
@@ -435,7 +448,12 @@ class AppLocalizations {
       'entry_category_sale': '商品',
       'entry_category_commission': '手数料',
       'entry_category_refund': '返金',
-      'entry_category_other': 'その他',
+            'entry_category_other': 'その他',
+      'invalid_data': '無効なデータです',
+      'closed_month_operation_not_allowed':
+          'この会計月は締められているため、この操作はできません。',
+      'closed_month_operation_not_allowed_with_month':
+          '会計月 {month} は締められているため、この操作はできません。',
     },
     'es': {
       'description': 'Descripción',
@@ -445,6 +463,7 @@ class AppLocalizations {
       'payment_credit_card': 'Tarjeta de crédito',
       'payment_bank_transfer': 'Transferencia bancaria',
       'payment_other': 'Otro',
+      'payment_paypay': 'PayPay',
       'no_date_selected': 'No se ha seleccionado fecha',
       'date': 'Fecha',
       'select_date': 'Seleccionar fecha',
@@ -580,7 +599,12 @@ class AppLocalizations {
       'entry_category_sale': 'Producto',
       'entry_category_commission': 'Comisión',
       'entry_category_refund': 'Reembolso',
-      'entry_category_other': 'Otros',
+            'entry_category_other': 'Otros',
+      'invalid_data': 'Datos inválidos',
+      'closed_month_operation_not_allowed':
+          'Este mes fiscal está cerrado. Esta operación no está permitida.',
+      'closed_month_operation_not_allowed_with_month':
+          'El mes fiscal {month} está cerrado. Esta operación no está permitida.',
     },
   };
 
