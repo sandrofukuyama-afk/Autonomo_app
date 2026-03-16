@@ -1,5 +1,8 @@
+
 import 'package:flutter/material.dart';
+
 import '../data/supabase_service.dart';
+import '../l10n/app_localizations.dart';
 
 class EntriesPage extends StatefulWidget {
   const EntriesPage({super.key});
@@ -84,9 +87,7 @@ class _EntriesPageState extends State<EntriesPage> {
         final ai = _categorySortIndex(a);
         final bi = _categorySortIndex(b);
         if (ai != bi) return ai.compareTo(bi);
-        return _categoryLabel(a).toLowerCase().compareTo(
-              _categoryLabel(b).toLowerCase(),
-            );
+        return a.toLowerCase().compareTo(b.toLowerCase());
       });
 
       if (!mounted) return;
@@ -141,11 +142,13 @@ class _EntriesPageState extends State<EntriesPage> {
     return _isClosedMonth(DateTime.now());
   }
 
-  String _friendlyBlockedMessage([String? month]) {
+  String _friendlyBlockedMessage(AppLocalizations t, [String? month]) {
     if (month != null && month.isNotEmpty) {
-      return 'O mês fiscal $month está fechado. Esta operação não é permitida.';
+      return t
+          .translate('closed_month_operation_not_allowed_with_month')
+          .replaceAll('{month}', month);
     }
-    return 'Este mês fiscal está fechado. Esta operação não é permitida.';
+    return t.translate('closed_month_operation_not_allowed');
   }
 
   void _showMessage(String message, {bool error = false}) {
@@ -217,18 +220,18 @@ class _EntriesPageState extends State<EntriesPage> {
     return '¥${buffer.toString().split('').reversed.join()}';
   }
 
-  String _paymentLabel(String value) {
+  String _paymentLabel(AppLocalizations t, String value) {
     switch (value) {
       case 'cash':
-        return 'Dinheiro';
+        return t.translate('payment_cash');
       case 'bank_transfer':
-        return 'Transferência';
+        return t.translate('payment_bank_transfer');
       case 'card':
-        return 'Cartão';
+        return t.translate('payment_credit_card');
       case 'paypay':
-        return 'PayPay';
+        return t.translate('payment_paypay');
       default:
-        return 'Outros';
+        return t.translate('payment_other');
     }
   }
 
@@ -276,21 +279,21 @@ class _EntriesPageState extends State<EntriesPage> {
     }
   }
 
-  String _categoryLabel(String value) {
+  String _categoryLabel(AppLocalizations t, String value) {
     switch (_normalizeCategoryForUi(value)) {
       case 'service':
-        return 'Serviço';
+        return t.translate('entry_category_service');
       case 'sale':
-        return 'Produto';
+        return t.translate('entry_category_sale');
       case 'commission':
-        return 'Comissão';
+        return t.translate('entry_category_commission');
       case 'refund':
-        return 'Reembolso';
+        return t.translate('entry_category_refund');
       case 'other':
-        return 'Outros';
+        return t.translate('entry_category_other');
       default:
         final raw = value.trim();
-        if (raw.isEmpty) return 'Outros';
+        if (raw.isEmpty) return t.translate('entry_category_other');
         return raw
             .split(RegExp(r'[_\s-]+'))
             .where((part) => part.isNotEmpty)
@@ -319,7 +322,7 @@ class _EntriesPageState extends State<EntriesPage> {
     }
   }
 
-  List<DropdownMenuItem<String>> _categoryItems() {
+  List<DropdownMenuItem<String>> _categoryItems(AppLocalizations t) {
     final categories = _entryCategories.isEmpty
         ? [
             'service',
@@ -334,20 +337,29 @@ class _EntriesPageState extends State<EntriesPage> {
       categories.add(_category);
     }
 
+    categories.sort((a, b) {
+      final ai = _categorySortIndex(a);
+      final bi = _categorySortIndex(b);
+      if (ai != bi) return ai.compareTo(bi);
+      return _categoryLabel(t, a)
+          .toLowerCase()
+          .compareTo(_categoryLabel(t, b).toLowerCase());
+    });
+
     return [
       ...categories.map(
         (item) => DropdownMenuItem<String>(
           value: item,
-          child: Text(_categoryLabel(item)),
+          child: Text(_categoryLabel(t, item)),
         ),
       ),
-      const DropdownMenuItem<String>(
+      DropdownMenuItem<String>(
         value: _addCategoryValue,
         child: Row(
           children: [
-            Icon(Icons.add_circle_outline, size: 18),
-            SizedBox(width: 8),
-            Text('Cadastrar nova categoria'),
+            const Icon(Icons.add_circle_outline, size: 18),
+            const SizedBox(width: 8),
+            Text(t.translate('register_new_category')),
           ],
         ),
       ),
@@ -370,36 +382,37 @@ class _EntriesPageState extends State<EntriesPage> {
   }
 
   Future<String?> _openAddCategoryDialog() async {
+    final t = AppLocalizations.of(context);
     final controller = TextEditingController();
 
     final created = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Nova categoria'),
+          title: Text(t.translate('new_category')),
           content: TextField(
             controller: controller,
             autofocus: true,
             textCapitalization: TextCapitalization.words,
-            decoration: _fieldDecoration('Nome da categoria'),
+            decoration: _fieldDecoration(t.translate('category_name')),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancelar'),
+              child: Text(t.translate('cancel')),
             ),
             ElevatedButton(
               onPressed: () async {
                 final raw = controller.text.trim();
                 if (raw.isEmpty) {
-                  _showMessage('Informe o nome da categoria.', error: true);
+                  _showMessage(t.translate('enter_category_name'), error: true);
                   return;
                 }
 
                 try {
                   await SupabaseService.instance.addEntryCategory(raw);
-                  final refreshed = await SupabaseService.instance
-                      .getEntryCategories();
+                  final refreshed =
+                      await SupabaseService.instance.getEntryCategories();
                   final normalized = refreshed
                       .map((item) => _normalizeCategoryForUi(item))
                       .where((item) => item.isNotEmpty)
@@ -426,7 +439,7 @@ class _EntriesPageState extends State<EntriesPage> {
                   );
                 }
               },
-              child: const Text('Salvar'),
+              child: Text(t.translate('save')),
             ),
           ],
         );
@@ -472,9 +485,11 @@ class _EntriesPageState extends State<EntriesPage> {
   }
 
   Future<void> _openAddDialog() async {
+    final t = AppLocalizations.of(context);
+
     if (_isCurrentMonthClosed()) {
       _showMessage(
-        _friendlyBlockedMessage(_extractFiscalMonth(DateTime.now())),
+        _friendlyBlockedMessage(t, _extractFiscalMonth(DateTime.now())),
         error: true,
       );
       return;
@@ -498,9 +513,7 @@ class _EntriesPageState extends State<EntriesPage> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 460,
-                ),
+                constraints: const BoxConstraints(maxWidth: 460),
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: SingleChildScrollView(
@@ -508,9 +521,9 @@ class _EntriesPageState extends State<EntriesPage> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Nova entrada',
-                          style: TextStyle(
+                        Text(
+                          t.translate('new_entry'),
+                          style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
                           ),
@@ -518,7 +531,9 @@ class _EntriesPageState extends State<EntriesPage> {
                         const SizedBox(height: 24),
                         TextField(
                           controller: _descController,
-                          decoration: _fieldDecoration('Descrição'),
+                          decoration: _fieldDecoration(
+                            t.translate('description'),
+                          ),
                         ),
                         const SizedBox(height: 16),
                         TextField(
@@ -526,13 +541,13 @@ class _EntriesPageState extends State<EntriesPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: _fieldDecoration('Valor (¥)'),
+                          decoration: _fieldDecoration('${t.translate('value')} (¥)'),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _category,
-                          decoration: _fieldDecoration('Categoria'),
-                          items: _categoryItems(),
+                          decoration: _fieldDecoration(t.translate('category')),
+                          items: _categoryItems(t),
                           onChanged: (value) async {
                             await _handleCategorySelection(
                               value,
@@ -543,27 +558,31 @@ class _EntriesPageState extends State<EntriesPage> {
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _paymentMethod,
-                          decoration: _fieldDecoration('Método de pagamento'),
-                          items: const [
+                          decoration: _fieldDecoration(
+                            t.translate('payment_method'),
+                          ),
+                          items: [
                             DropdownMenuItem(
                               value: 'cash',
-                              child: Text('Dinheiro'),
+                              child: Text(t.translate('payment_cash')),
                             ),
                             DropdownMenuItem(
                               value: 'card',
-                              child: Text('Cartão'),
+                              child: Text(t.translate('payment_credit_card')),
                             ),
                             DropdownMenuItem(
                               value: 'bank_transfer',
-                              child: Text('Transferência'),
+                              child: Text(
+                                t.translate('payment_bank_transfer'),
+                              ),
                             ),
                             DropdownMenuItem(
                               value: 'paypay',
-                              child: Text('PayPay'),
+                              child: Text(t.translate('payment_paypay')),
                             ),
                             DropdownMenuItem(
                               value: 'other',
-                              child: Text('Outros'),
+                              child: Text(t.translate('payment_other')),
                             ),
                           ],
                           onChanged: (value) {
@@ -586,13 +605,13 @@ class _EntriesPageState extends State<EntriesPage> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  'Data: ${_formatDate(_selectedDate.toIso8601String())}',
+                                  '${t.translate('date')}: ${_formatDate(_selectedDate.toIso8601String())}',
                                   style: const TextStyle(fontSize: 15),
                                 ),
                               ),
                               ElevatedButton(
                                 onPressed: () => _selectDate(setStateDialog),
-                                child: const Text('Alterar'),
+                                child: Text(t.translate('change')),
                               ),
                             ],
                           ),
@@ -604,7 +623,7 @@ class _EntriesPageState extends State<EntriesPage> {
                             TextButton(
                               onPressed: () =>
                                   Navigator.pop(dialogContext, false),
-                              child: const Text('Cancelar'),
+                              child: Text(t.translate('cancel')),
                             ),
                             const SizedBox(width: 12),
                             ElevatedButton(
@@ -619,26 +638,20 @@ class _EntriesPageState extends State<EntriesPage> {
                                 if (description.isEmpty ||
                                     amount == null ||
                                     amount <= 0) {
-                                  ScaffoldMessenger.of(this.context)
-                                      .showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Dados inválidos'),
-                                    ),
+                                  _showMessage(
+                                    t.translate('invalid_data'),
+                                    error: true,
                                   );
                                   return;
                                 }
 
                                 if (_isClosedMonth(_selectedDate)) {
-                                  ScaffoldMessenger.of(this.context)
-                                      .showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        _friendlyBlockedMessage(
-                                          _extractFiscalMonth(_selectedDate),
-                                        ),
-                                      ),
-                                      backgroundColor: Colors.red.shade700,
+                                  _showMessage(
+                                    _friendlyBlockedMessage(
+                                      t,
+                                      _extractFiscalMonth(_selectedDate),
                                     ),
+                                    error: true,
                                   );
                                   return;
                                 }
@@ -656,21 +669,16 @@ class _EntriesPageState extends State<EntriesPage> {
                                   Navigator.pop(dialogContext, true);
                                 } catch (e) {
                                   if (!mounted) return;
-                                  ScaffoldMessenger.of(this.context)
-                                      .showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        e.toString().replaceFirst(
-                                              'Exception: ',
-                                              '',
-                                            ),
-                                      ),
-                                      backgroundColor: Colors.red.shade700,
-                                    ),
+                                  _showMessage(
+                                    e.toString().replaceFirst(
+                                          'Exception: ',
+                                          '',
+                                        ),
+                                    error: true,
                                   );
                                 }
                               },
-                              child: const Text('Salvar'),
+                              child: Text(t.translate('save')),
                             ),
                           ],
                         ),
@@ -686,17 +694,17 @@ class _EntriesPageState extends State<EntriesPage> {
     );
 
     if (saved == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entrada adicionada')),
-      );
+      _showMessage(t.translate('entry_added'));
       await _refresh();
     }
   }
 
   Future<void> _editEntry(Map<String, dynamic> entry) async {
+    final t = AppLocalizations.of(context);
+
     if (_isClosedMonth(entry['date'])) {
       _showMessage(
-        _friendlyBlockedMessage(_extractFiscalMonth(entry['date'])),
+        _friendlyBlockedMessage(t, _extractFiscalMonth(entry['date'])),
         error: true,
       );
       return;
@@ -725,9 +733,7 @@ class _EntriesPageState extends State<EntriesPage> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 460,
-                ),
+                constraints: const BoxConstraints(maxWidth: 460),
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: SingleChildScrollView(
@@ -735,9 +741,9 @@ class _EntriesPageState extends State<EntriesPage> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Editar entrada',
-                          style: TextStyle(
+                        Text(
+                          t.translate('edit_entry'),
+                          style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
                           ),
@@ -745,7 +751,9 @@ class _EntriesPageState extends State<EntriesPage> {
                         const SizedBox(height: 24),
                         TextField(
                           controller: _descController,
-                          decoration: _fieldDecoration('Descrição'),
+                          decoration: _fieldDecoration(
+                            t.translate('description'),
+                          ),
                         ),
                         const SizedBox(height: 16),
                         TextField(
@@ -753,13 +761,13 @@ class _EntriesPageState extends State<EntriesPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: _fieldDecoration('Valor (¥)'),
+                          decoration: _fieldDecoration('${t.translate('value')} (¥)'),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _category,
-                          decoration: _fieldDecoration('Categoria'),
-                          items: _categoryItems(),
+                          decoration: _fieldDecoration(t.translate('category')),
+                          items: _categoryItems(t),
                           onChanged: (value) async {
                             await _handleCategorySelection(
                               value,
@@ -770,27 +778,31 @@ class _EntriesPageState extends State<EntriesPage> {
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _paymentMethod,
-                          decoration: _fieldDecoration('Método de pagamento'),
-                          items: const [
+                          decoration: _fieldDecoration(
+                            t.translate('payment_method'),
+                          ),
+                          items: [
                             DropdownMenuItem(
                               value: 'cash',
-                              child: Text('Dinheiro'),
+                              child: Text(t.translate('payment_cash')),
                             ),
                             DropdownMenuItem(
                               value: 'card',
-                              child: Text('Cartão'),
+                              child: Text(t.translate('payment_credit_card')),
                             ),
                             DropdownMenuItem(
                               value: 'bank_transfer',
-                              child: Text('Transferência'),
+                              child: Text(
+                                t.translate('payment_bank_transfer'),
+                              ),
                             ),
                             DropdownMenuItem(
                               value: 'paypay',
-                              child: Text('PayPay'),
+                              child: Text(t.translate('payment_paypay')),
                             ),
                             DropdownMenuItem(
                               value: 'other',
-                              child: Text('Outros'),
+                              child: Text(t.translate('payment_other')),
                             ),
                           ],
                           onChanged: (value) {
@@ -813,13 +825,13 @@ class _EntriesPageState extends State<EntriesPage> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  'Data: ${_formatDate(_selectedDate.toIso8601String())}',
+                                  '${t.translate('date')}: ${_formatDate(_selectedDate.toIso8601String())}',
                                   style: const TextStyle(fontSize: 15),
                                 ),
                               ),
                               ElevatedButton(
                                 onPressed: () => _selectDate(setStateDialog),
-                                child: const Text('Alterar'),
+                                child: Text(t.translate('change')),
                               ),
                             ],
                           ),
@@ -831,7 +843,7 @@ class _EntriesPageState extends State<EntriesPage> {
                             TextButton(
                               onPressed: () =>
                                   Navigator.pop(dialogContext, false),
-                              child: const Text('Cancelar'),
+                              child: Text(t.translate('cancel')),
                             ),
                             const SizedBox(width: 12),
                             ElevatedButton(
@@ -846,26 +858,20 @@ class _EntriesPageState extends State<EntriesPage> {
                                 if (description.isEmpty ||
                                     amount == null ||
                                     amount <= 0) {
-                                  ScaffoldMessenger.of(this.context)
-                                      .showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Dados inválidos'),
-                                    ),
+                                  _showMessage(
+                                    t.translate('invalid_data'),
+                                    error: true,
                                   );
                                   return;
                                 }
 
                                 if (_isClosedMonth(_selectedDate)) {
-                                  ScaffoldMessenger.of(this.context)
-                                      .showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        _friendlyBlockedMessage(
-                                          _extractFiscalMonth(_selectedDate),
-                                        ),
-                                      ),
-                                      backgroundColor: Colors.red.shade700,
+                                  _showMessage(
+                                    _friendlyBlockedMessage(
+                                      t,
+                                      _extractFiscalMonth(_selectedDate),
                                     ),
+                                    error: true,
                                   );
                                   return;
                                 }
@@ -887,21 +893,16 @@ class _EntriesPageState extends State<EntriesPage> {
                                   Navigator.pop(dialogContext, true);
                                 } catch (e) {
                                   if (!mounted) return;
-                                  ScaffoldMessenger.of(this.context)
-                                      .showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        e.toString().replaceFirst(
-                                              'Exception: ',
-                                              '',
-                                            ),
-                                      ),
-                                      backgroundColor: Colors.red.shade700,
-                                    ),
+                                  _showMessage(
+                                    e.toString().replaceFirst(
+                                          'Exception: ',
+                                          '',
+                                        ),
+                                    error: true,
                                   );
                                 }
                               },
-                              child: const Text('Salvar'),
+                              child: Text(t.translate('save')),
                             ),
                           ],
                         ),
@@ -917,17 +918,17 @@ class _EntriesPageState extends State<EntriesPage> {
     );
 
     if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entrada atualizada')),
-      );
+      _showMessage(t.translate('entry_updated'));
       await _refresh();
     }
   }
 
   Future<void> _deleteEntry(String id, {dynamic entryDate}) async {
+    final t = AppLocalizations.of(context);
+
     if (_isClosedMonth(entryDate)) {
       _showMessage(
-        _friendlyBlockedMessage(_extractFiscalMonth(entryDate)),
+        _friendlyBlockedMessage(t, _extractFiscalMonth(entryDate)),
         error: true,
       );
       return;
@@ -935,17 +936,17 @@ class _EntriesPageState extends State<EntriesPage> {
 
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Excluir entrada'),
-        content: const Text('Deseja realmente excluir esta entrada?'),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(t.translate('delete_entry')),
+        content: Text(t.translate('confirm_delete_entry')),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(t.translate('cancel')),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Excluir'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(t.translate('delete_entry')),
           ),
         ],
       ),
@@ -958,10 +959,7 @@ class _EntriesPageState extends State<EntriesPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entrada excluída')),
-      );
-
+      _showMessage(t.translate('entry_deleted'));
       await _refresh();
     } catch (e) {
       _showMessage(
@@ -971,14 +969,16 @@ class _EntriesPageState extends State<EntriesPage> {
     }
   }
 
-  Widget _entryCard(Map<String, dynamic> entry) {
+  Widget _entryCard(AppLocalizations t, Map<String, dynamic> entry) {
     final description = (entry['description'] ?? '').toString();
     final date = _formatDate(entry['date']);
     final amount = _formatYen(entry['amount']);
     final paymentMethod = _paymentLabel(
+      t,
       (entry['payment_method'] ?? '').toString(),
     );
     final category = _categoryLabel(
+      t,
       _normalizeCategoryForUi(entry['category'] ?? 'service'),
     );
     final isClosed = _isClosedMonth(entry['date']);
@@ -995,7 +995,7 @@ class _EntriesPageState extends State<EntriesPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              description.isEmpty ? 'Sem descrição' : description,
+              description.isEmpty ? t.translate('no_description') : description,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -1023,7 +1023,7 @@ class _EntriesPageState extends State<EntriesPage> {
                 ),
                 if (isClosed)
                   Tooltip(
-                    message: 'Mês fiscal fechado',
+                    message: t.translate('fiscal_month_locked'),
                     child: Icon(
                       Icons.lock_outline,
                       color: Colors.orange.shade700,
@@ -1031,13 +1031,13 @@ class _EntriesPageState extends State<EntriesPage> {
                   ),
                 if (!isClosed)
                   IconButton(
-                    tooltip: 'Editar',
+                    tooltip: t.translate('edit_entry'),
                     icon: const Icon(Icons.edit_outlined),
                     onPressed: () => _editEntry(entry),
                   ),
                 if (!isClosed)
                   IconButton(
-                    tooltip: 'Excluir',
+                    tooltip: t.translate('delete_entry'),
                     icon: const Icon(Icons.delete_outline),
                     onPressed: () => _deleteEntry(
                       entry['id'].toString(),
@@ -1052,7 +1052,7 @@ class _EntriesPageState extends State<EntriesPage> {
     );
   }
 
-  Widget _closedMonthBanner() {
+  Widget _closedMonthBanner(AppLocalizations t) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       padding: const EdgeInsets.all(14),
@@ -1074,7 +1074,7 @@ class _EntriesPageState extends State<EntriesPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Mês fiscal fechado',
+                  t.translate('fiscal_month_locked'),
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: Colors.orange.shade900,
@@ -1082,7 +1082,7 @@ class _EntriesPageState extends State<EntriesPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Novas entradas, edição e exclusão ficam bloqueadas para o mês atual.',
+                  t.translate('fiscal_month_locked_description'),
                   style: TextStyle(
                     color: Colors.orange.shade900,
                   ),
@@ -1095,7 +1095,7 @@ class _EntriesPageState extends State<EntriesPage> {
     );
   }
 
-  Widget _emptyState() {
+  Widget _emptyState(AppLocalizations t) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -1108,16 +1108,16 @@ class _EntriesPageState extends State<EntriesPage> {
               color: Colors.grey.shade500,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Nenhuma entrada registrada',
-              style: TextStyle(
+            Text(
+              t.translate('no_entries_yet'),
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              'As entradas cadastradas aparecerão aqui.',
+              t.translate('entries_will_appear_here'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.grey.shade700,
@@ -1131,9 +1131,11 @@ class _EntriesPageState extends State<EntriesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Entradas'),
+        title: Text(t.translate('nav_entries')),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
@@ -1145,8 +1147,8 @@ class _EntriesPageState extends State<EntriesPage> {
               color: _isCurrentMonthClosed() ? Colors.grey.shade400 : null,
             ),
             tooltip: _isCurrentMonthClosed()
-                ? 'Mês fiscal fechado'
-                : 'Nova entrada',
+                ? t.translate('fiscal_month_locked')
+                : t.translate('new_entry'),
             onPressed: _isCurrentMonthClosed() ? null : _openAddDialog,
           ),
           IconButton(
@@ -1159,10 +1161,10 @@ class _EntriesPageState extends State<EntriesPage> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                if (_isCurrentMonthClosed()) _closedMonthBanner(),
+                if (_isCurrentMonthClosed()) _closedMonthBanner(t),
                 Expanded(
                   child: _entries.isEmpty
-                      ? _emptyState()
+                      ? _emptyState(t)
                       : RefreshIndicator(
                           onRefresh: _refresh,
                           child: ListView.builder(
@@ -1173,7 +1175,7 @@ class _EntriesPageState extends State<EntriesPage> {
                                   Map<String, dynamic>.from(_entries[index]);
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 12),
-                                child: _entryCard(entry),
+                                child: _entryCard(t, entry),
                               );
                             },
                           ),
