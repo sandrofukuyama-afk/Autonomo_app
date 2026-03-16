@@ -18,6 +18,7 @@ class _EntriesPageState extends State<EntriesPage> {
 
   DateTime _selectedDate = DateTime.now();
   String _paymentMethod = 'cash';
+  String _category = 'service';
 
   @override
   void initState() {
@@ -32,7 +33,6 @@ class _EntriesPageState extends State<EntriesPage> {
     _amountController.dispose();
     super.dispose();
   }
-
 
   Future<void> _loadClosedMonths() async {
     try {
@@ -166,6 +166,40 @@ class _EntriesPageState extends State<EntriesPage> {
     }
   }
 
+  String _categoryLabel(String value) {
+    switch (value) {
+      case 'service':
+        return 'Serviço';
+      case 'product':
+        return 'Produto';
+      case 'commission':
+        return 'Comissão';
+      default:
+        return 'Outros';
+    }
+  }
+
+  List<DropdownMenuItem<String>> _categoryItems() {
+    return const [
+      DropdownMenuItem(
+        value: 'service',
+        child: Text('Serviço'),
+      ),
+      DropdownMenuItem(
+        value: 'product',
+        child: Text('Produto'),
+      ),
+      DropdownMenuItem(
+        value: 'commission',
+        child: Text('Comissão'),
+      ),
+      DropdownMenuItem(
+        value: 'other',
+        child: Text('Outros'),
+      ),
+    ];
+  }
+
   Future<void> _selectDate(StateSetter setStateDialog) async {
     final picked = await showDatePicker(
       context: context,
@@ -207,6 +241,7 @@ class _EntriesPageState extends State<EntriesPage> {
     _amountController.clear();
     _selectedDate = DateTime.now();
     _paymentMethod = 'cash';
+    _category = 'service';
 
     final saved = await showDialog<bool>(
       context: context,
@@ -250,203 +285,14 @@ class _EntriesPageState extends State<EntriesPage> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _paymentMethod,
-                          decoration: _fieldDecoration('Método de pagamento'),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'cash',
-                              child: Text('Dinheiro'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'card',
-                              child: Text('Cartão'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'bank_transfer',
-                              child: Text('Transferência'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'paypay',
-                              child: Text('PayPay'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'other',
-                              child: Text('Outros'),
-                            ),
-                          ],
+                          value: _category,
+                          decoration: _fieldDecoration('Categoria'),
+                          items: _categoryItems(),
                           onChanged: (value) {
                             setStateDialog(() {
-                              _paymentMethod = value ?? 'cash';
+                              _category = value ?? 'service';
                             });
                           },
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade400),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Data: ${_formatDate(_selectedDate.toIso8601String())}',
-                                  style: const TextStyle(fontSize: 15),
-                                ),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => _selectDate(setStateDialog),
-                                child: const Text('Alterar'),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(dialogContext, false),
-                              child: const Text('Cancelar'),
-                            ),
-                            const SizedBox(width: 12),
-                            ElevatedButton(
-                              onPressed: () async {
-                                final description = _descController.text.trim();
-                                final amount = double.tryParse(
-                                  _amountController.text
-                                      .trim()
-                                      .replaceAll(',', '.'),
-                                );
-
-                                if (description.isEmpty ||
-                                    amount == null ||
-                                    amount <= 0) {
-                                  ScaffoldMessenger.of(this.context)
-                                      .showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Dados inválidos'),
-                                    ),
-                                  );
-                                  return;
-                                }
-
-                                if (_isClosedMonth(_selectedDate)) {
-                                  ScaffoldMessenger.of(this.context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        _friendlyBlockedMessage(
-                                          _extractFiscalMonth(_selectedDate),
-                                        ),
-                                      ),
-                                      backgroundColor: Colors.red.shade700,
-                                    ),
-                                  );
-                                  return;
-                                }
-
-                                try {
-                                  await SupabaseService.instance.addEntry({
-                                    'date': _selectedDate.toIso8601String(),
-                                    'description': description,
-                                    'amount': amount,
-                                    'payment_method': _paymentMethod,
-                                  });
-
-                                  if (!mounted) return;
-                                  Navigator.pop(dialogContext, true);
-                                } catch (e) {
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(this.context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(e.toString().replaceFirst('Exception: ', '')),
-                                      backgroundColor: Colors.red.shade700,
-                                    ),
-                                  );
-                                }
-                              },
-                              child: const Text('Salvar'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    if (saved == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entrada adicionada')),
-      );
-      await _refresh();
-    }
-  }
-
-  Future<void> _editEntry(Map<String, dynamic> entry) async {
-    if (_isClosedMonth(entry['date'])) {
-      _showMessage(
-        _friendlyBlockedMessage(_extractFiscalMonth(entry['date'])),
-        error: true,
-      );
-      return;
-    }
-
-    _descController.text = (entry['description'] ?? '').toString();
-    _amountController.text = (entry['amount'] ?? '').toString();
-    _selectedDate =
-        DateTime.tryParse((entry['date'] ?? '').toString()) ?? DateTime.now();
-    _paymentMethod = (entry['payment_method'] ?? 'cash').toString();
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 460,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Editar entrada',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        TextField(
-                          controller: _descController,
-                          decoration: _fieldDecoration('Descrição'),
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _amountController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration: _fieldDecoration('Valor (¥)'),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
@@ -537,7 +383,228 @@ class _EntriesPageState extends State<EntriesPage> {
                                 }
 
                                 if (_isClosedMonth(_selectedDate)) {
-                                  ScaffoldMessenger.of(this.context).showSnackBar(
+                                  ScaffoldMessenger.of(this.context)
+                                      .showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        _friendlyBlockedMessage(
+                                          _extractFiscalMonth(_selectedDate),
+                                        ),
+                                      ),
+                                      backgroundColor: Colors.red.shade700,
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                try {
+                                  await SupabaseService.instance.addEntry({
+                                    'date': _selectedDate.toIso8601String(),
+                                    'description': description,
+                                    'amount': amount,
+                                    'category': _category,
+                                    'payment_method': _paymentMethod,
+                                  });
+
+                                  if (!mounted) return;
+                                  Navigator.pop(dialogContext, true);
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(this.context)
+                                      .showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        e.toString().replaceFirst(
+                                              'Exception: ',
+                                              '',
+                                            ),
+                                      ),
+                                      backgroundColor: Colors.red.shade700,
+                                    ),
+                                  );
+                                }
+                              },
+                              child: const Text('Salvar'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (saved == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Entrada adicionada')),
+      );
+      await _refresh();
+    }
+  }
+
+  Future<void> _editEntry(Map<String, dynamic> entry) async {
+    if (_isClosedMonth(entry['date'])) {
+      _showMessage(
+        _friendlyBlockedMessage(_extractFiscalMonth(entry['date'])),
+        error: true,
+      );
+      return;
+    }
+
+    _descController.text = (entry['description'] ?? '').toString();
+    _amountController.text = (entry['amount'] ?? '').toString();
+    _selectedDate =
+        DateTime.tryParse((entry['date'] ?? '').toString()) ?? DateTime.now();
+    _paymentMethod = (entry['payment_method'] ?? 'cash').toString();
+    _category = (entry['category'] ?? 'service').toString();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 460,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Editar entrada',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        TextField(
+                          controller: _descController,
+                          decoration: _fieldDecoration('Descrição'),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _amountController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: _fieldDecoration('Valor (¥)'),
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: _category,
+                          decoration: _fieldDecoration('Categoria'),
+                          items: _categoryItems(),
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              _category = value ?? 'service';
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: _paymentMethod,
+                          decoration: _fieldDecoration('Método de pagamento'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'cash',
+                              child: Text('Dinheiro'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'card',
+                              child: Text('Cartão'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'bank_transfer',
+                              child: Text('Transferência'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'paypay',
+                              child: Text('PayPay'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'other',
+                              child: Text('Outros'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              _paymentMethod = value ?? 'cash';
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Data: ${_formatDate(_selectedDate.toIso8601String())}',
+                                  style: const TextStyle(fontSize: 15),
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => _selectDate(setStateDialog),
+                                child: const Text('Alterar'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, false),
+                              child: const Text('Cancelar'),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton(
+                              onPressed: () async {
+                                final description = _descController.text.trim();
+                                final amount = double.tryParse(
+                                  _amountController.text
+                                      .trim()
+                                      .replaceAll(',', '.'),
+                                );
+
+                                if (description.isEmpty ||
+                                    amount == null ||
+                                    amount <= 0) {
+                                  ScaffoldMessenger.of(this.context)
+                                      .showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Dados inválidos'),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                if (_isClosedMonth(_selectedDate)) {
+                                  ScaffoldMessenger.of(this.context)
+                                      .showSnackBar(
                                     SnackBar(
                                       content: Text(
                                         _friendlyBlockedMessage(
@@ -558,6 +625,7 @@ class _EntriesPageState extends State<EntriesPage> {
                                           _selectedDate.toIso8601String(),
                                       'description': description,
                                       'amount': amount,
+                                      'category': _category,
                                       'payment_method': _paymentMethod,
                                     },
                                   );
@@ -566,9 +634,15 @@ class _EntriesPageState extends State<EntriesPage> {
                                   Navigator.pop(dialogContext, true);
                                 } catch (e) {
                                   if (!mounted) return;
-                                  ScaffoldMessenger.of(this.context).showSnackBar(
+                                  ScaffoldMessenger.of(this.context)
+                                      .showSnackBar(
                                     SnackBar(
-                                      content: Text(e.toString().replaceFirst('Exception: ', '')),
+                                      content: Text(
+                                        e.toString().replaceFirst(
+                                              'Exception: ',
+                                              '',
+                                            ),
+                                      ),
                                       backgroundColor: Colors.red.shade700,
                                     ),
                                   );
@@ -651,6 +725,7 @@ class _EntriesPageState extends State<EntriesPage> {
     final paymentMethod = _paymentLabel(
       (entry['payment_method'] ?? '').toString(),
     );
+    final category = _categoryLabel((entry['category'] ?? 'service').toString());
     final isClosed = _isClosedMonth(entry['date']);
 
     return Card(
@@ -673,7 +748,7 @@ class _EntriesPageState extends State<EntriesPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              '$date • $paymentMethod',
+              '$date • $category • $paymentMethod',
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.grey.shade700,
@@ -721,7 +796,6 @@ class _EntriesPageState extends State<EntriesPage> {
       ),
     );
   }
-
 
   Widget _closedMonthBanner() {
     return Container(
@@ -840,7 +914,8 @@ class _EntriesPageState extends State<EntriesPage> {
                             padding: const EdgeInsets.all(16),
                             itemCount: _entries.length,
                             itemBuilder: (context, index) {
-                              final entry = Map<String, dynamic>.from(_entries[index]);
+                              final entry =
+                                  Map<String, dynamic>.from(_entries[index]);
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 12),
                                 child: _entryCard(entry),
