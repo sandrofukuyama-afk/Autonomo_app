@@ -132,7 +132,7 @@ class SupabaseService {
 
     final Map<String, dynamic>? row = await _client
         .from('entries_v2')
-        .select('id, company_id, entry_date')
+        .select('id, company_id, entry_date, category')
         .eq('id', id)
         .eq('company_id', companyId)
         .maybeSingle();
@@ -166,7 +166,7 @@ class SupabaseService {
       'company_id': companyId,
       'entry_date': data['date'],
       'description': data['description'],
-      'category': data['category'] ?? 'service',
+      'category': _normalizeEntryCategory(data['category']),
       'amount': data['amount'],
       'payment_method': _normalizePaymentMethod(data['payment_method']),
       'tax_rate': data['tax_rate'],
@@ -222,6 +222,9 @@ class SupabaseService {
     await _client.from('entries_v2').update({
       'entry_date': nextDateValue,
       'description': data['description'],
+      'category': data.containsKey('category')
+          ? _normalizeEntryCategory(data['category'])
+          : existingRow['category'],
       'amount': data['amount'],
       'payment_method': _normalizePaymentMethod(data['payment_method']),
     }).eq('id', id);
@@ -232,7 +235,7 @@ class SupabaseService {
 
     final row = await _client
         .from('entries_v2')
-        .select('id, company_id, entry_date')
+        .select('id, company_id, entry_date, category')
         .eq('id', id)
         .eq('company_id', companyId)
         .maybeSingle();
@@ -514,6 +517,47 @@ class SupabaseService {
     if (lower.endsWith('.webp')) return 'image/webp';
     if (lower.endsWith('.pdf')) return 'application/pdf';
     return 'image/jpeg';
+  }
+
+
+  String _normalizeEntryCategory(dynamic value) {
+    if (value == null) return 'service';
+
+    final normalized = value.toString().trim().toLowerCase();
+
+    switch (normalized) {
+      case 'service':
+      case 'services':
+      case 'servico':
+      case 'serviços':
+      case 'servicos':
+        return 'service';
+
+      case 'product':
+      case 'products':
+      case 'sale':
+      case 'sales':
+      case 'produto':
+      case 'produtos':
+      case 'venda':
+      case 'vendas':
+        return 'product';
+
+      case 'commission':
+      case 'comission':
+      case 'commissions':
+      case 'comissao':
+      case 'comissão':
+      case 'comissoes':
+      case 'comissões':
+        return 'commission';
+
+      case 'other':
+      case 'outro':
+      case 'outros':
+      default:
+        return 'other';
+    }
   }
 
   String _normalizePaymentMethod(dynamic value) {
