@@ -9,9 +9,18 @@ class EntriesPage extends StatefulWidget {
 }
 
 class _EntriesPageState extends State<EntriesPage> {
+  static const String _addCategoryValue = '__add_new_category__';
+
   List<Map<String, dynamic>> _entries = [];
   bool _loading = true;
   List<String> _closedFiscalMonths = [];
+  List<String> _entryCategories = const [
+    'service',
+    'sale',
+    'commission',
+    'refund',
+    'other',
+  ];
 
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
@@ -23,8 +32,7 @@ class _EntriesPageState extends State<EntriesPage> {
   @override
   void initState() {
     super.initState();
-    _loadClosedMonths();
-    _loadEntries();
+    _refresh();
   }
 
   @override
@@ -45,6 +53,56 @@ class _EntriesPageState extends State<EntriesPage> {
       if (!mounted) return;
       setState(() {
         _closedFiscalMonths = [];
+      });
+    }
+  }
+
+  Future<void> _loadEntryCategories() async {
+    try {
+      final categories = await SupabaseService.instance.getEntryCategories();
+      final normalized = categories
+          .map((item) => _normalizeCategoryForUi(item))
+          .where((item) => item.isNotEmpty)
+          .toSet()
+          .toList();
+
+      if (normalized.isEmpty) {
+        normalized.addAll(const [
+          'service',
+          'sale',
+          'commission',
+          'refund',
+          'other',
+        ]);
+      }
+
+      if (_category.isNotEmpty && !normalized.contains(_category)) {
+        normalized.add(_category);
+      }
+
+      normalized.sort((a, b) {
+        final ai = _categorySortIndex(a);
+        final bi = _categorySortIndex(b);
+        if (ai != bi) return ai.compareTo(bi);
+        return _categoryLabel(a).toLowerCase().compareTo(
+              _categoryLabel(b).toLowerCase(),
+            );
+      });
+
+      if (!mounted) return;
+      setState(() {
+        _entryCategories = normalized;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _entryCategories = [
+          'service',
+          'sale',
+          'commission',
+          'refund',
+          'other',
+        ];
       });
     }
   }
@@ -106,7 +164,14 @@ class _EntriesPageState extends State<EntriesPage> {
     if (!mounted) return;
 
     setState(() {
-      _entries = List<Map<String, dynamic>>.from(data);
+      _entries = List<Map<String, dynamic>>.from(data)
+          .map(
+            (item) => {
+              ...item,
+              'category': _normalizeCategoryForUi(item['category']),
+            },
+          )
+          .toList();
       _loading = false;
     });
   }
@@ -116,6 +181,7 @@ class _EntriesPageState extends State<EntriesPage> {
       _loading = true;
     });
     await _loadClosedMonths();
+    await _loadEntryCategories();
     await _loadEntries();
   }
 
@@ -166,36 +232,124 @@ class _EntriesPageState extends State<EntriesPage> {
     }
   }
 
+  String _normalizeCategoryForUi(dynamic value) {
+    final text = (value ?? '').toString().trim();
+    if (text.isEmpty) return 'service';
+
+    final lower = text.toLowerCase();
+    switch (lower) {
+      case 'product':
+      case 'products':
+      case 'produto':
+      case 'produtos':
+      case 'sale':
+      case 'sales':
+      case 'venda':
+      case 'vendas':
+        return 'sale';
+      case 'service':
+      case 'services':
+      case 'servico':
+      case 'servicos':
+      case 'serviço':
+      case 'serviços':
+        return 'service';
+      case 'commission':
+      case 'comission':
+      case 'commissions':
+      case 'comissao':
+      case 'comissão':
+      case 'comissoes':
+      case 'comissões':
+        return 'commission';
+      case 'refund':
+      case 'refunds':
+      case 'reembolso':
+      case 'reembolsos':
+        return 'refund';
+      case 'other':
+      case 'outro':
+      case 'outros':
+        return 'other';
+      default:
+        return lower;
+    }
+  }
+
   String _categoryLabel(String value) {
-    switch (value) {
+    switch (_normalizeCategoryForUi(value)) {
       case 'service':
         return 'Serviço';
-      case 'product':
+      case 'sale':
         return 'Produto';
       case 'commission':
         return 'Comissão';
-      default:
+      case 'refund':
+        return 'Reembolso';
+      case 'other':
         return 'Outros';
+      default:
+        final raw = value.trim();
+        if (raw.isEmpty) return 'Outros';
+        return raw
+            .split(RegExp(r'[_\s-]+'))
+            .where((part) => part.isNotEmpty)
+            .map(
+              (part) =>
+                  '${part[0].toUpperCase()}${part.length > 1 ? part.substring(1) : ''}',
+            )
+            .join(' ');
+    }
+  }
+
+  int _categorySortIndex(String value) {
+    switch (_normalizeCategoryForUi(value)) {
+      case 'service':
+        return 0;
+      case 'sale':
+        return 1;
+      case 'commission':
+        return 2;
+      case 'refund':
+        return 3;
+      case 'other':
+        return 4;
+      default:
+        return 100;
     }
   }
 
   List<DropdownMenuItem<String>> _categoryItems() {
-    return const [
-      DropdownMenuItem(
-        value: 'service',
-        child: Text('Serviço'),
+    final categories = _entryCategories.isEmpty
+        ? [
+            'service',
+            'sale',
+            'commission',
+            'refund',
+            'other',
+          ]
+        : List<String>.from(_entryCategories);
+
+    if (!categories.contains(_category)) {
+      categories.add(_category);
+    }
+
+    return [
+      ...categories.map(
+        (item) => DropdownMenuItem<String>(
+          value: item,
+          child: Text(_categoryLabel(item)),
+        ),
       ),
-      DropdownMenuItem(
-        value: 'product',
-        child: Text('Produto'),
-      ),
-      DropdownMenuItem(
-        value: 'commission',
-        child: Text('Comissão'),
-      ),
-      DropdownMenuItem(
-        value: 'other',
-        child: Text('Outros'),
+      const DropdownMenuItem<String>(
+        value: _addCategoryValue,
+        child: Row(
+          children: [
+            Icon(Icons.add_circle_outline, size: 18),
+            SizedBox(width: 8),
+            Text('Cadastrar nova categoria'),
+          ],
+        ),
       ),
     ];
   }
@@ -213,6 +367,95 @@ class _EntriesPageState extends State<EntriesPage> {
         _selectedDate = picked;
       });
     }
+  }
+
+  Future<String?> _openAddCategoryDialog() async {
+    final controller = TextEditingController();
+
+    final created = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Nova categoria'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            decoration: _fieldDecoration('Nome da categoria'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final raw = controller.text.trim();
+                if (raw.isEmpty) {
+                  _showMessage('Informe o nome da categoria.', error: true);
+                  return;
+                }
+
+                try {
+                  await SupabaseService.instance.addEntryCategory(raw);
+                  final refreshed = await SupabaseService.instance
+                      .getEntryCategories();
+                  final normalized = refreshed
+                      .map((item) => _normalizeCategoryForUi(item))
+                      .where((item) => item.isNotEmpty)
+                      .toSet()
+                      .toList();
+
+                  final selected = normalized.firstWhere(
+                    (item) => item == _normalizeCategoryForUi(raw),
+                    orElse: () => _normalizeCategoryForUi(raw),
+                  );
+
+                  if (mounted) {
+                    setState(() {
+                      _entryCategories = normalized;
+                    });
+                  }
+
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext, selected);
+                } catch (e) {
+                  _showMessage(
+                    e.toString().replaceFirst('Exception: ', ''),
+                    error: true,
+                  );
+                }
+              },
+              child: const Text('Salvar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    controller.dispose();
+    return created;
+  }
+
+  Future<void> _handleCategorySelection(
+    String? value,
+    StateSetter setStateDialog,
+  ) async {
+    if (value == null) return;
+
+    if (value == _addCategoryValue) {
+      final createdCategory = await _openAddCategoryDialog();
+      if (createdCategory == null || createdCategory.isEmpty) return;
+
+      setStateDialog(() {
+        _category = createdCategory;
+      });
+      return;
+    }
+
+    setStateDialog(() {
+      _category = _normalizeCategoryForUi(value);
+    });
   }
 
   InputDecoration _fieldDecoration(String label) {
@@ -241,7 +484,9 @@ class _EntriesPageState extends State<EntriesPage> {
     _amountController.clear();
     _selectedDate = DateTime.now();
     _paymentMethod = 'cash';
-    _category = 'service';
+    _category = _entryCategories.contains('service')
+        ? 'service'
+        : (_entryCategories.isNotEmpty ? _entryCategories.first : 'service');
 
     final saved = await showDialog<bool>(
       context: context,
@@ -288,10 +533,11 @@ class _EntriesPageState extends State<EntriesPage> {
                           value: _category,
                           decoration: _fieldDecoration('Categoria'),
                           items: _categoryItems(),
-                          onChanged: (value) {
-                            setStateDialog(() {
-                              _category = value ?? 'service';
-                            });
+                          onChanged: (value) async {
+                            await _handleCategorySelection(
+                              value,
+                              setStateDialog,
+                            );
                           },
                         ),
                         const SizedBox(height: 16),
@@ -461,7 +707,13 @@ class _EntriesPageState extends State<EntriesPage> {
     _selectedDate =
         DateTime.tryParse((entry['date'] ?? '').toString()) ?? DateTime.now();
     _paymentMethod = (entry['payment_method'] ?? 'cash').toString();
-    _category = (entry['category'] ?? 'service').toString();
+    _category = _normalizeCategoryForUi(entry['category']);
+
+    if (!_entryCategories.contains(_category)) {
+      setState(() {
+        _entryCategories = [..._entryCategories, _category];
+      });
+    }
 
     final result = await showDialog<bool>(
       context: context,
@@ -508,10 +760,11 @@ class _EntriesPageState extends State<EntriesPage> {
                           value: _category,
                           decoration: _fieldDecoration('Categoria'),
                           items: _categoryItems(),
-                          onChanged: (value) {
-                            setStateDialog(() {
-                              _category = value ?? 'service';
-                            });
+                          onChanged: (value) async {
+                            await _handleCategorySelection(
+                              value,
+                              setStateDialog,
+                            );
                           },
                         ),
                         const SizedBox(height: 16),
@@ -725,7 +978,9 @@ class _EntriesPageState extends State<EntriesPage> {
     final paymentMethod = _paymentLabel(
       (entry['payment_method'] ?? '').toString(),
     );
-    final category = _categoryLabel((entry['category'] ?? 'service').toString());
+    final category = _categoryLabel(
+      _normalizeCategoryForUi(entry['category'] ?? 'service'),
+    );
     final isClosed = _isClosedMonth(entry['date']);
 
     return Card(
