@@ -10,6 +10,14 @@ class SupabaseService {
 
   final SupabaseClient _client = Supabase.instance.client;
 
+  static const List<String> _defaultEntryCategories = [
+    'service',
+    'sale',
+    'commission',
+    'refund',
+    'other',
+  ];
+
   Future<Map<String, dynamic>> getAppSettings() async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
 
@@ -40,6 +48,75 @@ class SupabaseService {
     }
 
     return [];
+  }
+
+  Future<List<String>> getEntryCategories() async {
+    final settings = await getAppSettings();
+    final raw = settings['entry_categories'];
+
+    if (raw is! List) {
+      return List<String>.from(_defaultEntryCategories);
+    }
+
+    final normalized = <String>[];
+    final seen = <String>{};
+
+    for (final item in raw) {
+      final value = _normalizeEntryCategory(item);
+      if (value.isEmpty) continue;
+      if (seen.add(value)) {
+        normalized.add(value);
+      }
+    }
+
+    if (normalized.isEmpty) {
+      return List<String>.from(_defaultEntryCategories);
+    }
+
+    return normalized;
+  }
+
+  Future<void> saveEntryCategories(List<String> categories) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final normalized = <String>[];
+    final seen = <String>{};
+
+    for (final item in categories) {
+      final value = _normalizeEntryCategory(item);
+      if (value.isEmpty) continue;
+      if (seen.add(value)) {
+        normalized.add(value);
+      }
+    }
+
+    if (normalized.isEmpty) {
+      throw Exception('A lista de categorias de entradas não pode ficar vazia.');
+    }
+
+    await _client
+        .from('app_settings')
+        .update({
+          'entry_categories': normalized,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('company_id', companyId);
+  }
+
+  Future<void> addEntryCategory(String category) async {
+    final categories = await getEntryCategories();
+    final normalized = _normalizeEntryCategory(category);
+
+    if (normalized.isEmpty) {
+      throw Exception('Categoria inválida.');
+    }
+
+    if (categories.contains(normalized)) {
+      return;
+    }
+
+    categories.add(normalized);
+    await saveEntryCategories(categories);
   }
 
   Future<void> closeFiscalMonth(String fiscalMonth) async {
@@ -194,6 +271,7 @@ class SupabaseService {
         .map((item) => {
               ...item,
               'date': item['entry_date'],
+              'category': _normalizeEntryCategory(item['category']),
             })
         .toList();
   }
@@ -224,7 +302,7 @@ class SupabaseService {
       'description': data['description'],
       'category': data.containsKey('category')
           ? _normalizeEntryCategory(data['category'])
-          : existingRow['category'],
+          : _normalizeEntryCategory(existingRow['category']),
       'amount': data['amount'],
       'payment_method': _normalizePaymentMethod(data['payment_method']),
     }).eq('id', id);
@@ -519,11 +597,13 @@ class SupabaseService {
     return 'image/jpeg';
   }
 
-
   String _normalizeEntryCategory(dynamic value) {
     if (value == null) return 'service';
 
-    final normalized = value.toString().trim().toLowerCase();
+    final raw = value.toString().trim();
+    if (raw.isEmpty) return 'service';
+
+    final normalized = raw.toLowerCase();
 
     switch (normalized) {
       case 'service':
@@ -541,7 +621,7 @@ class SupabaseService {
       case 'produtos':
       case 'venda':
       case 'vendas':
-        return 'product';
+        return 'sale';
 
       case 'commission':
       case 'comission':
@@ -552,11 +632,21 @@ class SupabaseService {
       case 'comissões':
         return 'commission';
 
+      case 'refund':
+      case 'refunds':
+      case 'reembolso':
+      case 'reembolsos':
+      case 'estorno':
+      case 'estornos':
+        return 'refund';
+
       case 'other':
       case 'outro':
       case 'outros':
-      default:
         return 'other';
+
+      default:
+        return normalized;
     }
   }
 
