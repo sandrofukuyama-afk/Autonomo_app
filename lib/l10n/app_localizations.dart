@@ -149,12 +149,44 @@ class AppLocalizations {
       'entry_category_sale': 'Produto',
       'entry_category_commission': 'Comissão',
       'entry_category_refund': 'Reembolso',
-            'entry_category_other': 'Outros',
+      'entry_category_other': 'Outros',
       'invalid_data': 'Dados inválidos',
       'closed_month_operation_not_allowed':
           'Este mês fiscal está fechado. Esta operação não é permitida.',
       'closed_month_operation_not_allowed_with_month':
           'O mês fiscal {month} está fechado. Esta operação não é permitida.',
+
+      'annual_fiscal_dashboard': 'Dashboard fiscal anual',
+      'annual_summary_current_year': 'Resumo consolidado do ano atual',
+      'annual_revenue': 'Receitas',
+      'annual_expenses': 'Despesas',
+      'annual_profit': 'Lucro',
+      'annual_estimated_tax': 'Imposto estimado',
+      'closed_months': 'Meses fechados',
+      'open_months': 'Meses em aberto',
+      'system_status': 'Status do sistema',
+      'system_status_subtitle': 'Backup, banco e segurança fiscal',
+      'automatic_backup': 'Backup automático',
+      'database': 'Banco de dados',
+      'fiscal_security': 'Segurança fiscal',
+      'active_daily': 'Ativo (diário)',
+      'connected_isolated_company': 'Conectado e isolado por empresa',
+      'current_month_protected_fiscal_lock':
+          'Mês atual protegido por bloqueio fiscal',
+      'fiscal_lock_active_monthly_closing':
+          'Bloqueio fiscal ativo para fechamento mensal',
+      'fiscal_month_open_banner_title': 'Mês fiscal ainda está em aberto',
+      'fiscal_month_closed_banner_title': 'Mês fiscal encerrado',
+      'fiscal_month_open_banner_description':
+          'Ainda é possível lançar entradas e despesas em {month} até o fechamento fiscal.',
+      'fiscal_month_closed_banner_description':
+          'Novas entradas, despesas, edições e exclusões ficam bloqueadas para {month}.',
+      'ask_ai': 'Tirar dúvida',
+      'ask_ai_title': 'Tirar dúvida',
+      'ask_ai_hint': 'Pergunte sobre o app ou imposto no Japão',
+      'send': 'Enviar',
+      'type_question': 'Digite uma pergunta.',
+      'ai_answer_error': 'Não foi possível obter resposta agora.',
     },
     'en': {
       'description': 'Description',
@@ -300,12 +332,44 @@ class AppLocalizations {
       'entry_category_sale': 'Product',
       'entry_category_commission': 'Commission',
       'entry_category_refund': 'Refund',
-            'entry_category_other': 'Other',
+      'entry_category_other': 'Other',
       'invalid_data': 'Invalid data',
       'closed_month_operation_not_allowed':
           'This fiscal month is closed. This operation is not allowed.',
       'closed_month_operation_not_allowed_with_month':
           'Fiscal month {month} is closed. This operation is not allowed.',
+
+      'annual_fiscal_dashboard': 'Annual fiscal dashboard',
+      'annual_summary_current_year': 'Consolidated summary of the current year',
+      'annual_revenue': 'Revenue',
+      'annual_expenses': 'Expenses',
+      'annual_profit': 'Profit',
+      'annual_estimated_tax': 'Estimated tax',
+      'closed_months': 'Closed months',
+      'open_months': 'Open months',
+      'system_status': 'System status',
+      'system_status_subtitle': 'Backup, database and fiscal security',
+      'automatic_backup': 'Automatic backup',
+      'database': 'Database',
+      'fiscal_security': 'Fiscal security',
+      'active_daily': 'Active (daily)',
+      'connected_isolated_company': 'Connected and isolated by company',
+      'current_month_protected_fiscal_lock':
+          'Current month protected by fiscal lock',
+      'fiscal_lock_active_monthly_closing':
+          'Fiscal lock active for monthly closing',
+      'fiscal_month_open_banner_title': 'Fiscal month is still open',
+      'fiscal_month_closed_banner_title': 'Fiscal month is closed',
+      'fiscal_month_open_banner_description':
+          'Entries and expenses can still be posted in {month} until fiscal closing.',
+      'fiscal_month_closed_banner_description':
+          'New entries, expenses, edits and deletions are blocked for {month}.',
+      'ask_ai': 'Ask AI',
+      'ask_ai_title': 'Ask AI',
+      'ask_ai_hint': 'Ask about the app or taxes in Japan',
+      'send': 'Send',
+      'type_question': 'Type a question.',
+      'ai_answer_error': 'Could not get an answer right now.',
     },
     'ja': {
       'description': '説明',
@@ -448,12 +512,42 @@ class AppLocalizations {
       'entry_category_sale': '商品',
       'entry_category_commission': '手数料',
       'entry_category_refund': '返金',
-            'entry_category_other': 'その他',
+      'entry_category_other': 'その他',
       'invalid_data': '無効なデータです',
       'closed_month_operation_not_allowed':
           'この会計月は締められているため、この操作はできません。',
       'closed_month_operation_not_allowed_with_month':
           '会計月 {month} は締められているため、この操作はできません。',
+
+      'annual_fiscal_dashboard': '年間税務ダッシュボード',
+      'annual_summary_current_year': '今年の集計サマリー',
+      'annual_revenue': '収入',
+      'annual_expenses': '支出',
+      'annual_profit': '利益',
+      'annual_estimated_tax': '推定税額',
+      'closed_months': '締め済み月数',
+      'open_months': '未締め月数',
+      'system_status': 'システム状態',
+      'system_status_subtitle': 'バックアップ、データベース、税務保護',
+      'automatic_backup': '自動バックアップ',
+      'database': 'データベース',
+      'fiscal_security': '税務保護',
+      'active_daily': '有効（毎日）',
+      'connected_isolated_company': '会社ごとに接続・分離済み',
+      'current_month_protected_fiscal_lock': '当月は税務ロックで保護されています',
+      'fiscal_lock_active_monthly_closing': '月次締めの税務ロックが有効',
+      'fiscal_month_open_banner_title': '会計月はまだオープンです',
+      'fiscal_month_closed_banner_title': '会計月は締め済みです',
+      'fiscal_month_open_banner_description':
+          '{month} は会計締めまで収入と支出を登録できます。',
+      'fiscal_month_closed_banner_description':
+          '{month} は新規登録・編集・削除がロックされています。',
+      'ask_ai': '質問する',
+      'ask_ai_title': 'AIに質問',
+      'ask_ai_hint': 'アプリや日本の税務について質問してください',
+      'send': '送信',
+      'type_question': '質問を入力してください。',
+      'ai_answer_error': '今は回答を取得できませんでした。',
     },
     'es': {
       'description': 'Descripción',
@@ -599,17 +693,57 @@ class AppLocalizations {
       'entry_category_sale': 'Producto',
       'entry_category_commission': 'Comisión',
       'entry_category_refund': 'Reembolso',
-            'entry_category_other': 'Otros',
+      'entry_category_other': 'Otros',
       'invalid_data': 'Datos inválidos',
       'closed_month_operation_not_allowed':
           'Este mes fiscal está cerrado. Esta operación no está permitida.',
       'closed_month_operation_not_allowed_with_month':
           'El mes fiscal {month} está cerrado. Esta operación no está permitida.',
+
+      'annual_fiscal_dashboard': 'Panel fiscal anual',
+      'annual_summary_current_year': 'Resumen consolidado del año actual',
+      'annual_revenue': 'Ingresos',
+      'annual_expenses': 'Gastos',
+      'annual_profit': 'Ganancia',
+      'annual_estimated_tax': 'Impuesto estimado',
+      'closed_months': 'Meses cerrados',
+      'open_months': 'Meses abiertos',
+      'system_status': 'Estado del sistema',
+      'system_status_subtitle': 'Backup, base de datos y seguridad fiscal',
+      'automatic_backup': 'Backup automático',
+      'database': 'Base de datos',
+      'fiscal_security': 'Seguridad fiscal',
+      'active_daily': 'Activo (diario)',
+      'connected_isolated_company': 'Conectado y aislado por empresa',
+      'current_month_protected_fiscal_lock':
+          'Mes actual protegido por bloqueo fiscal',
+      'fiscal_lock_active_monthly_closing':
+          'Bloqueo fiscal activo para cierre mensual',
+      'fiscal_month_open_banner_title': 'El mes fiscal sigue abierto',
+      'fiscal_month_closed_banner_title': 'El mes fiscal está cerrado',
+      'fiscal_month_open_banner_description':
+          'Todavía es posible registrar ingresos y gastos en {month} hasta el cierre fiscal.',
+      'fiscal_month_closed_banner_description':
+          'Nuevos ingresos, gastos, ediciones y eliminaciones están bloqueados para {month}.',
+      'ask_ai': 'Consultar IA',
+      'ask_ai_title': 'Consultar IA',
+      'ask_ai_hint': 'Pregunta sobre la app o impuestos en Japón',
+      'send': 'Enviar',
+      'type_question': 'Escribe una pregunta.',
+      'ai_answer_error': 'No fue posible obtener respuesta ahora.',
     },
   };
 
   String translate(String key) {
     return _localizedValues[locale.languageCode]?[key] ?? key;
+  }
+
+  String translateWithParams(String key, Map<String, String> params) {
+    var text = translate(key);
+    params.forEach((paramKey, value) {
+      text = text.replaceAll('{$paramKey}', value);
+    });
+    return text;
   }
 
   static AppLocalizations of(BuildContext context) {
