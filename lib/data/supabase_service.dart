@@ -50,30 +50,164 @@ class SupabaseService {
     return [];
   }
 
-  Future<List<String>> getEntryCategories() async {
-    final settings = await getAppSettings();
-    final raw = settings['entry_categories'];
+  Future<List<Map<String, dynamic>>> getEntryCategoryDefinitions() async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final definitions = <Map<String, dynamic>>[];
 
-    if (raw is! List) {
-      return List<String>.from(_defaultEntryCategories);
+    for (final code in _defaultEntryCategories) {
+      definitions.add({
+        'code': code,
+        'is_default': true,
+        'label_pt': null,
+        'label_en': null,
+        'label_ja': null,
+        'label_es': null,
+      });
     }
 
-    final normalized = <String>[];
-    final seen = <String>{};
+    final seenCodes = <String>{..._defaultEntryCategories};
 
-    for (final item in raw) {
-      final value = _normalizeEntryCategory(item);
-      if (value.isEmpty) continue;
-      if (seen.add(value)) {
-        normalized.add(value);
+    final settings = await getAppSettings();
+    final legacyRaw = settings['entry_categories'];
+
+    if (legacyRaw is List) {
+      for (final item in legacyRaw) {
+        final normalized = _normalizeEntryCategory(item);
+        if (normalized.isEmpty || seenCodes.contains(normalized)) continue;
+        seenCodes.add(normalized);
+        definitions.add({
+          'code': normalized,
+          'is_default': false,
+          'label_pt': item?.toString().trim(),
+          'label_en': item?.toString().trim(),
+          'label_ja': item?.toString().trim(),
+          'label_es': item?.toString().trim(),
+        });
       }
     }
 
-    if (normalized.isEmpty) {
-      return List<String>.from(_defaultEntryCategories);
+    final List<dynamic> rows = await _client
+        .from('entry_categories')
+        .select('code, label_pt, label_en, label_ja, label_es, created_at')
+        .eq('company_id', companyId)
+        .order('created_at', ascending: true);
+
+    for (final raw in rows) {
+      final row = Map<String, dynamic>.from(raw as Map);
+      final code = _normalizeEntryCategory(row['code']);
+      if (code.isEmpty || seenCodes.contains(code)) continue;
+
+      seenCodes.add(code);
+      definitions.add({
+        'code': code,
+        'is_default': false,
+        'label_pt': _normalizeNullableText(row['label_pt']),
+        'label_en': _normalizeNullableText(row['label_en']),
+        'label_ja': _normalizeNullableText(row['label_ja']),
+        'label_es': _normalizeNullableText(row['label_es']),
+      });
     }
 
-    return normalized;
+    return definitions;
+  }
+
+  Future<List<String>> getEntryCategories() async {
+    final definitions = await getEntryCategoryDefinitions();
+    return definitions
+        .map((item) => (item['code'] ?? '').toString().trim())
+        .where((code) => code.isNotEmpty)
+        .toList();
+  }
+
+  Future<Map<String, String>> getEntryCategoryLabelsByCode() async {
+    final definitions = await getEntryCategoryDefinitions();
+    final labels = <String, String>{};
+
+    for (final item in definitions) {
+      final code = (item['code'] ?? '').toString().trim();
+      if (code.isEmpty) continue;
+
+      final customLabel = _firstNonEmpty([
+        item['label_pt'],
+        item['label_en'],
+        item['label_ja'],
+        item['label_es'],
+      ]);
+
+      labels[code] = customLabel ?? code;
+    }
+
+    return labels;
+  }
+
+  Future<Map<String, dynamic>?> getEntryCategoryDefinitionByCode(
+    String code,
+  ) async {
+    final normalizedCode = _normalizeEntryCategory(code);
+    if (normalizedCode.isEmpty) return null;
+
+    final definitions = await getEntryCategoryDefinitions();
+    for (final item in definitions) {
+      if ((item['code'] ?? '').toString().trim() == normalizedCode) {
+        return item;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> createTranslatedEntryCategory({
+    required String labelPt,
+    required String labelEn,
+    required String labelJa,
+    required String labelEs,
+    String? code,
+  }) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final normalizedLabelPt = labelPt.trim();
+    final normalizedLabelEn = labelEn.trim();
+    final normalizedLabelJa = labelJa.trim();
+    final normalizedLabelEs = labelEs.trim();
+
+    final seedLabel = _firstNonEmpty([
+      normalizedLabelPt,
+      normalizedLabelEn,
+      normalizedLabelJa,
+      normalizedLabelEs,
+    ]);
+
+    if (seedLabel == null || seedLabel.isEmpty) {
+      throw Exception('Categoria inválida.');
+    }
+
+    final normalizedCode = _normalizeEntryCategory(
+      code ?? _buildEntryCategoryCode(seedLabel),
+    );
+
+    if (normalizedCode.isEmpty) {
+      throw Exception('Código da categoria inválido.');
+    }
+
+    final existing = await getEntryCategoryDefinitionByCode(normalizedCode);
+    if (existing != null) {
+      throw Exception('Esta categoria já existe.');
+    }
+
+    await _client.from('entry_categories').insert({
+      'company_id': companyId,
+      'code': normalizedCode,
+      'label_pt': normalizedLabelPt.isEmpty ? seedLabel : normalizedLabelPt,
+      'label_en': normalizedLabelEn.isEmpty ? seedLabel : normalizedLabelEn,
+      'label_ja': normalizedLabelJa.isEmpty ? seedLabel : normalizedLabelJa,
+      'label_es': normalizedLabelEs.isEmpty ? seedLabel : normalizedLabelEs,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+
+    final legacyCategories = await getEntryCategories();
+    if (!legacyCategories.contains(normalizedCode)) {
+      await saveEntryCategories([...legacyCategories, normalizedCode]);
+    }
   }
 
   Future<void> saveEntryCategories(List<String> categories) async {
@@ -104,19 +238,26 @@ class SupabaseService {
   }
 
   Future<void> addEntryCategory(String category) async {
-    final categories = await getEntryCategories();
-    final normalized = _normalizeEntryCategory(category);
+    final raw = category.trim();
 
-    if (normalized.isEmpty) {
+    if (raw.isEmpty) {
       throw Exception('Categoria inválida.');
     }
 
-    if (categories.contains(normalized)) {
+    final normalizedCode = _normalizeEntryCategory(_buildEntryCategoryCode(raw));
+    final existing = await getEntryCategoryDefinitionByCode(normalizedCode);
+
+    if (existing != null) {
       return;
     }
 
-    categories.add(normalized);
-    await saveEntryCategories(categories);
+    await createTranslatedEntryCategory(
+      code: normalizedCode,
+      labelPt: raw,
+      labelEn: raw,
+      labelJa: raw,
+      labelEs: raw,
+    );
   }
 
   Future<void> closeFiscalMonth(String fiscalMonth) async {
@@ -648,6 +789,68 @@ class SupabaseService {
       default:
         return normalized;
     }
+  }
+
+  String _buildEntryCategoryCode(String value) {
+    var text = value.trim().toLowerCase();
+    if (text.isEmpty) return '';
+
+    const replacements = {
+      'á': 'a',
+      'à': 'a',
+      'â': 'a',
+      'ã': 'a',
+      'ä': 'a',
+      'é': 'e',
+      'è': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'í': 'i',
+      'ì': 'i',
+      'î': 'i',
+      'ï': 'i',
+      'ó': 'o',
+      'ò': 'o',
+      'ô': 'o',
+      'õ': 'o',
+      'ö': 'o',
+      'ú': 'u',
+      'ù': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'ç': 'c',
+      'ñ': 'n',
+    };
+
+    replacements.forEach((from, to) {
+      text = text.replaceAll(from, to);
+    });
+
+    text = text.replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+    text = text.replaceAll(RegExp(r'_+'), '_');
+    text = text.replaceAll(RegExp(r'^_+|_+$'), '');
+
+    if (text.isEmpty) {
+      text = 'categoria_${DateTime.now().millisecondsSinceEpoch}';
+    }
+
+    return text;
+  }
+
+  String? _normalizeNullableText(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    return text.isEmpty ? null : text;
+  }
+
+  String? _firstNonEmpty(List<dynamic> values) {
+    for (final value in values) {
+      final text = value?.toString().trim() ?? '';
+      if (text.isNotEmpty) {
+        return text;
+      }
+    }
+    return null;
   }
 
   String _normalizePaymentMethod(dynamic value) {
