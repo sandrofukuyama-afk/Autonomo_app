@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../data/supabase_service.dart';
@@ -24,6 +23,7 @@ class _EntriesPageState extends State<EntriesPage> {
     'refund',
     'other',
   ];
+  Map<String, Map<String, String>> _categoryTranslations = {};
 
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
@@ -63,6 +63,9 @@ class _EntriesPageState extends State<EntriesPage> {
   Future<void> _loadEntryCategories() async {
     try {
       final categories = await SupabaseService.instance.getEntryCategories();
+      final definitions =
+          await SupabaseService.instance.getEntryCategoryDefinitions();
+
       final normalized = categories
           .map((item) => _normalizeCategoryForUi(item))
           .where((item) => item.isNotEmpty)
@@ -83,6 +86,18 @@ class _EntriesPageState extends State<EntriesPage> {
         normalized.add(_category);
       }
 
+      final translations = <String, Map<String, String>>{};
+      for (final item in definitions) {
+        final code = _normalizeCategoryForUi(item['code']);
+        if (code.isEmpty) continue;
+        translations[code] = {
+          'pt': (item['label_pt'] ?? '').toString().trim(),
+          'en': (item['label_en'] ?? '').toString().trim(),
+          'ja': (item['label_ja'] ?? '').toString().trim(),
+          'es': (item['label_es'] ?? '').toString().trim(),
+        };
+      }
+
       normalized.sort((a, b) {
         final ai = _categorySortIndex(a);
         final bi = _categorySortIndex(b);
@@ -93,6 +108,7 @@ class _EntriesPageState extends State<EntriesPage> {
       if (!mounted) return;
       setState(() {
         _entryCategories = normalized;
+        _categoryTranslations = translations;
       });
     } catch (_) {
       if (!mounted) return;
@@ -104,6 +120,7 @@ class _EntriesPageState extends State<EntriesPage> {
           'refund',
           'other',
         ];
+        _categoryTranslations = {};
       });
     }
   }
@@ -280,7 +297,9 @@ class _EntriesPageState extends State<EntriesPage> {
   }
 
   String _categoryLabel(AppLocalizations t, String value) {
-    switch (_normalizeCategoryForUi(value)) {
+    final normalized = _normalizeCategoryForUi(value);
+
+    switch (normalized) {
       case 'service':
         return t.translate('entry_category_service');
       case 'sale':
@@ -292,8 +311,25 @@ class _EntriesPageState extends State<EntriesPage> {
       case 'other':
         return t.translate('entry_category_other');
       default:
+        final languageCode = t.locale.languageCode;
+        final translated = _categoryTranslations[normalized]?[languageCode];
+        if (translated != null && translated.trim().isNotEmpty) {
+          return translated.trim();
+        }
+
+        final fallback = _categoryTranslations[normalized];
+        if (fallback != null) {
+          for (final key in ['pt', 'en', 'ja', 'es']) {
+            final candidate = fallback[key];
+            if (candidate != null && candidate.trim().isNotEmpty) {
+              return candidate.trim();
+            }
+          }
+        }
+
         final raw = value.trim();
         if (raw.isEmpty) return t.translate('entry_category_other');
+
         return raw
             .split(RegExp(r'[_\s-]+'))
             .where((part) => part.isNotEmpty)
@@ -383,18 +419,56 @@ class _EntriesPageState extends State<EntriesPage> {
 
   Future<String?> _openAddCategoryDialog() async {
     final t = AppLocalizations.of(context);
-    final controller = TextEditingController();
+    final ptController = TextEditingController();
+    final enController = TextEditingController();
+    final jaController = TextEditingController();
+    final esController = TextEditingController();
 
     final created = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: Text(t.translate('new_category')),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-            decoration: _fieldDecoration(t.translate('category_name')),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: ptController,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: _fieldDecoration(
+                      '${t.translate('lang_pt')} • ${t.translate('category_name')}',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: enController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: _fieldDecoration(
+                      '${t.translate('lang_en')} • ${t.translate('category_name')}',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: jaController,
+                    decoration: _fieldDecoration(
+                      '${t.translate('lang_ja')} • ${t.translate('category_name')}',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: esController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: _fieldDecoration(
+                      '${t.translate('lang_es')} • ${t.translate('category_name')}',
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           actions: [
             TextButton(
@@ -403,35 +477,39 @@ class _EntriesPageState extends State<EntriesPage> {
             ),
             ElevatedButton(
               onPressed: () async {
-                final raw = controller.text.trim();
-                if (raw.isEmpty) {
+                final labelPt = ptController.text.trim();
+                final labelEn = enController.text.trim();
+                final labelJa = jaController.text.trim();
+                final labelEs = esController.text.trim();
+
+                if (labelPt.isEmpty &&
+                    labelEn.isEmpty &&
+                    labelJa.isEmpty &&
+                    labelEs.isEmpty) {
                   _showMessage(t.translate('enter_category_name'), error: true);
                   return;
                 }
 
                 try {
-                  await SupabaseService.instance.addEntryCategory(raw);
-                  final refreshed =
-                      await SupabaseService.instance.getEntryCategories();
-                  final normalized = refreshed
-                      .map((item) => _normalizeCategoryForUi(item))
-                      .where((item) => item.isNotEmpty)
-                      .toSet()
-                      .toList();
-
-                  final selected = normalized.firstWhere(
-                    (item) => item == _normalizeCategoryForUi(raw),
-                    orElse: () => _normalizeCategoryForUi(raw),
+                  await SupabaseService.instance.createTranslatedEntryCategory(
+                    labelPt: labelPt,
+                    labelEn: labelEn,
+                    labelJa: labelJa,
+                    labelEs: labelEs,
                   );
 
-                  if (mounted) {
-                    setState(() {
-                      _entryCategories = normalized;
-                    });
-                  }
+                  await _loadEntryCategories();
+
+                  final seed = labelPt.isNotEmpty
+                      ? labelPt
+                      : (labelEn.isNotEmpty
+                          ? labelEn
+                          : (labelJa.isNotEmpty ? labelJa : labelEs));
+
+                  final code = _normalizeCategoryForUi(seed);
 
                   if (!dialogContext.mounted) return;
-                  Navigator.pop(dialogContext, selected);
+                  Navigator.pop(dialogContext, code);
                 } catch (e) {
                   _showMessage(
                     e.toString().replaceFirst('Exception: ', ''),
@@ -446,7 +524,11 @@ class _EntriesPageState extends State<EntriesPage> {
       },
     );
 
-    controller.dispose();
+    ptController.dispose();
+    enController.dispose();
+    jaController.dispose();
+    esController.dispose();
+
     return created;
   }
 
@@ -541,7 +623,8 @@ class _EntriesPageState extends State<EntriesPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: _fieldDecoration('${t.translate('value')} (¥)'),
+                          decoration:
+                              _fieldDecoration('${t.translate('value')} (¥)'),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
@@ -761,7 +844,8 @@ class _EntriesPageState extends State<EntriesPage> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          decoration: _fieldDecoration('${t.translate('value')} (¥)'),
+                          decoration:
+                              _fieldDecoration('${t.translate('value')} (¥)'),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
