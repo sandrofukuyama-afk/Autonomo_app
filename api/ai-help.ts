@@ -85,6 +85,38 @@ FORMATO DE SAÍDA
 `;
 }
 
+function buildCategoryTranslationPrompt(text: string) {
+  return `
+Você vai traduzir um nome curto de categoria para uso em interface de aplicativo.
+
+TAREFA
+Traduza o texto abaixo para:
+- Português (pt)
+- Inglês (en)
+- Japonês (ja)
+- Espanhol (es)
+
+REGRAS
+- Retorne SOMENTE JSON válido
+- Não explique nada
+- Não use markdown
+- Não adicione texto antes ou depois
+- Preserve o sentido mais natural para uso como nome de categoria curta
+- Se o texto original já estiver em um dos idiomas, ainda assim retorne os 4 campos completos
+
+FORMATO OBRIGATÓRIO
+{
+  "pt": "...",
+  "en": "...",
+  "ja": "...",
+  "es": "..."
+}
+
+TEXTO
+${text}
+`;
+}
+
 function extractAnswer(data: any): string {
   if (typeof data?.output_text === 'string' && data.output_text.trim()) {
     return data.output_text.trim();
@@ -103,6 +135,29 @@ function extractAnswer(data: any): string {
   }
 
   return '';
+}
+
+function normalizeTranslationPayload(data: any) {
+  return {
+    pt: String(data?.pt ?? '').trim(),
+    en: String(data?.en ?? '').trim(),
+    ja: String(data?.ja ?? '').trim(),
+    es: String(data?.es ?? '').trim(),
+  };
+}
+
+function isValidTranslationPayload(data: any) {
+  return Boolean(
+    data &&
+      typeof data.pt === 'string' &&
+      data.pt.trim() &&
+      typeof data.en === 'string' &&
+      data.en.trim() &&
+      typeof data.ja === 'string' &&
+      data.ja.trim() &&
+      typeof data.es === 'string' &&
+      data.es.trim(),
+  );
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -127,6 +182,98 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const body = await readBody(req);
+    const mode = String(body?.mode ?? '').trim();
+
+    if (mode === 'translate_category') {
+      const text = String(body?.text ?? '').trim();
+
+      if (!text) {
+        return sendJson(res, 400, {
+          error: 'missing_text',
+          message: 'Texto não informado.',
+        });
+      }
+
+      const apiResponse = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          input: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text: buildCategoryTranslationPrompt(text),
+                },
+              ],
+            },
+          ],
+          temperature: 0.2,
+        }),
+      });
+
+      const rawText = await apiResponse.text();
+
+      let data: any;
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        return sendJson(res, 502, {
+          error: 'invalid_openai_response',
+          message: 'Resposta inválida da OpenAI.',
+          raw: rawText,
+        });
+      }
+
+      if (!apiResponse.ok) {
+        return sendJson(res, apiResponse.status, {
+          error: 'openai_request_failed',
+          message:
+            data?.error?.message ??
+            'A OpenAI retornou erro ao processar a solicitação.',
+          type: data?.error?.type ?? null,
+          code: data?.error?.code ?? null,
+        });
+      }
+
+      const answer = extractAnswer(data);
+
+      if (!answer) {
+        return sendJson(res, 502, {
+          error: 'empty_ai_answer',
+          message: 'A IA não retornou texto.',
+        });
+      }
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(answer);
+      } catch {
+        return sendJson(res, 502, {
+          error: 'invalid_translation_format',
+          message: 'A IA não retornou JSON válido para tradução.',
+          answer,
+        });
+      }
+
+      const normalized = normalizeTranslationPayload(parsed);
+
+      if (!isValidTranslationPayload(normalized)) {
+        return sendJson(res, 502, {
+          error: 'incomplete_translation_payload',
+          message: 'A IA retornou tradução incompleta.',
+          translations: normalized,
+        });
+      }
+
+      return sendJson(res, 200, normalized);
+    }
+
     const question = String(body?.question ?? '').trim();
     const language = String(body?.language ?? 'pt').trim();
 
