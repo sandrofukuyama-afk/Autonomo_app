@@ -629,81 +629,33 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _helpButtonLabel() {
-    switch (_currentLanguageCode()) {
-      case 'ja':
-        return '質問する';
-      case 'en':
-        return 'Ask AI';
-      case 'es':
-        return 'Sacar duda';
-      default:
-        return 'Tirar dúvida';
-    }
+    final t = AppLocalizations.of(context);
+    return t.translate('ask_ai');
   }
 
   String _helpDialogTitle() {
-    switch (_currentLanguageCode()) {
-      case 'ja':
-        return 'AIに質問';
-      case 'en':
-        return 'Ask AI';
-      case 'es':
-        return 'Consultar IA';
-      default:
-        return 'Tirar dúvida';
-    }
+    final t = AppLocalizations.of(context);
+    return t.translate('ask_ai_title');
   }
 
   String _helpDialogHint() {
-    switch (_currentLanguageCode()) {
-      case 'ja':
-        return 'アプリや日本の税務について質問してください';
-      case 'en':
-        return 'Ask about the app or taxes in Japan';
-      case 'es':
-        return 'Pregunta sobre la app o impuestos en Japón';
-      default:
-        return 'Pergunte sobre o app ou imposto no Japão';
-    }
+    final t = AppLocalizations.of(context);
+    return t.translate('ask_ai_hint');
   }
 
   String _helpSendLabel() {
-    switch (_currentLanguageCode()) {
-      case 'ja':
-        return 'Enviar';
-      case 'en':
-        return 'Send';
-      case 'es':
-        return 'Enviar';
-      default:
-        return 'Enviar';
-    }
+    final t = AppLocalizations.of(context);
+    return t.translate('send');
   }
 
   String _helpEmptyQuestionLabel() {
-    switch (_currentLanguageCode()) {
-      case 'ja':
-        return 'Digite uma pergunta.';
-      case 'en':
-        return 'Type a question.';
-      case 'es':
-        return 'Escribe una pregunta.';
-      default:
-        return 'Digite uma pergunta.';
-    }
+    final t = AppLocalizations.of(context);
+    return t.translate('type_question');
   }
 
   String _helpErrorLabel() {
-    switch (_currentLanguageCode()) {
-      case 'ja':
-        return 'Não foi possível obter resposta agora.';
-      case 'en':
-        return 'Could not get an answer right now.';
-      case 'es':
-        return 'No fue posible obtener resposta agora.';
-      default:
-        return 'Não foi possível obter resposta agora.';
-    }
+    final t = AppLocalizations.of(context);
+    return t.translate('ai_answer_error');
   }
 
   String _cleanAiAnswer(String value) {
@@ -998,38 +950,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildFiscalLockBanner() {
+    final t = AppLocalizations.of(context);
     final currentClosed = _isCurrentFiscalMonthClosed();
     final month = _currentMonthLabel();
 
-    final title = _currentLanguageCode() == 'ja'
-        ? (currentClosed ? '会計月は締め済みです' : '会計月はまだオープンです')
-        : _currentLanguageCode() == 'en'
-            ? (currentClosed
-                ? 'Fiscal month is closed'
-                : 'Fiscal month is still open')
-            : _currentLanguageCode() == 'es'
-                ? (currentClosed
-                    ? 'El mes fiscal está cerrado'
-                    : 'El mes fiscal sigue abierto')
-                : (currentClosed
-                    ? 'Mês fiscal encerrado'
-                    : 'Mês fiscal ainda está em aberto');
+    final title = currentClosed
+        ? t.translate('fiscal_month_closed_banner_title')
+        : t.translate('fiscal_month_open_banner_title');
 
-    final description = _currentLanguageCode() == 'ja'
-        ? (currentClosed
-            ? 'Novas entradas, despesas, edições e exclusões ficam bloqueadas para $month.'
-            : 'Ainda é possível lançar entradas e despesas em $month até o fechamento fiscal.')
-        : _currentLanguageCode() == 'en'
-            ? (currentClosed
-                ? 'New entries, expenses, edits and deletions are blocked for $month.'
-                : 'Entries and expenses can still be posted in $month until fiscal closing.')
-            : _currentLanguageCode() == 'es'
-                ? (currentClosed
-                    ? 'Nuevas entradas, gastos, ediciones y exclusiones están bloqueadas para $month.'
-                    : 'Todavía es posible registrar entradas y gastos en $month hasta el cierre fiscal.')
-                : (currentClosed
-                    ? 'Novas entradas, despesas, edições e exclusões ficam bloqueadas para $month.'
-                    : 'Ainda é possível lançar entradas e despesas em $month até o fechamento fiscal.');
+    final description = currentClosed
+        ? t.translateWithParams(
+            'fiscal_month_closed_banner_description',
+            {'month': month},
+          )
+        : t.translateWithParams(
+            'fiscal_month_open_banner_description',
+            {'month': month},
+          );
 
     final Color bgColor =
         currentClosed ? Colors.red.shade50 : Colors.amber.shade50;
@@ -1871,38 +1808,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildSystemStatusCard() {
+    final t = AppLocalizations.of(context);
     final currentMonthClosed = _isCurrentFiscalMonthClosed();
-    final backupLabel = _currentLanguageCode() == 'ja'
-        ? 'Ativo (diário)'
-        : _currentLanguageCode() == 'en'
-            ? 'Active (daily)'
-            : _currentLanguageCode() == 'es'
-                ? 'Activo (diario)'
-                : 'Ativo (diário)';
-
-    final databaseLabel = _currentLanguageCode() == 'ja'
-        ? 'Conectado e isolado por empresa'
-        : _currentLanguageCode() == 'en'
-            ? 'Connected and isolated by company'
-            : _currentLanguageCode() == 'es'
-                ? 'Conectado y aislado por empresa'
-                : 'Conectado e isolado por empresa';
-
+    final backupLabel = t.translate('active_daily');
+    final databaseLabel = t.translate('connected_isolated_company');
     final fiscalLabel = currentMonthClosed
-        ? (_currentLanguageCode() == 'ja'
-            ? 'Mês atual protegido por bloqueio fiscal'
-            : _currentLanguageCode() == 'en'
-                ? 'Current month protected by fiscal lock'
-                : _currentLanguageCode() == 'es'
-                    ? 'Mes actual protegido por bloqueo fiscal'
-                    : 'Mês atual protegido por bloqueio fiscal')
-        : (_currentLanguageCode() == 'ja'
-            ? 'Bloqueio fiscal ativo para fechamento mensal'
-            : _currentLanguageCode() == 'en'
-                ? 'Fiscal lock active for monthly closing'
-                : _currentLanguageCode() == 'es'
-                    ? 'Bloqueo fiscal activo para cierre mensual'
-                    : 'Bloqueio fiscal ativo para fechamento mensal');
+        ? t.translate('current_month_protected_fiscal_lock')
+        : t.translate('fiscal_lock_active_monthly_closing');
 
     return Column(
       children: [
@@ -1910,13 +1822,7 @@ class _HomePageState extends State<HomePage> {
           icon: Icons.backup_outlined,
           iconColor: Colors.blue.shade800,
           iconBackground: Colors.blue.shade100,
-          title: _currentLanguageCode() == 'ja'
-              ? 'Backup automático'
-              : _currentLanguageCode() == 'en'
-                  ? 'Automatic backup'
-                  : _currentLanguageCode() == 'es'
-                      ? 'Backup automático'
-                      : 'Backup automático',
+          title: t.translate('automatic_backup'),
           value: backupLabel,
         ),
         const SizedBox(height: 12),
@@ -1924,13 +1830,7 @@ class _HomePageState extends State<HomePage> {
           icon: Icons.storage_rounded,
           iconColor: Colors.green.shade800,
           iconBackground: Colors.green.shade100,
-          title: _currentLanguageCode() == 'ja'
-              ? 'Banco de dados'
-              : _currentLanguageCode() == 'en'
-                  ? 'Database'
-                  : _currentLanguageCode() == 'es'
-                      ? 'Base de datos'
-                      : 'Banco de dados',
+          title: t.translate('database'),
           value: databaseLabel,
         ),
         const SizedBox(height: 12),
@@ -1940,13 +1840,7 @@ class _HomePageState extends State<HomePage> {
               currentMonthClosed ? Colors.orange.shade800 : Colors.indigo.shade800,
           iconBackground:
               currentMonthClosed ? Colors.orange.shade100 : Colors.indigo.shade100,
-          title: _currentLanguageCode() == 'ja'
-              ? 'Segurança fiscal'
-              : _currentLanguageCode() == 'en'
-                  ? 'Fiscal security'
-                  : _currentLanguageCode() == 'es'
-                      ? 'Seguridad fiscal'
-                      : 'Segurança fiscal',
+          title: t.translate('fiscal_security'),
           value: fiscalLabel,
         ),
       ],
@@ -2194,6 +2088,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildAnnualFiscalDashboardSection() {
+    final t = AppLocalizations.of(context);
     final now = DateTime.now();
     final width = MediaQuery.of(context).size.width;
     final bool wide = width >= 900;
@@ -2203,14 +2098,14 @@ class _HomePageState extends State<HomePage> {
         icon: Icons.calendar_month,
         iconColor: Colors.green.shade800,
         iconBackground: Colors.green.shade100,
-        title: 'Receitas ${now.year}',
+        title: '${t.translate('annual_revenue')} ${now.year}',
         value: _formatYen(_annualEntriesTotal),
       ),
       _buildFiscalSummaryCard(
         icon: Icons.receipt_long,
         iconColor: Colors.red.shade800,
         iconBackground: Colors.red.shade100,
-        title: 'Despesas ${now.year}',
+        title: '${t.translate('annual_expenses')} ${now.year}',
         value: _formatYen(_annualExpensesTotal),
       ),
       _buildFiscalSummaryCard(
@@ -2219,28 +2114,28 @@ class _HomePageState extends State<HomePage> {
             _annualProfit >= 0 ? Colors.blue.shade800 : Colors.orange.shade800,
         iconBackground:
             _annualProfit >= 0 ? Colors.blue.shade100 : Colors.orange.shade100,
-        title: 'Lucro ${now.year}',
+        title: '${t.translate('annual_profit')} ${now.year}',
         value: _formatYen(_annualProfit),
       ),
       _buildFiscalSummaryCard(
         icon: Icons.account_balance,
         iconColor: Colors.indigo.shade800,
         iconBackground: Colors.indigo.shade100,
-        title: 'Imposto estimado ${now.year}',
+        title: '${t.translate('annual_estimated_tax')} ${now.year}',
         value: _formatYen(_annualEstimatedTax),
       ),
       _buildFiscalSummaryCard(
         icon: Icons.lock_outline,
         iconColor: Colors.green.shade800,
         iconBackground: Colors.green.shade100,
-        title: 'Meses fechados',
+        title: t.translate('closed_months'),
         value: _annualClosedMonthsCount.toString(),
       ),
       _buildFiscalSummaryCard(
         icon: Icons.lock_open,
         iconColor: Colors.orange.shade800,
         iconBackground: Colors.orange.shade100,
-        title: 'Meses em aberto',
+        title: t.translate('open_months'),
         value: _annualOpenMonthsCount.toString(),
       ),
     ];
@@ -2275,22 +2170,6 @@ class _HomePageState extends State<HomePage> {
     final width = MediaQuery.of(context).size.width;
     final bool desktop = width >= 1100;
 
-    final systemTitle = _currentLanguageCode() == 'ja'
-        ? 'Status do sistema'
-        : _currentLanguageCode() == 'en'
-            ? 'System status'
-            : _currentLanguageCode() == 'es'
-                ? 'Estado del sistema'
-                : 'Status do sistema';
-
-    final systemSubtitle = _currentLanguageCode() == 'ja'
-        ? 'Backup, banco e segurança fiscal'
-        : _currentLanguageCode() == 'en'
-            ? 'Backup, database and fiscal security'
-            : _currentLanguageCode() == 'es'
-                ? 'Backup, base de datos y seguridad fiscal'
-                : 'Backup, banco e segurança fiscal';
-
     if (!desktop) {
       return ListView(
         padding: const EdgeInsets.all(16),
@@ -2312,14 +2191,14 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 12),
           _buildSectionCard(
-            title: 'Dashboard fiscal anual',
-            subtitle: 'Resumo consolidado do ano atual',
+            title: t.translate('annual_fiscal_dashboard'),
+            subtitle: t.translate('annual_summary_current_year'),
             child: _buildAnnualFiscalDashboardSection(),
           ),
           const SizedBox(height: 12),
           _buildSectionCard(
-            title: systemTitle,
-            subtitle: systemSubtitle,
+            title: t.translate('system_status'),
+            subtitle: t.translate('system_status_subtitle'),
             child: _buildSystemStatusCard(),
           ),
           const SizedBox(height: 14),
@@ -2371,14 +2250,14 @@ class _HomePageState extends State<HomePage> {
         ),
         const SizedBox(height: 12),
         _buildSectionCard(
-          title: 'Dashboard fiscal anual',
-          subtitle: 'Resumo consolidado do ano atual',
+          title: t.translate('annual_fiscal_dashboard'),
+          subtitle: t.translate('annual_summary_current_year'),
           child: _buildAnnualFiscalDashboardSection(),
         ),
         const SizedBox(height: 12),
         _buildSectionCard(
-          title: systemTitle,
-          subtitle: systemSubtitle,
+          title: t.translate('system_status'),
+          subtitle: t.translate('system_status_subtitle'),
           child: _buildSystemStatusCard(),
         ),
         const SizedBox(height: 14),
