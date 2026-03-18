@@ -17,6 +17,8 @@ class ExpensesPage extends StatefulWidget {
 }
 
 class _ExpensesPageState extends State<ExpensesPage> {
+  static const String _addCategoryValue = '__add_new_category__';
+
   List<Map<String, dynamic>> _expenses = [];
   bool _loading = true;
   String _reviewFilter = 'all';
@@ -852,7 +854,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
         ),
       ),
       DropdownMenuItem<String>(
-        value: '__add_new_category__',
+        value: _addCategoryValue,
         child: Row(
           children: [
             const Icon(Icons.add_circle_outline, size: 18),
@@ -870,7 +872,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
   ) async {
     if (value == null) return;
 
-    if (value == '__add_new_category__') {
+    if (value == _addCategoryValue) {
       setStateDialog(() {
         _isCustomCategoryMode = true;
         _customCategoryController.clear();
@@ -1495,16 +1497,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _isCustomCategoryMode
-                              ? _addCategoryValue
-                              : _category,
+                          value: _isCustomCategoryMode ? _addCategoryValue : _category,
                           decoration: _fieldDecoration(_tr('category')),
                           items: _expenseCategoryItems(),
                           onChanged: (value) async {
-                            await _handleExpenseCategorySelection(
-                              value,
-                              setStateDialog,
-                            );
+                            await _handleExpenseCategorySelection(value, setStateDialog);
                           },
                         ),
                         if (_isCustomCategoryMode) ...[
@@ -1879,10 +1876,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                               .where((item) => item.value != _addCategoryValue)
                               .toList(),
                           onChanged: (value) async {
-                            await _handleExpenseCategorySelection(
-                              value,
-                              setStateDialog,
-                            );
+                            await _handleExpenseCategorySelection(value, setStateDialog);
                           },
                         ),
                         const SizedBox(height: 20),
