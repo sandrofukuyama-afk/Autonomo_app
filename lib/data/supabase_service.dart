@@ -165,6 +165,100 @@ class SupabaseService {
     return null;
   }
 
+
+  Future<int> getEntryCategoryUsageCount(String code) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final normalizedCode = _normalizeEntryCategory(code);
+    if (normalizedCode.isEmpty) return 0;
+
+    final List<dynamic> rows = await _client
+        .from('entries_v2')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('category', normalizedCode);
+
+    return rows.length;
+  }
+
+  Future<void> updateTranslatedEntryCategory({
+    required String code,
+    required String labelPt,
+    required String labelEn,
+    required String labelJa,
+    required String labelEs,
+  }) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final normalizedCode = _normalizeEntryCategory(code);
+
+    if (normalizedCode.isEmpty) {
+      throw Exception('Código da categoria inválido.');
+    }
+
+    if (_defaultEntryCategories.contains(normalizedCode)) {
+      throw Exception('Categorias padrão não podem ser editadas.');
+    }
+
+    final existing = await getEntryCategoryDefinitionByCode(normalizedCode);
+    if (existing == null) {
+      throw Exception('Categoria não encontrada.');
+    }
+
+    final seedLabel = _firstNonEmpty([
+      labelPt.trim(),
+      labelEn.trim(),
+      labelJa.trim(),
+      labelEs.trim(),
+    ]);
+
+    if (seedLabel == null || seedLabel.isEmpty) {
+      throw Exception('Informe pelo menos um nome para a categoria.');
+    }
+
+    await _client
+        .from('entry_categories')
+        .update({
+          'label_pt': labelPt.trim().isEmpty ? seedLabel : labelPt.trim(),
+          'label_en': labelEn.trim().isEmpty ? seedLabel : labelEn.trim(),
+          'label_ja': labelJa.trim().isEmpty ? seedLabel : labelJa.trim(),
+          'label_es': labelEs.trim().isEmpty ? seedLabel : labelEs.trim(),
+        })
+        .eq('company_id', companyId)
+        .eq('code', normalizedCode);
+  }
+
+  Future<void> deleteEntryCategory(String code) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final normalizedCode = _normalizeEntryCategory(code);
+
+    if (normalizedCode.isEmpty) {
+      throw Exception('Código da categoria inválido.');
+    }
+
+    if (_defaultEntryCategories.contains(normalizedCode)) {
+      throw Exception('Categorias padrão não podem ser excluídas.');
+    }
+
+    final usageCount = await getEntryCategoryUsageCount(normalizedCode);
+    if (usageCount > 0) {
+      throw Exception('Esta categoria está em uso e não pode ser excluída.');
+    }
+
+    await _client
+        .from('entry_categories')
+        .delete()
+        .eq('company_id', companyId)
+        .eq('code', normalizedCode);
+
+    final currentCategories = await getEntryCategories();
+    final filtered = currentCategories
+        .where((item) => _normalizeEntryCategory(item) != normalizedCode)
+        .toList();
+
+    if (filtered.isNotEmpty) {
+      await saveEntryCategories(filtered);
+    }
+  }
+
   Future<void> createTranslatedEntryCategory({
     required String labelPt,
     required String labelEn,
@@ -373,6 +467,100 @@ class SupabaseService {
     }
 
     return null;
+  }
+
+
+  Future<int> getExpenseCategoryUsageCount(String code) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final normalizedCode = _normalizeExpenseCategory(code);
+    if (normalizedCode.isEmpty) return 0;
+
+    final List<dynamic> rows = await _client
+        .from('expenses_v2')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('category', normalizedCode);
+
+    return rows.length;
+  }
+
+  Future<void> updateTranslatedExpenseCategory({
+    required String code,
+    required String labelPt,
+    required String labelEn,
+    required String labelJa,
+    required String labelEs,
+  }) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final normalizedCode = _normalizeExpenseCategory(code);
+
+    if (normalizedCode.isEmpty) {
+      throw Exception('Código da categoria inválido.');
+    }
+
+    if (_defaultExpenseCategories.contains(normalizedCode)) {
+      throw Exception('Categorias padrão não podem ser editadas.');
+    }
+
+    final existing = await getExpenseCategoryDefinitionByCode(normalizedCode);
+    if (existing == null) {
+      throw Exception('Categoria não encontrada.');
+    }
+
+    final seedLabel = _firstNonEmpty([
+      labelPt.trim(),
+      labelEn.trim(),
+      labelJa.trim(),
+      labelEs.trim(),
+    ]);
+
+    if (seedLabel == null || seedLabel.isEmpty) {
+      throw Exception('Informe pelo menos um nome para a categoria.');
+    }
+
+    await _client
+        .from('expense_categories')
+        .update({
+          'label_pt': labelPt.trim().isEmpty ? seedLabel : labelPt.trim(),
+          'label_en': labelEn.trim().isEmpty ? seedLabel : labelEn.trim(),
+          'label_ja': labelJa.trim().isEmpty ? seedLabel : labelJa.trim(),
+          'label_es': labelEs.trim().isEmpty ? seedLabel : labelEs.trim(),
+        })
+        .eq('company_id', companyId)
+        .eq('code', normalizedCode);
+  }
+
+  Future<void> deleteExpenseCategory(String code) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final normalizedCode = _normalizeExpenseCategory(code);
+
+    if (normalizedCode.isEmpty) {
+      throw Exception('Código da categoria inválido.');
+    }
+
+    if (_defaultExpenseCategories.contains(normalizedCode)) {
+      throw Exception('Categorias padrão não podem ser excluídas.');
+    }
+
+    final usageCount = await getExpenseCategoryUsageCount(normalizedCode);
+    if (usageCount > 0) {
+      throw Exception('Esta categoria está em uso e não pode ser excluída.');
+    }
+
+    await _client
+        .from('expense_categories')
+        .delete()
+        .eq('company_id', companyId)
+        .eq('code', normalizedCode);
+
+    final currentCategories = await getExpenseCategories();
+    final filtered = currentCategories
+        .where((item) => _normalizeExpenseCategory(item) != normalizedCode)
+        .toList();
+
+    if (filtered.isNotEmpty) {
+      await saveExpenseCategories(filtered);
+    }
   }
 
   Future<void> createTranslatedExpenseCategory({
