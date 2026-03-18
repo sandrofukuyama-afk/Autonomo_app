@@ -1,7 +1,5 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
@@ -49,40 +47,25 @@ class _EntriesPageState extends State<EntriesPage> {
     super.dispose();
   }
 
-  String _apiBaseUrl() {
-    final uri = Uri.base;
-    return '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
-  }
-
   Future<Map<String, String>> _translateCategoryWithAi(String text) async {
-    final response = await http.post(
-      Uri.parse('${_apiBaseUrl()}/api/ai-help'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
+    final response = await Supabase.instance.client.functions.invoke(
+      'ai-help',
+      body: {
         'mode': 'translate_category',
         'text': text,
-      }),
+      },
     );
 
-    final rawBody = response.body;
-    Map<String, dynamic> data = {};
-    try {
-      data = rawBody.isNotEmpty
-          ? Map<String, dynamic>.from(jsonDecode(rawBody) as Map)
-          : {};
-    } catch (_) {}
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(
-        (data['message'] ?? data['error'] ?? 'Falha ao traduzir categoria.')
-            .toString(),
-      );
+    final data = response.data;
+    if (data is! Map) {
+      throw Exception('Falha ao traduzir categoria.');
     }
 
-    final pt = (data['pt'] ?? '').toString().trim();
-    final en = (data['en'] ?? '').toString().trim();
-    final ja = (data['ja'] ?? '').toString().trim();
-    final es = (data['es'] ?? '').toString().trim();
+    final map = Map<String, dynamic>.from(data as Map);
+    final pt = (map['pt'] ?? '').toString().trim();
+    final en = (map['en'] ?? '').toString().trim();
+    final ja = (map['ja'] ?? '').toString().trim();
+    final es = (map['es'] ?? '').toString().trim();
 
     if (pt.isEmpty || en.isEmpty || ja.isEmpty || es.isEmpty) {
       throw Exception('A IA retornou tradução incompleta para a categoria.');
