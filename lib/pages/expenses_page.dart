@@ -377,6 +377,18 @@ class _ExpensesPageState extends State<ExpensesPage> {
         'mode': 'translate_category',
         'text': text,
       }),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () {
+              if (_selectedCategory != null) {
+                _showCategoryActions(_selectedCategory!);
+              }
+            },
+          ),
+        ],
+      ),
       requestHeaders: {'Content-Type': 'application/json'},
     );
 
@@ -851,10 +863,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
           value: item,
           child: GestureDetector(
             onLongPress: () => _showCategoryActions(item),
-            child: GestureDetector(
-            onLongPress: () => _showCategoryActions(item),
             child: Text(_categoryLabel(item)),
-          ),
           ),
         ),
       ),
@@ -2444,102 +2453,4 @@ class _ExpensesPageState extends State<ExpensesPage> {
             ),
     );
   }
-
-
-  Future<void> _showCategoryActions(String category) async {
-    final isDefault = ['food','transport','rent','services','fees','other']
-        .contains(category);
-
-    if (isDefault) return;
-
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: Text(_tr('edit')),
-              onTap: () => Navigator.pop(context, 'edit'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete),
-              title: Text(_tr('delete')),
-              onTap: () => Navigator.pop(context, 'delete'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (action == 'edit') {
-      await _editCategory(category);
-    }
-
-    if (action == 'delete') {
-      await _deleteCategory(category);
-    }
-  }
-
-  Future<void> _editCategory(String category) async {
-    final controller = TextEditingController(text: category);
-
-    final result = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(_tr('edit')),
-        content: TextField(controller: controller),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(_tr('cancel')),
-          ),
-          ElevatedButton(
-            onPressed: () =>
-                Navigator.pop(context, controller.text.trim()),
-            child: Text(_tr('save')),
-          ),
-        ],
-      ),
-    );
-
-    if (result != null && result.isNotEmpty) {
-      await SupabaseService.instance.updateTranslatedExpenseCategory(
-        code: category,
-        labelPt: result,
-        labelEn: result,
-        labelJa: result,
-        labelEs: result,
-      );
-
-      await _loadExpenseCategories();
-    }
-  }
-
-  Future<void> _deleteCategory(String category) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(_tr('delete')),
-        content: Text(_tr('confirm_delete')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(_tr('cancel')),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(_tr('delete')),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await SupabaseService.instance.deleteExpenseCategory(category);
-      await _loadExpenseCategories();
-    }
-  }
-
 }
