@@ -349,8 +349,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
   @override
   void initState() {
     super.initState();
-    _loadClosedMonths();
-    _loadExpenses();
+    _refresh();
   }
 
   @override
