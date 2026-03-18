@@ -18,6 +18,15 @@ class SupabaseService {
     'other',
   ];
 
+  static const List<String> _defaultExpenseCategories = [
+    'food',
+    'transport',
+    'rent',
+    'services',
+    'fees',
+    'other',
+  ];
+
   Future<Map<String, dynamic>> getAppSettings() async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
 
@@ -182,7 +191,7 @@ class SupabaseService {
     }
 
     final normalizedCode = _normalizeEntryCategory(
-      code ?? _buildEntryCategoryCode(seedLabel),
+      code ?? _buildCategoryCode(seedLabel),
     );
 
     if (normalizedCode.isEmpty) {
@@ -244,7 +253,7 @@ class SupabaseService {
       throw Exception('Categoria inválida.');
     }
 
-    final normalizedCode = _normalizeEntryCategory(_buildEntryCategoryCode(raw));
+    final normalizedCode = _normalizeEntryCategory(_buildCategoryCode(raw));
     final existing = await getEntryCategoryDefinitionByCode(normalizedCode);
 
     if (existing != null) {
@@ -252,6 +261,216 @@ class SupabaseService {
     }
 
     await createTranslatedEntryCategory(
+      code: normalizedCode,
+      labelPt: raw,
+      labelEn: raw,
+      labelJa: raw,
+      labelEs: raw,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getExpenseCategoryDefinitions() async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final definitions = <Map<String, dynamic>>[];
+
+    for (final code in _defaultExpenseCategories) {
+      definitions.add({
+        'code': code,
+        'is_default': true,
+        'label_pt': null,
+        'label_en': null,
+        'label_ja': null,
+        'label_es': null,
+      });
+    }
+
+    final seenCodes = <String>{..._defaultExpenseCategories};
+
+    final settings = await getAppSettings();
+    final legacyRaw = settings['expense_categories'];
+
+    if (legacyRaw is List) {
+      for (final item in legacyRaw) {
+        final normalized = _normalizeExpenseCategory(item);
+        if (normalized.isEmpty || seenCodes.contains(normalized)) continue;
+        seenCodes.add(normalized);
+        definitions.add({
+          'code': normalized,
+          'is_default': false,
+          'label_pt': item?.toString().trim(),
+          'label_en': item?.toString().trim(),
+          'label_ja': item?.toString().trim(),
+          'label_es': item?.toString().trim(),
+        });
+      }
+    }
+
+    final List<dynamic> rows = await _client
+        .from('expense_categories')
+        .select('code, label_pt, label_en, label_ja, label_es, created_at')
+        .eq('company_id', companyId)
+        .order('created_at', ascending: true);
+
+    for (final raw in rows) {
+      final row = Map<String, dynamic>.from(raw as Map);
+      final code = _normalizeExpenseCategory(row['code']);
+      if (code.isEmpty || seenCodes.contains(code)) continue;
+
+      seenCodes.add(code);
+      definitions.add({
+        'code': code,
+        'is_default': false,
+        'label_pt': _normalizeNullableText(row['label_pt']),
+        'label_en': _normalizeNullableText(row['label_en']),
+        'label_ja': _normalizeNullableText(row['label_ja']),
+        'label_es': _normalizeNullableText(row['label_es']),
+      });
+    }
+
+    return definitions;
+  }
+
+  Future<List<String>> getExpenseCategories() async {
+    final definitions = await getExpenseCategoryDefinitions();
+    return definitions
+        .map((item) => (item['code'] ?? '').toString().trim())
+        .where((code) => code.isNotEmpty)
+        .toList();
+  }
+
+  Future<Map<String, String>> getExpenseCategoryLabelsByCode() async {
+    final definitions = await getExpenseCategoryDefinitions();
+    final labels = <String, String>{};
+
+    for (final item in definitions) {
+      final code = (item['code'] ?? '').toString().trim();
+      if (code.isEmpty) continue;
+
+      final customLabel = _firstNonEmpty([
+        item['label_pt'],
+        item['label_en'],
+        item['label_ja'],
+        item['label_es'],
+      ]);
+
+      labels[code] = customLabel ?? code;
+    }
+
+    return labels;
+  }
+
+  Future<Map<String, dynamic>?> getExpenseCategoryDefinitionByCode(
+    String code,
+  ) async {
+    final normalizedCode = _normalizeExpenseCategory(code);
+    if (normalizedCode.isEmpty) return null;
+
+    final definitions = await getExpenseCategoryDefinitions();
+    for (final item in definitions) {
+      if ((item['code'] ?? '').toString().trim() == normalizedCode) {
+        return item;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> createTranslatedExpenseCategory({
+    required String labelPt,
+    required String labelEn,
+    required String labelJa,
+    required String labelEs,
+    String? code,
+  }) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final normalizedLabelPt = labelPt.trim();
+    final normalizedLabelEn = labelEn.trim();
+    final normalizedLabelJa = labelJa.trim();
+    final normalizedLabelEs = labelEs.trim();
+
+    final seedLabel = _firstNonEmpty([
+      normalizedLabelPt,
+      normalizedLabelEn,
+      normalizedLabelJa,
+      normalizedLabelEs,
+    ]);
+
+    if (seedLabel == null || seedLabel.isEmpty) {
+      throw Exception('Categoria inválida.');
+    }
+
+    final normalizedCode = _normalizeExpenseCategory(
+      code ?? _buildCategoryCode(seedLabel),
+    );
+
+    if (normalizedCode.isEmpty) {
+      throw Exception('Código da categoria inválido.');
+    }
+
+    final existing = await getExpenseCategoryDefinitionByCode(normalizedCode);
+    if (existing != null) {
+      throw Exception('Esta categoria já existe.');
+    }
+
+    await _client.from('expense_categories').insert({
+      'company_id': companyId,
+      'code': normalizedCode,
+      'label_pt': normalizedLabelPt.isEmpty ? seedLabel : normalizedLabelPt,
+      'label_en': normalizedLabelEn.isEmpty ? seedLabel : normalizedLabelEn,
+      'label_ja': normalizedLabelJa.isEmpty ? seedLabel : normalizedLabelJa,
+      'label_es': normalizedLabelEs.isEmpty ? seedLabel : normalizedLabelEs,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+
+    final legacyCategories = await getExpenseCategories();
+    if (!legacyCategories.contains(normalizedCode)) {
+      await saveExpenseCategories([...legacyCategories, normalizedCode]);
+    }
+  }
+
+  Future<void> saveExpenseCategories(List<String> categories) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final normalized = <String>[];
+    final seen = <String>{};
+
+    for (final item in categories) {
+      final value = _normalizeExpenseCategory(item);
+      if (value.isEmpty) continue;
+      if (seen.add(value)) {
+        normalized.add(value);
+      }
+    }
+
+    if (normalized.isEmpty) {
+      throw Exception('A lista de categorias de despesas não pode ficar vazia.');
+    }
+
+    await _client
+        .from('app_settings')
+        .update({
+          'expense_categories': normalized,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('company_id', companyId);
+  }
+
+  Future<void> addExpenseCategory(String category) async {
+    final raw = category.trim();
+
+    if (raw.isEmpty) {
+      throw Exception('Categoria inválida.');
+    }
+
+    final normalizedCode = _normalizeExpenseCategory(_buildCategoryCode(raw));
+    final existing = await getExpenseCategoryDefinitionByCode(normalizedCode);
+
+    if (existing != null) {
+      return;
+    }
+
+    await createTranslatedExpenseCategory(
       code: normalizedCode,
       labelPt: raw,
       labelEn: raw,
@@ -791,7 +1010,7 @@ class SupabaseService {
     }
   }
 
-  String _buildEntryCategoryCode(String value) {
+  String _buildCategoryCode(String value) {
     var text = value.trim().toLowerCase();
     if (text.isEmpty) return '';
 
@@ -882,32 +1101,56 @@ class SupabaseService {
   String _normalizeExpenseCategory(dynamic value) {
     if (value == null) return 'other';
 
-    final normalized = value.toString().trim().toLowerCase();
+    final raw = value.toString().trim();
+    if (raw.isEmpty) return 'other';
+
+    final normalized = raw.toLowerCase();
 
     switch (normalized) {
       case 'category_food':
       case 'food':
+      case 'alimentacao':
+      case 'alimentação':
+      case 'comida':
         return 'food';
 
       case 'category_transport':
       case 'transport':
+      case 'transporte':
         return 'transport';
 
       case 'category_housing':
       case 'rent':
+      case 'housing':
+      case 'moradia':
+      case 'aluguel':
         return 'rent';
 
       case 'category_entertainment':
       case 'services':
+      case 'service':
+      case 'servicos':
+      case 'serviços':
+      case 'servico':
+      case 'serviço':
         return 'services';
 
       case 'category_health':
       case 'fees':
+      case 'health':
+      case 'saude':
+      case 'saúde':
+      case 'taxas':
+      case 'taxa':
         return 'fees';
 
       case 'other':
-      default:
+      case 'outro':
+      case 'outros':
         return 'other';
+
+      default:
+        return normalized;
     }
   }
 
