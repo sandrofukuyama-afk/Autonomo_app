@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
@@ -15,6 +18,7 @@ class _EntriesPageState extends State<EntriesPage> {
 
   List<Map<String, dynamic>> _entries = [];
   bool _loading = true;
+  bool _translatingCategory = false;
   List<String> _closedFiscalMonths = [];
   List<String> _entryCategories = const [
     'service',
@@ -43,6 +47,53 @@ class _EntriesPageState extends State<EntriesPage> {
     _descController.dispose();
     _amountController.dispose();
     super.dispose();
+  }
+
+  String _apiBaseUrl() {
+    final uri = Uri.base;
+    return '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
+  }
+
+  Future<Map<String, String>> _translateCategoryWithAi(String text) async {
+    final response = await http.post(
+      Uri.parse('${_apiBaseUrl()}/api/ai-help'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'mode': 'translate_category',
+        'text': text,
+      }),
+    );
+
+    final rawBody = response.body;
+    Map<String, dynamic> data = {};
+    try {
+      data = rawBody.isNotEmpty
+          ? Map<String, dynamic>.from(jsonDecode(rawBody) as Map)
+          : {};
+    } catch (_) {}
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        (data['message'] ?? data['error'] ?? 'Falha ao traduzir categoria.')
+            .toString(),
+      );
+    }
+
+    final pt = (data['pt'] ?? '').toString().trim();
+    final en = (data['en'] ?? '').toString().trim();
+    final ja = (data['ja'] ?? '').toString().trim();
+    final es = (data['es'] ?? '').toString().trim();
+
+    if (pt.isEmpty || en.isEmpty || ja.isEmpty || es.isEmpty) {
+      throw Exception('A IA retornou tradução incompleta para a categoria.');
+    }
+
+    return {
+      'pt': pt,
+      'en': en,
+      'ja': ja,
+      'es': es,
+    };
   }
 
   Future<void> _loadClosedMonths() async {
@@ -426,100 +477,159 @@ class _EntriesPageState extends State<EntriesPage> {
 
     final created = await showDialog<String>(
       context: context,
+      barrierDismissible: !_translatingCategory,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(t.translate('new_category')),
-          content: SingleChildScrollView(
-            child: SizedBox(
-              width: 420,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: ptController,
-                    autofocus: true,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: _fieldDecoration(
-                      '${t.translate('lang_pt')} • ${t.translate('category_name')}',
-                    ),
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(t.translate('new_category')),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: 420,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: ptController,
+                        autofocus: true,
+                        textCapitalization: TextCapitalization.words,
+                        enabled: !_translatingCategory,
+                        decoration: _fieldDecoration(
+                          '${t.translate('lang_pt')} • ${t.translate('category_name')}',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: enController,
+                        textCapitalization: TextCapitalization.words,
+                        enabled: !_translatingCategory,
+                        decoration: _fieldDecoration(
+                          '${t.translate('lang_en')} • ${t.translate('category_name')}',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: jaController,
+                        enabled: !_translatingCategory,
+                        decoration: _fieldDecoration(
+                          '${t.translate('lang_ja')} • ${t.translate('category_name')}',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: esController,
+                        textCapitalization: TextCapitalization.words,
+                        enabled: !_translatingCategory,
+                        decoration: _fieldDecoration(
+                          '${t.translate('lang_es')} • ${t.translate('category_name')}',
+                        ),
+                      ),
+                      if (_translatingCategory) ...[
+                        const SizedBox(height: 16),
+                        const CircularProgressIndicator(),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: enController,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: _fieldDecoration(
-                      '${t.translate('lang_en')} • ${t.translate('category_name')}',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: jaController,
-                    decoration: _fieldDecoration(
-                      '${t.translate('lang_ja')} • ${t.translate('category_name')}',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: esController,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: _fieldDecoration(
-                      '${t.translate('lang_es')} • ${t.translate('category_name')}',
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(t.translate('cancel')),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final labelPt = ptController.text.trim();
-                final labelEn = enController.text.trim();
-                final labelJa = jaController.text.trim();
-                final labelEs = esController.text.trim();
+              actions: [
+                TextButton(
+                  onPressed: _translatingCategory
+                      ? null
+                      : () => Navigator.pop(dialogContext),
+                  child: Text(t.translate('cancel')),
+                ),
+                ElevatedButton(
+                  onPressed: _translatingCategory
+                      ? null
+                      : () async {
+                          String labelPt = ptController.text.trim();
+                          String labelEn = enController.text.trim();
+                          String labelJa = jaController.text.trim();
+                          String labelEs = esController.text.trim();
 
-                if (labelPt.isEmpty &&
-                    labelEn.isEmpty &&
-                    labelJa.isEmpty &&
-                    labelEs.isEmpty) {
-                  _showMessage(t.translate('enter_category_name'), error: true);
-                  return;
-                }
+                          if (labelPt.isEmpty &&
+                              labelEn.isEmpty &&
+                              labelJa.isEmpty &&
+                              labelEs.isEmpty) {
+                            _showMessage(
+                              t.translate('enter_category_name'),
+                              error: true,
+                            );
+                            return;
+                          }
 
-                try {
-                  await SupabaseService.instance.createTranslatedEntryCategory(
-                    labelPt: labelPt,
-                    labelEn: labelEn,
-                    labelJa: labelJa,
-                    labelEs: labelEs,
-                  );
+                          final baseText = labelPt.isNotEmpty
+                              ? labelPt
+                              : (labelEn.isNotEmpty
+                                  ? labelEn
+                                  : (labelJa.isNotEmpty ? labelJa : labelEs));
 
-                  await _loadEntryCategories();
+                          try {
+                            if ((labelPt.isEmpty ||
+                                    labelEn.isEmpty ||
+                                    labelJa.isEmpty ||
+                                    labelEs.isEmpty) &&
+                                baseText.isNotEmpty) {
+                              if (mounted) {
+                                setState(() {
+                                  _translatingCategory = true;
+                                });
+                              }
+                              setStateDialog(() {});
 
-                  final seed = labelPt.isNotEmpty
-                      ? labelPt
-                      : (labelEn.isNotEmpty
-                          ? labelEn
-                          : (labelJa.isNotEmpty ? labelJa : labelEs));
+                              final translations =
+                                  await _translateCategoryWithAi(baseText);
 
-                  final code = _normalizeCategoryForUi(seed);
+                              labelPt = labelPt.isNotEmpty
+                                  ? labelPt
+                                  : (translations['pt'] ?? baseText);
+                              labelEn = labelEn.isNotEmpty
+                                  ? labelEn
+                                  : (translations['en'] ?? baseText);
+                              labelJa = labelJa.isNotEmpty
+                                  ? labelJa
+                                  : (translations['ja'] ?? baseText);
+                              labelEs = labelEs.isNotEmpty
+                                  ? labelEs
+                                  : (translations['es'] ?? baseText);
+                            }
 
-                  if (!dialogContext.mounted) return;
-                  Navigator.pop(dialogContext, code);
-                } catch (e) {
-                  _showMessage(
-                    e.toString().replaceFirst('Exception: ', ''),
-                    error: true,
-                  );
-                }
-              },
-              child: Text(t.translate('save')),
-            ),
-          ],
+                            await SupabaseService.instance
+                                .createTranslatedEntryCategory(
+                              labelPt: labelPt,
+                              labelEn: labelEn,
+                              labelJa: labelJa,
+                              labelEs: labelEs,
+                            );
+
+                            await _loadEntryCategories();
+
+                            final code = _normalizeCategoryForUi(labelPt);
+
+                            if (!dialogContext.mounted) return;
+                            Navigator.pop(dialogContext, code);
+                          } catch (e) {
+                            _showMessage(
+                              e.toString().replaceFirst('Exception: ', ''),
+                              error: true,
+                            );
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                _translatingCategory = false;
+                              });
+                            }
+                            if (dialogContext.mounted) {
+                              setStateDialog(() {});
+                            }
+                          }
+                        },
+                  child: Text(t.translate('save')),
+                ),
+              ],
+            );
+          },
         );
       },
     );
