@@ -541,6 +541,213 @@ class _EntriesPageState extends State<EntriesPage> {
     }
   }
 
+
+  bool _isDefaultEntryCategory(String value) {
+    final normalized = _normalizeCategoryForUi(value);
+    return const {'service', 'sale', 'commission', 'refund', 'other'}
+        .contains(normalized);
+  }
+
+  Future<void> _openEditCategoryDialog(
+    StateSetter setStateDialog,
+    String categoryCode,
+  ) async {
+    final t = AppLocalizations.of(context);
+    final normalizedCode = _normalizeCategoryForUi(categoryCode);
+
+    if (_isDefaultEntryCategory(normalizedCode)) {
+      _showMessage('Categoria padrão não pode ser editada.', error: true);
+      return;
+    }
+
+    final definition = await SupabaseService.instance
+        .getEntryCategoryDefinitionByCode(normalizedCode);
+
+    if (definition == null) {
+      _showMessage('Categoria não encontrada.', error: true);
+      return;
+    }
+
+    final ptController = TextEditingController(
+      text: (definition['label_pt'] ?? '').toString(),
+    );
+    final enController = TextEditingController(
+      text: (definition['label_en'] ?? '').toString(),
+    );
+    final jaController = TextEditingController(
+      text: (definition['label_ja'] ?? '').toString(),
+    );
+    final esController = TextEditingController(
+      text: (definition['label_es'] ?? '').toString(),
+    );
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Editar categoria'),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: ptController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: _fieldDecoration(
+                      '${t.translate('lang_pt')} • ${t.translate('category_name')}',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: enController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: _fieldDecoration(
+                      '${t.translate('lang_en')} • ${t.translate('category_name')}',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: jaController,
+                    decoration: _fieldDecoration(
+                      '${t.translate('lang_ja')} • ${t.translate('category_name')}',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: esController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: _fieldDecoration(
+                      '${t.translate('lang_es')} • ${t.translate('category_name')}',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(t.translate('cancel')),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final labelPt = ptController.text.trim();
+                final labelEn = enController.text.trim();
+                final labelJa = jaController.text.trim();
+                final labelEs = esController.text.trim();
+
+                if (labelPt.isEmpty &&
+                    labelEn.isEmpty &&
+                    labelJa.isEmpty &&
+                    labelEs.isEmpty) {
+                  _showMessage(t.translate('enter_category_name'), error: true);
+                  return;
+                }
+
+                try {
+                  await SupabaseService.instance.updateTranslatedEntryCategory(
+                    code: normalizedCode,
+                    labelPt: labelPt,
+                    labelEn: labelEn,
+                    labelJa: labelJa,
+                    labelEs: labelEs,
+                  );
+
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext, true);
+                } catch (e) {
+                  _showMessage(
+                    e.toString().replaceFirst('Exception: ', ''),
+                    error: true,
+                  );
+                }
+              },
+              child: Text(t.translate('save')),
+            ),
+          ],
+        );
+      },
+    );
+
+    ptController.dispose();
+    enController.dispose();
+    jaController.dispose();
+    esController.dispose();
+
+    if (saved == true) {
+      await _loadEntryCategories();
+      if (!mounted) return;
+      setStateDialog(() {});
+      _showMessage('Categoria atualizada.');
+    }
+  }
+
+  Future<void> _deleteCurrentCategory(
+    StateSetter setStateDialog,
+    String categoryCode,
+  ) async {
+    final t = AppLocalizations.of(context);
+    final normalizedCode = _normalizeCategoryForUi(categoryCode);
+
+    if (_isDefaultEntryCategory(normalizedCode)) {
+      _showMessage('Categoria padrão não pode ser excluída.', error: true);
+      return;
+    }
+
+    final usageCount = await SupabaseService.instance
+        .getEntryCategoryUsageCount(normalizedCode);
+
+    if (usageCount > 0) {
+      _showMessage(
+        'Esta categoria já está em uso e não pode ser excluída.',
+        error: true,
+      );
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Excluir categoria'),
+        content: const Text('Deseja excluir esta categoria?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(t.translate('cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await SupabaseService.instance.deleteEntryCategory(normalizedCode);
+      await _loadEntryCategories();
+
+      if (_category == normalizedCode) {
+        _category = _entryCategories.contains('service')
+            ? 'service'
+            : (_entryCategories.isNotEmpty ? _entryCategories.first : 'service');
+      }
+
+      if (!mounted) return;
+      setStateDialog(() {});
+      _showMessage('Categoria excluída.');
+    } catch (e) {
+      _showMessage(
+        e.toString().replaceFirst('Exception: ', ''),
+        error: true,
+      );
+    }
+  }
+
   Future<void> _openAddDialog() async {
     final t = AppLocalizations.of(context);
 
@@ -648,6 +855,37 @@ class _EntriesPageState extends State<EntriesPage> {
                               ],
                             ),
                           ],
+                        ] else ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              TextButton.icon(
+                                onPressed: _isDefaultEntryCategory(_category)
+                                    ? null
+                                    : () async {
+                                        await _openEditCategoryDialog(
+                                          setStateDialog,
+                                          _category,
+                                        );
+                                      },
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                label: const Text('Editar categoria'),
+                              ),
+                              const SizedBox(width: 8),
+                              TextButton.icon(
+                                onPressed: _isDefaultEntryCategory(_category)
+                                    ? null
+                                    : () async {
+                                        await _deleteCurrentCategory(
+                                          setStateDialog,
+                                          _category,
+                                        );
+                                      },
+                                icon: const Icon(Icons.delete_outline, size: 18),
+                                label: const Text('Excluir categoria'),
+                              ),
+                            ],
+                          ),
                         ],
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
