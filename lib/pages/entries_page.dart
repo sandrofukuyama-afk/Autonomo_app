@@ -1,5 +1,7 @@
+import 'dart:convert';
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
@@ -52,27 +54,39 @@ class _EntriesPageState extends State<EntriesPage> {
   }
 
   Future<Map<String, String>> _translateCategoryWithAi(String text) async {
-    final response = await Supabase.instance.client.functions.invoke(
-      'ai-help',
-      body: {
+    final request = await html.HttpRequest.request(
+      'https://autonomojp.vercel.app/api/ai-help',
+      method: 'POST',
+      sendData: jsonEncode({
         'mode': 'translate_category',
         'text': text,
+      }),
+      requestHeaders: {
+        'Content-Type': 'application/json',
       },
     );
 
-    final data = response.data;
-    if (data is! Map) {
-      throw Exception('Falha ao traduzir categoria.');
+    final raw = request.responseText ?? '';
+    Map<String, dynamic> data = {};
+
+    if (raw.isNotEmpty) {
+      try {
+        data = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+      } catch (_) {
+        throw Exception('Resposta inválida da API de tradução.');
+      }
     }
 
-    final map = Map<String, dynamic>.from(data as Map);
-    final pt = (map['pt'] ?? '').toString().trim();
-    final en = (map['en'] ?? '').toString().trim();
-    final ja = (map['ja'] ?? '').toString().trim();
-    final es = (map['es'] ?? '').toString().trim();
+    final pt = (data['pt'] ?? '').toString().trim();
+    final en = (data['en'] ?? '').toString().trim();
+    final ja = (data['ja'] ?? '').toString().trim();
+    final es = (data['es'] ?? '').toString().trim();
 
     if (pt.isEmpty || en.isEmpty || ja.isEmpty || es.isEmpty) {
-      throw Exception('A IA retornou tradução incompleta para a categoria.');
+      throw Exception(
+        (data['message'] ?? data['error'] ?? 'Falha ao traduzir categoria.')
+            .toString(),
+      );
     }
 
     return {
