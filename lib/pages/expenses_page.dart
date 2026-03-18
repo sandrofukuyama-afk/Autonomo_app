@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:html' as html;
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -18,7 +20,18 @@ class _ExpensesPageState extends State<ExpensesPage> {
   List<Map<String, dynamic>> _expenses = [];
   bool _loading = true;
   String _reviewFilter = 'all';
+  bool _creatingCategory = false;
+  bool _isCustomCategoryMode = false;
   List<String> _closedFiscalMonths = [];
+  List<String> _expenseCategories = const [
+    'food',
+    'transport',
+    'rent',
+    'services',
+    'fees',
+    'other',
+  ];
+  Map<String, Map<String, String>> _categoryTranslations = {};
 
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
@@ -26,6 +39,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
   final TextEditingController _vendorController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _taxRateController = TextEditingController();
+  final TextEditingController _customCategoryController =
+      TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
   String _category = 'other';
@@ -344,7 +359,116 @@ class _ExpensesPageState extends State<ExpensesPage> {
     _vendorController.dispose();
     _notesController.dispose();
     _taxRateController.dispose();
+    _customCategoryController.dispose();
     super.dispose();
+  }
+
+  String _apiBaseUrl() {
+    final uri = Uri.base;
+    return '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
+  }
+
+  Future<Map<String, String>> _translateCategoryWithAi(String text) async {
+    final request = await html.HttpRequest.request(
+      '${_apiBaseUrl()}/api/ai-help',
+      method: 'POST',
+      sendData: jsonEncode({
+        'mode': 'translate_category',
+        'text': text,
+      }),
+      requestHeaders: {'Content-Type': 'application/json'},
+    );
+
+    final raw = request.responseText ?? '';
+    Map<String, dynamic> data = {};
+    if (raw.isNotEmpty) {
+      try {
+        data = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+      } catch (_) {
+        throw Exception('Resposta inválida da API de tradução.');
+      }
+    }
+
+    final pt = (data['pt'] ?? '').toString().trim();
+    final en = (data['en'] ?? '').toString().trim();
+    final ja = (data['ja'] ?? '').toString().trim();
+    final es = (data['es'] ?? '').toString().trim();
+
+    if (pt.isEmpty || en.isEmpty || ja.isEmpty || es.isEmpty) {
+      throw Exception(
+        (data['message'] ?? data['error'] ?? 'Falha ao traduzir categoria.')
+            .toString(),
+      );
+    }
+
+    return {'pt': pt, 'en': en, 'ja': ja, 'es': es};
+  }
+
+  Future<void> _loadExpenseCategories() async {
+    try {
+      final categories = await SupabaseService.instance.getExpenseCategories();
+      final definitions =
+          await SupabaseService.instance.getExpenseCategoryDefinitions();
+
+      final normalized = categories
+          .map((item) => _normalizeCategoryForUi(item))
+          .where((item) => item.isNotEmpty)
+          .toSet()
+          .toList();
+
+      if (normalized.isEmpty) {
+        normalized.addAll(const [
+          'food',
+          'transport',
+          'rent',
+          'services',
+          'fees',
+          'other',
+        ]);
+      }
+
+      if (_category.isNotEmpty && !normalized.contains(_category)) {
+        normalized.add(_category);
+      }
+
+      final translations = <String, Map<String, String>>{};
+      for (final item in definitions) {
+        final code = _normalizeCategoryForUi(item['code']);
+        if (code.isEmpty) continue;
+        translations[code] = {
+          'pt': (item['label_pt'] ?? '').toString().trim(),
+          'en': (item['label_en'] ?? '').toString().trim(),
+          'ja': (item['label_ja'] ?? '').toString().trim(),
+          'es': (item['label_es'] ?? '').toString().trim(),
+        };
+      }
+
+      normalized.sort((a, b) {
+        final ai = _categorySortIndex(a);
+        final bi = _categorySortIndex(b);
+        if (ai != bi) return ai.compareTo(bi);
+        return a.toLowerCase().compareTo(b.toLowerCase());
+      });
+
+      if (!mounted) return;
+      setState(() {
+        _expenseCategories = normalized;
+        _categoryTranslations = translations;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _expenseCategories = [
+          'food',
+          'transport',
+          'rent',
+          'services',
+          'fees',
+          'other',
+        ];
+        _categoryTranslations = {};
+      });
+    }
   }
 
   Future<void> _loadClosedMonths() async {
@@ -473,6 +597,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
       _loading = true;
     });
     await _loadClosedMonths();
+    await _loadExpenseCategories();
     await _loadExpenses();
   }
 
@@ -588,8 +713,80 @@ class _ExpensesPageState extends State<ExpensesPage> {
     return '¥${buffer.toString().split('').reversed.join()}';
   }
 
+  String _normalizeCategoryForUi(dynamic value) {
+    final text = (value ?? '').toString().trim();
+    if (text.isEmpty) return 'other';
+
+    final lower = text.toLowerCase();
+    switch (lower) {
+      case 'category_food':
+      case 'food':
+      case 'alimentacao':
+      case 'alimentação':
+      case 'comida':
+        return 'food';
+      case 'category_transport':
+      case 'transport':
+      case 'transporte':
+        return 'transport';
+      case 'category_rent':
+      case 'category_housing':
+      case 'rent':
+      case 'housing':
+      case 'moradia':
+      case 'aluguel':
+        return 'rent';
+      case 'category_services':
+      case 'category_entertainment':
+      case 'services':
+      case 'service':
+      case 'servicos':
+      case 'serviços':
+      case 'servico':
+      case 'serviço':
+        return 'services';
+      case 'category_fees':
+      case 'category_health':
+      case 'fees':
+      case 'health':
+      case 'saude':
+      case 'saúde':
+      case 'taxas':
+      case 'taxa':
+        return 'fees';
+      case 'category_other':
+      case 'other':
+      case 'outro':
+      case 'outros':
+        return 'other';
+      default:
+        return lower;
+    }
+  }
+
+  int _categorySortIndex(String value) {
+    switch (_normalizeCategoryForUi(value)) {
+      case 'food':
+        return 0;
+      case 'transport':
+        return 1;
+      case 'rent':
+        return 2;
+      case 'services':
+        return 3;
+      case 'fees':
+        return 4;
+      case 'other':
+        return 5;
+      default:
+        return 100;
+    }
+  }
+
   String _categoryLabel(String value) {
-    switch (value) {
+    final normalized = _normalizeCategoryForUi(value);
+
+    switch (normalized) {
       case 'food':
         return _tr('category_food');
       case 'transport':
@@ -600,8 +797,129 @@ class _ExpensesPageState extends State<ExpensesPage> {
         return _tr('category_services');
       case 'fees':
         return _tr('category_fees');
-      default:
+      case 'other':
         return _tr('category_other');
+      default:
+        final languageCode = Localizations.localeOf(context).languageCode;
+        final translated = _categoryTranslations[normalized]?[languageCode];
+        if (translated != null && translated.trim().isNotEmpty) {
+          return translated.trim();
+        }
+
+        final fallback = _categoryTranslations[normalized];
+        if (fallback != null) {
+          for (final key in ['pt', 'en', 'ja', 'es']) {
+            final candidate = fallback[key];
+            if (candidate != null && candidate.trim().isNotEmpty) {
+              return candidate.trim();
+            }
+          }
+        }
+
+        final raw = value.trim();
+        if (raw.isEmpty) return _tr('category_other');
+
+        return raw
+            .split(RegExp(r'[_\s-]+'))
+            .where((part) => part.isNotEmpty)
+            .map((part) =>
+                '${part[0].toUpperCase()}${part.length > 1 ? part.substring(1) : ''}')
+            .join(' ');
+    }
+  }
+
+  List<DropdownMenuItem<String>> _expenseCategoryItems() {
+    final categories = _expenseCategories.isEmpty
+        ? ['food', 'transport', 'rent', 'services', 'fees', 'other']
+        : List<String>.from(_expenseCategories);
+
+    if (!_isCustomCategoryMode && !categories.contains(_category)) {
+      categories.add(_category);
+    }
+
+    categories.sort((a, b) {
+      final ai = _categorySortIndex(a);
+      final bi = _categorySortIndex(b);
+      if (ai != bi) return ai.compareTo(bi);
+      return _categoryLabel(a).toLowerCase().compareTo(_categoryLabel(b).toLowerCase());
+    });
+
+    return [
+      ...categories.map(
+        (item) => DropdownMenuItem<String>(
+          value: item,
+          child: Text(_categoryLabel(item)),
+        ),
+      ),
+      DropdownMenuItem<String>(
+        value: '__add_new_category__',
+        child: Row(
+          children: [
+            const Icon(Icons.add_circle_outline, size: 18),
+            const SizedBox(width: 8),
+            Text(_tr('register_new_category')),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  Future<void> _handleExpenseCategorySelection(
+    String? value,
+    StateSetter setStateDialog,
+  ) async {
+    if (value == null) return;
+
+    if (value == '__add_new_category__') {
+      setStateDialog(() {
+        _isCustomCategoryMode = true;
+        _customCategoryController.clear();
+      });
+      return;
+    }
+
+    setStateDialog(() {
+      _isCustomCategoryMode = false;
+      _category = _normalizeCategoryForUi(value);
+      _customCategoryController.clear();
+    });
+  }
+
+  Future<String> _resolveExpenseCategoryBeforeSave() async {
+    if (!_isCustomCategoryMode) {
+      return _category;
+    }
+
+    final raw = _customCategoryController.text.trim();
+    if (raw.isEmpty) {
+      throw Exception(_tr('enter_category_name'));
+    }
+
+    final normalized = _normalizeCategoryForUi(raw);
+
+    if (_expenseCategories.contains(normalized)) {
+      return normalized;
+    }
+
+    if (_creatingCategory) {
+      throw Exception('A categoria ainda está sendo criada.');
+    }
+
+    _creatingCategory = true;
+    try {
+      final translations = await _translateCategoryWithAi(raw);
+
+      await SupabaseService.instance.createTranslatedExpenseCategory(
+        labelPt: translations['pt'] ?? raw,
+        labelEn: translations['en'] ?? raw,
+        labelJa: translations['ja'] ?? raw,
+        labelEs: translations['es'] ?? raw,
+      );
+
+      await _loadExpenseCategories();
+      return _normalizeCategoryForUi(translations['pt'] ?? raw);
+    } finally {
+      _creatingCategory = false;
     }
   }
 
@@ -1100,6 +1418,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
     _notesController.clear();
     _taxRateController.clear();
     _selectedDate = DateTime.now();
+    _isCustomCategoryMode = false;
+    _customCategoryController.clear();
     _category = 'other';
     _taxType = 'external';
     _taxAmount = 0;
@@ -1175,40 +1495,50 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _category,
+                          value: _isCustomCategoryMode
+                              ? _addCategoryValue
+                              : _category,
                           decoration: _fieldDecoration(_tr('category')),
-                          items: [
-                            DropdownMenuItem(
-                              value: 'food',
-                              child: Text(_tr('category_food')),
-                            ),
-                            DropdownMenuItem(
-                              value: 'transport',
-                              child: Text(_tr('category_transport')),
-                            ),
-                            DropdownMenuItem(
-                              value: 'rent',
-                              child: Text(_tr('category_rent')),
-                            ),
-                            DropdownMenuItem(
-                              value: 'services',
-                              child: Text(_tr('category_services')),
-                            ),
-                            DropdownMenuItem(
-                              value: 'fees',
-                              child: Text(_tr('category_fees')),
-                            ),
-                            DropdownMenuItem(
-                              value: 'other',
-                              child: Text(_tr('category_other')),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            setStateDialog(() {
-                              _category = value ?? 'other';
-                            });
+                          items: _expenseCategoryItems(),
+                          onChanged: (value) async {
+                            await _handleExpenseCategorySelection(
+                              value,
+                              setStateDialog,
+                            );
                           },
                         ),
+                        if (_isCustomCategoryMode) ...[
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _customCategoryController,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: _fieldDecoration(_tr('category_name')),
+                          ),
+                          if (_creatingCategory) ...[
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    Localizations.localeOf(context).languageCode == 'ja'
+                                        ? 'カテゴリを保存しています...'
+                                        : Localizations.localeOf(context).languageCode == 'en'
+                                            ? 'Saving category...'
+                                            : Localizations.localeOf(context).languageCode == 'es'
+                                                ? 'Guardando categoría...'
+                                                : 'Salvando categoria...',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
                         const SizedBox(height: 20),
                         Text(
                           _tr('fiscal_basic_data'),
@@ -1356,11 +1686,14 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                     return;
                                   }
 
+                                  final resolvedCategory =
+                                      await _resolveExpenseCategoryBeforeSave();
+
                                   final basePayload = {
                                     'date': _selectedDate.toIso8601String(),
                                     'store_name': _storeController.text.trim(),
                                     'description': description,
-                                    'category': _category,
+                                    'category': resolvedCategory,
                                     'amount': amount,
                                     'tax': _taxAmount,
                                     'tax_type':
@@ -1452,7 +1785,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
     _selectedDate =
         DateTime.tryParse((expense['date'] ?? '').toString()) ?? DateTime.now();
-    _category = (expense['category'] ?? 'other').toString();
+    _isCustomCategoryMode = false;
+    _customCategoryController.clear();
+    _category = _normalizeCategoryForUi((expense['category'] ?? 'other').toString());
     _taxType = _uiTaxInclusionType(
       (expense['tax_type'] ?? 'external').toString(),
     );
@@ -1540,36 +1875,14 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         DropdownButtonFormField<String>(
                           value: _category,
                           decoration: _fieldDecoration(_tr('category')),
-                          items: [
-                            DropdownMenuItem(
-                              value: 'food',
-                              child: Text(_tr('category_food')),
-                            ),
-                            DropdownMenuItem(
-                              value: 'transport',
-                              child: Text(_tr('category_transport')),
-                            ),
-                            DropdownMenuItem(
-                              value: 'rent',
-                              child: Text(_tr('category_rent')),
-                            ),
-                            DropdownMenuItem(
-                              value: 'services',
-                              child: Text(_tr('category_services')),
-                            ),
-                            DropdownMenuItem(
-                              value: 'fees',
-                              child: Text(_tr('category_fees')),
-                            ),
-                            DropdownMenuItem(
-                              value: 'other',
-                              child: Text(_tr('category_other')),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            setStateDialog(() {
-                              _category = value ?? 'other';
-                            });
+                          items: _expenseCategoryItems()
+                              .where((item) => item.value != _addCategoryValue)
+                              .toList(),
+                          onChanged: (value) async {
+                            await _handleExpenseCategorySelection(
+                              value,
+                              setStateDialog,
+                            );
                           },
                         ),
                         const SizedBox(height: 20),
