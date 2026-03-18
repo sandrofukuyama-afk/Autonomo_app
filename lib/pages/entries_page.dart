@@ -16,7 +16,8 @@ class _EntriesPageState extends State<EntriesPage> {
 
   List<Map<String, dynamic>> _entries = [];
   bool _loading = true;
-  bool _translatingCategory = false;
+  bool _creatingCategory = false;
+  bool _isCustomCategoryMode = false;
   List<String> _closedFiscalMonths = [];
   List<String> _entryCategories = const [
     'service',
@@ -29,6 +30,8 @@ class _EntriesPageState extends State<EntriesPage> {
 
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _customCategoryController =
+      TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
   String _paymentMethod = 'cash';
@@ -44,6 +47,7 @@ class _EntriesPageState extends State<EntriesPage> {
   void dispose() {
     _descController.dispose();
     _amountController.dispose();
+    _customCategoryController.dispose();
     super.dispose();
   }
 
@@ -403,7 +407,7 @@ class _EntriesPageState extends State<EntriesPage> {
           ]
         : List<String>.from(_entryCategories);
 
-    if (!categories.contains(_category)) {
+    if (!_isCustomCategoryMode && !categories.contains(_category)) {
       categories.add(_category);
     }
 
@@ -451,180 +455,6 @@ class _EntriesPageState extends State<EntriesPage> {
     }
   }
 
-  Future<String?> _openAddCategoryDialog() async {
-    final t = AppLocalizations.of(context);
-    final ptController = TextEditingController();
-    final enController = TextEditingController();
-    final jaController = TextEditingController();
-    final esController = TextEditingController();
-
-    final created = await showDialog<String>(
-      context: context,
-      barrierDismissible: !_translatingCategory,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              title: Text(t.translate('new_category')),
-              content: SingleChildScrollView(
-                child: SizedBox(
-                  width: 420,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        controller: ptController,
-                        autofocus: true,
-                        textCapitalization: TextCapitalization.words,
-                        enabled: !_translatingCategory,
-                        decoration: _fieldDecoration(
-                          '${t.translate('lang_pt')} • ${t.translate('category_name')}',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: enController,
-                        textCapitalization: TextCapitalization.words,
-                        enabled: !_translatingCategory,
-                        decoration: _fieldDecoration(
-                          '${t.translate('lang_en')} • ${t.translate('category_name')}',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: jaController,
-                        enabled: !_translatingCategory,
-                        decoration: _fieldDecoration(
-                          '${t.translate('lang_ja')} • ${t.translate('category_name')}',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: esController,
-                        textCapitalization: TextCapitalization.words,
-                        enabled: !_translatingCategory,
-                        decoration: _fieldDecoration(
-                          '${t.translate('lang_es')} • ${t.translate('category_name')}',
-                        ),
-                      ),
-                      if (_translatingCategory) ...[
-                        const SizedBox(height: 16),
-                        const CircularProgressIndicator(),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: _translatingCategory
-                      ? null
-                      : () => Navigator.pop(dialogContext),
-                  child: Text(t.translate('cancel')),
-                ),
-                ElevatedButton(
-                  onPressed: _translatingCategory
-                      ? null
-                      : () async {
-                          String labelPt = ptController.text.trim();
-                          String labelEn = enController.text.trim();
-                          String labelJa = jaController.text.trim();
-                          String labelEs = esController.text.trim();
-
-                          if (labelPt.isEmpty &&
-                              labelEn.isEmpty &&
-                              labelJa.isEmpty &&
-                              labelEs.isEmpty) {
-                            _showMessage(
-                              t.translate('enter_category_name'),
-                              error: true,
-                            );
-                            return;
-                          }
-
-                          final baseText = labelPt.isNotEmpty
-                              ? labelPt
-                              : (labelEn.isNotEmpty
-                                  ? labelEn
-                                  : (labelJa.isNotEmpty ? labelJa : labelEs));
-
-                          try {
-                            if ((labelPt.isEmpty ||
-                                    labelEn.isEmpty ||
-                                    labelJa.isEmpty ||
-                                    labelEs.isEmpty) &&
-                                baseText.isNotEmpty) {
-                              if (mounted) {
-                                setState(() {
-                                  _translatingCategory = true;
-                                });
-                              }
-                              setStateDialog(() {});
-
-                              final translations =
-                                  await _translateCategoryWithAi(baseText);
-
-                              labelPt = labelPt.isNotEmpty
-                                  ? labelPt
-                                  : (translations['pt'] ?? baseText);
-                              labelEn = labelEn.isNotEmpty
-                                  ? labelEn
-                                  : (translations['en'] ?? baseText);
-                              labelJa = labelJa.isNotEmpty
-                                  ? labelJa
-                                  : (translations['ja'] ?? baseText);
-                              labelEs = labelEs.isNotEmpty
-                                  ? labelEs
-                                  : (translations['es'] ?? baseText);
-                            }
-
-                            await SupabaseService.instance
-                                .createTranslatedEntryCategory(
-                              labelPt: labelPt,
-                              labelEn: labelEn,
-                              labelJa: labelJa,
-                              labelEs: labelEs,
-                            );
-
-                            await _loadEntryCategories();
-
-                            final code = _normalizeCategoryForUi(labelPt);
-
-                            if (!dialogContext.mounted) return;
-                            Navigator.pop(dialogContext, code);
-                          } catch (e) {
-                            _showMessage(
-                              e.toString().replaceFirst('Exception: ', ''),
-                              error: true,
-                            );
-                          } finally {
-                            if (mounted) {
-                              setState(() {
-                                _translatingCategory = false;
-                              });
-                            }
-                            if (dialogContext.mounted) {
-                              setStateDialog(() {});
-                            }
-                          }
-                        },
-                  child: Text(t.translate('save')),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    ptController.dispose();
-    enController.dispose();
-    jaController.dispose();
-    esController.dispose();
-
-    return created;
-  }
-
   Future<void> _handleCategorySelection(
     String? value,
     StateSetter setStateDialog,
@@ -632,17 +462,17 @@ class _EntriesPageState extends State<EntriesPage> {
     if (value == null) return;
 
     if (value == _addCategoryValue) {
-      final createdCategory = await _openAddCategoryDialog();
-      if (createdCategory == null || createdCategory.isEmpty) return;
-
       setStateDialog(() {
-        _category = createdCategory;
+        _isCustomCategoryMode = true;
+        _customCategoryController.clear();
       });
       return;
     }
 
     setStateDialog(() {
+      _isCustomCategoryMode = false;
       _category = _normalizeCategoryForUi(value);
+      _customCategoryController.clear();
     });
   }
 
@@ -659,6 +489,44 @@ class _EntriesPageState extends State<EntriesPage> {
     );
   }
 
+  Future<String> _resolveCategoryBeforeSave() async {
+    if (!_isCustomCategoryMode) {
+      return _category;
+    }
+
+    final raw = _customCategoryController.text.trim();
+    if (raw.isEmpty) {
+      throw Exception('Informe o nome da categoria.');
+    }
+
+    final normalized = _normalizeCategoryForUi(raw);
+
+    if (_entryCategories.contains(normalized)) {
+      return normalized;
+    }
+
+    if (_creatingCategory) {
+      throw Exception('A categoria ainda está sendo criada.');
+    }
+
+    _creatingCategory = true;
+    try {
+      final translations = await _translateCategoryWithAi(raw);
+
+      await SupabaseService.instance.createTranslatedEntryCategory(
+        labelPt: translations['pt'] ?? raw,
+        labelEn: translations['en'] ?? raw,
+        labelJa: translations['ja'] ?? raw,
+        labelEs: translations['es'] ?? raw,
+      );
+
+      await _loadEntryCategories();
+      return _normalizeCategoryForUi(translations['pt'] ?? raw);
+    } finally {
+      _creatingCategory = false;
+    }
+  }
+
   Future<void> _openAddDialog() async {
     final t = AppLocalizations.of(context);
 
@@ -672,8 +540,10 @@ class _EntriesPageState extends State<EntriesPage> {
 
     _descController.clear();
     _amountController.clear();
+    _customCategoryController.clear();
     _selectedDate = DateTime.now();
     _paymentMethod = 'cash';
+    _isCustomCategoryMode = false;
     _category = _entryCategories.contains('service')
         ? 'service'
         : (_entryCategories.isNotEmpty ? _entryCategories.first : 'service');
@@ -721,7 +591,7 @@ class _EntriesPageState extends State<EntriesPage> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _category,
+                          value: _isCustomCategoryMode ? _addCategoryValue : _category,
                           decoration: _fieldDecoration(t.translate('category')),
                           items: _categoryItems(t),
                           onChanged: (value) async {
@@ -731,6 +601,40 @@ class _EntriesPageState extends State<EntriesPage> {
                             );
                           },
                         ),
+                        if (_isCustomCategoryMode) ...[
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _customCategoryController,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: _fieldDecoration(
+                              t.translate('category_name'),
+                            ),
+                          ),
+                          if (_creatingCategory) ...[
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    t.locale.languageCode == 'ja'
+                                        ? 'カテゴリを保存しています...'
+                                        : t.locale.languageCode == 'en'
+                                            ? 'Saving category...'
+                                            : t.locale.languageCode == 'es'
+                                                ? 'Guardando categoría...'
+                                                : 'Salvando categoria...',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _paymentMethod,
@@ -833,11 +737,14 @@ class _EntriesPageState extends State<EntriesPage> {
                                 }
 
                                 try {
+                                  final resolvedCategory =
+                                      await _resolveCategoryBeforeSave();
+
                                   await SupabaseService.instance.addEntry({
                                     'date': _selectedDate.toIso8601String(),
                                     'description': description,
                                     'amount': amount,
-                                    'category': _category,
+                                    'category': resolvedCategory,
                                     'payment_method': _paymentMethod,
                                   });
 
@@ -888,10 +795,12 @@ class _EntriesPageState extends State<EntriesPage> {
 
     _descController.text = (entry['description'] ?? '').toString();
     _amountController.text = (entry['amount'] ?? '').toString();
+    _customCategoryController.clear();
     _selectedDate =
         DateTime.tryParse((entry['date'] ?? '').toString()) ?? DateTime.now();
     _paymentMethod = (entry['payment_method'] ?? 'cash').toString();
     _category = _normalizeCategoryForUi(entry['category']);
+    _isCustomCategoryMode = false;
 
     if (!_entryCategories.contains(_category)) {
       setState(() {
@@ -944,7 +853,9 @@ class _EntriesPageState extends State<EntriesPage> {
                         DropdownButtonFormField<String>(
                           value: _category,
                           decoration: _fieldDecoration(t.translate('category')),
-                          items: _categoryItems(t),
+                          items: _categoryItems(t)
+                              .where((item) => item.value != _addCategoryValue)
+                              .toList(),
                           onChanged: (value) async {
                             await _handleCategorySelection(
                               value,
