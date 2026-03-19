@@ -374,17 +374,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
       '${_apiBaseUrl()}/api/ai-help',
       method: 'POST',
       sendData: jsonEncode({
-  'mode': 'translate_category',
-  'text': text,
-}),
-requestHeaders: {'Content-Type': 'application/json'},
+        'mode': 'translate_category',
+        'text': text,
+      }),SizedBox(width:8),IconButton(icon:Icon(Icons.more_vert),onPressed:(){if(_category!=null){_showCategoryActions(_category!);}})],),
           ),
-
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () {
-              if (_category != null) {
-                //_showCategoryActions(_category!);
+              if (_selectedCategory != null) {
+                _showCategoryActions(_selectedCategory!);
               }
             },
           ),
@@ -863,7 +862,7 @@ requestHeaders: {'Content-Type': 'application/json'},
         (item) => DropdownMenuItem<String>(
           value: item,
           child: GestureDetector(
-            onLongPress: () => //_showCategoryActions(item),
+            onLongPress: () => _showCategoryActions(item),
             child: Text(_categoryLabel(item)),
           ),
         ),
@@ -873,7 +872,7 @@ requestHeaders: {'Content-Type': 'application/json'},
         child: Row(
           children: [
             const Icon(Icons.add_circle_outline, size: 18),
-
+            const SizedBox(width: 8),
             Text(_tr('register_new_category')),
           ],
         ),
@@ -1365,7 +1364,7 @@ requestHeaders: {'Content-Type': 'application/json'},
             Row(
               children: [
                 const Icon(Icons.attach_file, size: 18),
-
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     _selectedReceiptName!,
@@ -1398,7 +1397,7 @@ requestHeaders: {'Content-Type': 'application/json'},
             Row(
               children: [
                 const Icon(Icons.receipt_long, color: Colors.green),
-
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     _tr('existing_receipt_attached'),
@@ -1511,7 +1510,7 @@ requestHeaders: {'Content-Type': 'application/json'},
                           decoration: _fieldDecoration('${_tr('value')} (¥)'),
                         ),
                         const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
+                        Row(children:[Expanded(child: DropdownButtonFormField<String>(
                           value: _isCustomCategoryMode ? _addCategoryValue : _category,
                           decoration: _fieldDecoration(_tr('category')),
                           items: _expenseCategoryItems(),
@@ -1519,53 +1518,6 @@ requestHeaders: {'Content-Type': 'application/json'},
                             await _handleExpenseCategorySelection(value, setStateDialog);
                           },
                         ),
-           const SizedBox(height: 8),
-
-Row(
-  children: [
-    TextButton.icon(
-      onPressed: _category == null ? null : () {
-        _openEditCategoryDialog();
-      },
-      icon: const Icon(Icons.edit_outlined, size: 18),
-      label: const Text('Editar categoria'),
-    ),
-    const SizedBox(width: 8),
-    TextButton.icon(
-      onPressed: _category == null ? null : () {
-        _deleteCurrentCategory();
-      },
-      icon: const Icon(Icons.delete_outline, size: 18),
-      label: const Text('Excluir categoria'),
-    ),
-  ],
-),
-  ],
-),
-
-                          items: _expenseCategoryItems(),
-                          onChanged: (value) async {
-                            await _handleExpenseCategorySelection(value, setStateDialog);
-                          },
-                        )
-
-const SizedBox(height: 8),
-Row(
-  children: [
-    TextButton.icon(
-      onPressed: _category == null ? null : () {},
-      icon: const Icon(Icons.edit_outlined, size: 18),
-      label: const Text('Editar categoria'),
-    ),
-    const SizedBox(width: 8),
-    TextButton.icon(
-      onPressed: _category == null ? null : () {},
-      icon: const Icon(Icons.delete_outline, size: 18),
-      label: const Text('Excluir categoria'),
-    ),
-  ],
-),
-,
                         if (_isCustomCategoryMode) ...[
                           const SizedBox(height: 12),
                           TextField(
