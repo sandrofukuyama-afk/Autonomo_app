@@ -1513,17 +1513,12 @@ requestHeaders: {'Content-Type': 'application/json'},
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _isCustomCategoryMode ? _addCategoryValue : _category,
-                          decoration: _fieldDecoration(_tr('category')),      label: const Text('Editar categoria'),
-    ),
-    const SizedBox(width: 8),
-    TextButton.icon(
-      onPressed: (_category == null)
-          ? null
-          : () async {
-              await _deleteExpenseCategory(
-                setStateDialog,
-                _category,
-              );
+                          decoration: _fieldDecoration(_tr('category')),
+                          items: _expenseCategoryItems(),
+                          onChanged: (value) async {
+                            await _handleExpenseCategorySelection(value, setStateDialog);
+                          },
+                        ),
             },
       icon: const Icon(Icons.delete_outline, size: 18),
       label: const Text('Excluir categoria'),
