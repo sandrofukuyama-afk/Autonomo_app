@@ -1484,10 +1484,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           decoration: _fieldDecoration(_tr('description')),
                         ),
                         const SizedBox(height: 16),
-TextButton(
-  onPressed: _openManageCategoriesModal,
-  child: Text(_tr('manage_categories')),
-),
 
                         TextField(
                           controller: _storeController,
@@ -2396,10 +2392,7 @@ TextButton(
                         _fiscalClosedBanner(
 ),
                         const SizedBox(height: 16),
-                        TextButton(
-                          onPressed: _openManageCategoriesModal,
-                          child: Text(_tr('manage_categories')),
-                        )
+                        
 ,
                       ],
                       SizedBox(
