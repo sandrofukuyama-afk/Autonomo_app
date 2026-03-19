@@ -1519,10 +1519,27 @@ requestHeaders: {'Content-Type': 'application/json'},
                             await _handleExpenseCategorySelection(value, setStateDialog);
                           },
                         ),
-            },
+           const SizedBox(height: 8),
+
+Row(
+  children: [
+    TextButton.icon(
+      onPressed: _category == null ? null : () {
+        _openEditCategoryDialog();
+      },
+      icon: const Icon(Icons.edit_outlined, size: 18),
+      label: const Text('Editar categoria'),
+    ),
+    const SizedBox(width: 8),
+    TextButton.icon(
+      onPressed: _category == null ? null : () {
+        _deleteCurrentCategory();
+      },
       icon: const Icon(Icons.delete_outline, size: 18),
       label: const Text('Excluir categoria'),
     ),
+  ],
+),
   ],
 ),
 
