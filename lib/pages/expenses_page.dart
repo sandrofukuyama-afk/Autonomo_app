@@ -2393,7 +2393,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
 ),
                         const SizedBox(height: 16),
                         
-,
                       ],
                       SizedBox(
                         height: MediaQuery.of(context).size.height * 0.6,
