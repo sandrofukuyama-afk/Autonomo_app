@@ -786,45 +786,35 @@ class _ExpensesPageState extends State<ExpensesPage> {
     }
   }
 
-  String _categoryLabel(AppLocalizations t, String value) {
-  final lang = t.locale.languageCode;
+  String _categoryLabel(String value) {
+    if (value.isEmpty) return _tr('category_other');
+    
+    final lang = t.locale.languageCode;
 
-  final translated = _categoryTranslations[value]?[lang];
-  if (translated != null && translated.trim().isNotEmpty) {
-    return translated.trim();
-  }
+    final translated = _categoryTranslations[value]?[lang];
+    if (translated != null && translated.trim().isNotEmpty) {
+      return translated.trim();
+    }
 
-  final fallback = _categoryTranslations[value];
-  if (fallback != null) {
-    for (final key in ['pt', 'en', 'ja', 'es']) {
-      final candidate = fallback[key];
-      if (candidate != null && candidate.trim().isNotEmpty) {
-        return candidate.trim();
+    final fallback = _categoryTranslations[value];
+    if (fallback != null) {
+      for (final key in ['pt', 'en', 'ja', 'es']) {
+        final candidate = fallback[key];
+        if (candidate != null && candidate.trim().isNotEmpty) {
+          return candidate.trim();
+        }
       }
     }
-  }
 
-  return value;
-}final fallback = _categoryTranslations[normalized];
-        if (fallback != null) {
-          for (final key in ['pt', 'en', 'ja', 'es']) {
-            final candidate = fallback[key];
-            if (candidate != null && candidate.trim().isNotEmpty) {
-              return candidate.trim();
-            }
-          }
-        }
+    final raw = value.trim();
+    if (raw.isEmpty) return _tr('category_other');
 
-        final raw = value.trim();
-        if (raw.isEmpty) return _tr('category_other');
-
-        return raw
-            .split(RegExp(r'[_\s-]+'))
-            .where((part) => part.isNotEmpty)
-            .map((part) =>
-                '${part[0].toUpperCase()}${part.length > 1 ? part.substring(1) : ''}')
-            .join(' ');
-    }
+    return raw
+        .split(RegExp(r'[_\s-]+'))
+        .where((part) => part.isNotEmpty)
+        .map((part) =>
+            '${part[0].toUpperCase()}${part.length > 1 ? part.substring(1) : ''}')
+        .join(' ');
   }
 
   List<DropdownMenuItem<String>> _expenseCategoryItems() {
@@ -845,7 +835,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
       ...categories.map(
         (item) => DropdownMenuItem<String>(
           value: item,
-         child: Text(_categoryLabel(t, item)),
+         child: Text(_categoryLabel(item)),
         ),
       ),
       DropdownMenuItem<String>(
