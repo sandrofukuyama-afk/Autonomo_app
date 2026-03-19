@@ -786,7 +786,26 @@ class _ExpensesPageState extends State<ExpensesPage> {
     }
   }
 
-  String _categoryLabel(String value) {
+  String _categoryLabel(AppLocalizations t, String value) {
+  final lang = t.locale.languageCode;
+
+  final translated = _categoryTranslations[value]?[lang];
+  if (translated != null && translated.trim().isNotEmpty) {
+    return translated.trim();
+  }
+
+  final fallback = _categoryTranslations[value];
+  if (fallback != null) {
+    for (final key in ['pt', 'en', 'ja', 'es']) {
+      final candidate = fallback[key];
+      if (candidate != null && candidate.trim().isNotEmpty) {
+        return candidate.trim();
+      }
+    }
+  }
+
+  return value;
+}
     final normalized = _normalizeCategoryForUi(value);
 
     switch (normalized) {
@@ -851,7 +870,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
       ...categories.map(
         (item) => DropdownMenuItem<String>(
           value: item,
-          child: Text(_categoryLabel(item)),
+         child: Text(_categoryLabel(t, item)),
         ),
       ),
       DropdownMenuItem<String>(
