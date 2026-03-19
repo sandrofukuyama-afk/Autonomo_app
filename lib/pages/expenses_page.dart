@@ -1484,6 +1484,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           decoration: _fieldDecoration(_tr('description')),
                         ),
                         const SizedBox(height: 16),
+TextButton(
+  onPressed: _openManageCategoriesModal,
+  child: Text(_tr('manage_categories')),
+),
+
                         TextField(
                           controller: _storeController,
                           decoration: _fieldDecoration(_tr('store')),
@@ -2440,90 +2445,4 @@ class _ExpensesPageState extends State<ExpensesPage> {
             ),
     );
   }
-
-
-  Future<void> _openEditCategoryDialog(Map<String, dynamic> category) async {
-    final code = category['code'] as String?;
-    if (code == null) return;
-
-    final controller = TextEditingController(text: _categoryLabel(code));
-
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(_tr('edit_category')),
-          content: TextField(
-            controller: controller,
-            decoration: InputDecoration(
-              labelText: _tr('category_name'),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(_tr('cancel')),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final newName = controller.text.trim();
-                if (newName.isEmpty) return;
-
-                try {
-                  await _client.rpc('update_translated_expense_category', params: {
-                    'p_code': code,
-                    'p_label': newName,
-                  });
-
-                  Navigator.pop(context);
-                  setState(() {});
-                } catch (e) {
-                  debugPrint('Erro ao editar categoria: $e');
-                }
-              },
-              child: Text(_tr('save')),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _deleteCategory(Map<String, dynamic> category) async {
-    final code = category['code'] as String?;
-    if (code == null) return;
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(_tr('confirm')),
-          content: Text(_tr('delete_category_confirm')),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(_tr('cancel')),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(_tr('delete')),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirm != true) return;
-
-    try {
-      await _client.rpc('delete_expense_category', params: {
-        'p_code': code,
-      });
-
-      setState(() {});
-    } catch (e) {
-      debugPrint('Erro ao deletar categoria: $e');
-    }
-  }
-
 }
