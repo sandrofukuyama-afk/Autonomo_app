@@ -1522,20 +1522,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            TextButton.icon(
-                              onPressed: _category == null ? null : () {
-                                _openEditCategoryDialog();
-                              },
-                              icon: const Icon(Icons.edit_outlined, size: 18),
-                              label: const Text('Editar categoria'),
-                            ),
-                            const SizedBox(width: 8),
-                            TextButton.icon(
-                              onPressed: _category == null ? null : () {
-                                _deleteCurrentCategory();
-                              },
-                              icon: const Icon(Icons.delete_outline, size: 18),
-                              label: const Text('Excluir categoria'),
+                            Text(
+                              'Toque e segure uma categoria para editar ou excluir',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
                             ),
                           ],
                         ),
