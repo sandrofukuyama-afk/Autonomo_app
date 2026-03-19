@@ -379,12 +379,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
 }),
 requestHeaders: {'Content-Type': 'application/json'},
           ),
-          const SizedBox(width: 8),
+
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () {
-              if (_category != null) {
-                //_showCategoryActions(_category!);
+              if (_selectedCategory != null) {
+                _showCategoryActions(_selectedCategory!);
               }
             },
           ),
@@ -863,7 +863,7 @@ requestHeaders: {'Content-Type': 'application/json'},
         (item) => DropdownMenuItem<String>(
           value: item,
           child: GestureDetector(
-            onLongPress: () => //_showCategoryActions(item),
+            onLongPress: () => _showCategoryActions(item),
             child: Text(_categoryLabel(item)),
           ),
         ),
@@ -873,7 +873,7 @@ requestHeaders: {'Content-Type': 'application/json'},
         child: Row(
           children: [
             const Icon(Icons.add_circle_outline, size: 18),
-            const SizedBox(width: 8),
+
             Text(_tr('register_new_category')),
           ],
         ),
@@ -1365,7 +1365,7 @@ requestHeaders: {'Content-Type': 'application/json'},
             Row(
               children: [
                 const Icon(Icons.attach_file, size: 18),
-                const SizedBox(width: 8),
+
                 Expanded(
                   child: Text(
                     _selectedReceiptName!,
@@ -1398,7 +1398,7 @@ requestHeaders: {'Content-Type': 'application/json'},
             Row(
               children: [
                 const Icon(Icons.receipt_long, color: Colors.green),
-                const SizedBox(width: 8),
+
                 Expanded(
                   child: Text(
                     _tr('existing_receipt_attached'),
@@ -1511,7 +1511,7 @@ requestHeaders: {'Content-Type': 'application/json'},
                           decoration: _fieldDecoration('${_tr('value')} (¥)'),
                         ),
                         const SizedBox(height: 16),
-                        Row(children:[Expanded(child: DropdownButtonFormField<String>(
+                        DropdownButtonFormField<String>(
                           value: _isCustomCategoryMode ? _addCategoryValue : _category,
                           decoration: _fieldDecoration(_tr('category')),
                           items: _expenseCategoryItems(),
