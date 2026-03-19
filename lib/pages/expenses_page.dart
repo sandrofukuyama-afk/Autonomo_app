@@ -1508,6 +1508,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             child: Text(_tr('manage_categories')),
                           ),
                         ),
+
                           items: _expenseCategoryItems(),
                           onChanged: (value) async {
                             await _handleExpenseCategorySelection(value, setStateDialog);
@@ -2449,6 +2450,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
     );
   }
 
+
   Future<void> _openManageCategoriesModal() async {
     await showDialog(
       context: context,
@@ -2467,11 +2469,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit),
-                        onPressed: () => _openEditCategoryDialog({'code': item}),
+                        onPressed: () => _openEditCategoryDialog(item),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete),
-                        onPressed: () => _deleteCategory({'code': item}),
+                        onPressed: () => _deleteCategory(item),
                       ),
                     ],
                   ),
@@ -2488,6 +2490,74 @@ class _ExpensesPageState extends State<ExpensesPage> {
         );
       },
     );
+  }
+
+  Future<void> _openEditCategoryDialog(String code) async {
+    final controller = TextEditingController(text: _categoryLabel(code));
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(_tr('edit_category')),
+          content: TextField(
+            controller: controller,
+            decoration: InputDecoration(labelText: _tr('category_name')),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(_tr('cancel')),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newName = controller.text.trim();
+                if (newName.isEmpty) return;
+
+                await _client.rpc('update_translated_expense_category', params: {
+                  'p_code': code,
+                  'p_label': newName,
+                });
+
+                Navigator.pop(context);
+                setState(() {});
+              },
+              child: Text(_tr('save')),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteCategory(String code) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(_tr('confirm')),
+          content: Text(_tr('delete_category_confirm')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(_tr('cancel')),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(_tr('delete')),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    await _client.rpc('delete_expense_category', params: {
+      'p_code': code,
+    });
+
+    setState(() {});
   }
 
 }
