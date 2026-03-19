@@ -2438,4 +2438,14 @@ class _ExpensesPageState extends State<ExpensesPage> {
             ),
     );
   }
+
+
+  void _openEditCategoryDialog(Map<String, dynamic> category) async {
+    // TODO: implementação edit
+  }
+
+  void _deleteCategory(Map<String, dynamic> category) async {
+    // TODO: implementação delete
+  }
+
 }
