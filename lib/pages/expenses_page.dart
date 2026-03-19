@@ -17,6 +17,8 @@ class ExpensesPage extends StatefulWidget {
 }
 
 class _ExpensesPageState extends State<ExpensesPage> {
+  final SupabaseClient _client = Supabase.instance.client;
+
   static const String _addCategoryValue = '__add_new_category__';
 
   List<Map<String, dynamic>> _expenses = [];
