@@ -383,8 +383,8 @@ requestHeaders: {'Content-Type': 'application/json'},
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () {
-              if (_selectedCategory != null) {
-                _showCategoryActions(_selectedCategory!);
+              if (_category != null) {
+                //_showCategoryActions(_category!);
               }
             },
           ),
@@ -863,7 +863,7 @@ requestHeaders: {'Content-Type': 'application/json'},
         (item) => DropdownMenuItem<String>(
           value: item,
           child: GestureDetector(
-            onLongPress: () => _showCategoryActions(item),
+            onLongPress: () => //_showCategoryActions(item),
             child: Text(_categoryLabel(item)),
           ),
         ),
