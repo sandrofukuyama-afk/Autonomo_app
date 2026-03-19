@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../l10n/app_localizations.dart'; // ✅ NOVO
+import '../l10n/app_localizations.dart';
 
 class SettingsCategoriesPage extends StatefulWidget {
   const SettingsCategoriesPage({super.key});
@@ -44,6 +44,14 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
       debugPrint('Erro ao carregar categorias: $e');
       setState(() => _loading = false);
     }
+  }
+
+  String _getLabel(Map<String, dynamic> item) {
+    final lang = Localizations.localeOf(context).languageCode;
+
+    return item['label_$lang'] ??
+        item['label_pt'] ??
+        '';
   }
 
   Future<void> _addCategory(String type) async {
@@ -91,7 +99,7 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
       String type, Map<String, dynamic> category) async {
     final t = AppLocalizations.of(context);
     final controller =
-        TextEditingController(text: category['label_pt'] ?? '');
+        TextEditingController(text: _getLabel(category));
 
     await showDialog(
       context: context,
@@ -115,8 +123,10 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
               final table =
                   type == 'expense' ? 'expense_categories' : 'entry_categories';
 
+              final lang = Localizations.localeOf(context).languageCode;
+
               await _client.from(table).update({
-                'label_pt': name,
+                'label_$lang': name,
               }).eq('id', category['id']);
 
               Navigator.pop(context);
@@ -188,7 +198,7 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
             const Divider(),
             ...data.map((item) {
               return ListTile(
-                title: Text(item['label_pt'] ?? ''),
+                title: Text(_getLabel(item)), // ✅ AQUI RESOLVEU
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -222,7 +232,7 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(t.translate('categories')), // ✅ corrigido
+        title: Text(t.translate('categories')),
       ),
       body: Padding(
         padding: const EdgeInsets.all(12),
