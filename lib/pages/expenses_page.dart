@@ -2393,8 +2393,14 @@ TextButton(
                     padding: const EdgeInsets.all(16),
                     children: [
                       if (_isCurrentMonthClosed()) ...[
-                        _fiscalClosedBanner(),
+                        _fiscalClosedBanner(
+),
                         const SizedBox(height: 16),
+                        TextButton(
+                          onPressed: _openManageCategoriesModal,
+                          child: Text(_tr('manage_categories')),
+                        )
+,
                       ],
                       SizedBox(
                         height: MediaQuery.of(context).size.height * 0.6,
