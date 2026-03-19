@@ -1323,11 +1323,38 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
             ]),
             Card(
-  margin: const EdgeInsets.only(bottom: 12),
+  margin: const EdgeInsets.only(bottom: 16),
+  elevation: 2,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(14),
+  ),
   child: ListTile(
-    leading: const Icon(Icons.category_outlined),
-    title: const Text('Categorias'),
-    subtitle: const Text('Gerenciar categorias de entradas e despesas'),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    leading: Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(
+        Icons.category,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    ),
+    title: Text(
+      _text('categories', t), // ✅ traduzido
+      style: const TextStyle(
+        fontWeight: FontWeight.w600,
+        fontSize: 15,
+      ),
+    ),
+    subtitle: Text(
+      _text('manage_categories_desc', t), // ✅ traduzido
+      style: TextStyle(
+        color: Colors.grey.shade600,
+        fontSize: 13,
+      ),
+    ),
     trailing: const Icon(Icons.chevron_right),
     onTap: () {
       Navigator.push(
