@@ -1500,15 +1500,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         DropdownButtonFormField<String>(
                           value: _isCustomCategoryMode ? _addCategoryValue : _category,
                           decoration: _fieldDecoration(_tr('category')),
-                        const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: _openManageCategoriesModal,
-                            child: Text(_tr('manage_categories')),
-                          ),
-                        ),
-
                           items: _expenseCategoryItems(),
                           onChanged: (value) async {
                             await _handleExpenseCategorySelection(value, setStateDialog);
@@ -2451,48 +2442,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
   }
 
 
-  Future<void> _openManageCategoriesModal() async {
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(_tr('manage_categories')),
-          content: SizedBox(
-            width: 400,
-            height: 400,
-            child: ListView(
-              children: _expenseCategories.map((item) {
-                return ListTile(
-                  title: Text(_categoryLabel(item)),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => _openEditCategoryDialog(item),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () => _deleteCategory(item),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(_tr('close')),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  Future<void> _openEditCategoryDialog(Map<String, dynamic> category) async {
+    final code = category['code'] as String?;
+    if (code == null) return;
 
-  Future<void> _openEditCategoryDialog(String code) async {
     final controller = TextEditingController(text: _categoryLabel(code));
 
     await showDialog(
@@ -2502,7 +2455,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
           title: Text(_tr('edit_category')),
           content: TextField(
             controller: controller,
-            decoration: InputDecoration(labelText: _tr('category_name')),
+            decoration: InputDecoration(
+              labelText: _tr('category_name'),
+            ),
           ),
           actions: [
             TextButton(
@@ -2514,13 +2469,17 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 final newName = controller.text.trim();
                 if (newName.isEmpty) return;
 
-                await _client.rpc('update_translated_expense_category', params: {
-                  'p_code': code,
-                  'p_label': newName,
-                });
+                try {
+                  await _client.rpc('update_translated_expense_category', params: {
+                    'p_code': code,
+                    'p_label': newName,
+                  });
 
-                Navigator.pop(context);
-                setState(() {});
+                  Navigator.pop(context);
+                  setState(() {});
+                } catch (e) {
+                  debugPrint('Erro ao editar categoria: $e');
+                }
               },
               child: Text(_tr('save')),
             ),
@@ -2530,7 +2489,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
     );
   }
 
-  Future<void> _deleteCategory(String code) async {
+  Future<void> _deleteCategory(Map<String, dynamic> category) async {
+    final code = category['code'] as String?;
+    if (code == null) return;
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -2553,11 +2515,15 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
     if (confirm != true) return;
 
-    await _client.rpc('delete_expense_category', params: {
-      'p_code': code,
-    });
+    try {
+      await _client.rpc('delete_expense_category', params: {
+        'p_code': code,
+      });
 
-    setState(() {});
+      setState(() {});
+    } catch (e) {
+      debugPrint('Erro ao deletar categoria: $e');
+    }
   }
 
 }
