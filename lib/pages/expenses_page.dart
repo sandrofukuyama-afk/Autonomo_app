@@ -851,9 +851,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
   }
 
   List<DropdownMenuItem<String>> _expenseCategoryItems() {
-    final categories = _expenseCategories.isEmpty
-        ? ['food', 'transport', 'rent', 'services', 'fees', 'other']
-        : List<String>.from(_expenseCategories);
+    final categories = List<String>.from(_expenseCategories);
 
     if (!_isCustomCategoryMode && !categories.contains(_category)) {
       categories.add(_category);
