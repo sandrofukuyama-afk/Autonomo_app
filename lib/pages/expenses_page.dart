@@ -849,7 +849,29 @@ class _ExpensesPageState extends State<ExpensesPage> {
       ...categories.map(
         (item) => DropdownMenuItem<String>(
           value: item,
-          child: Text(_categoryLabel(item)),
+          child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: Text(_categoryLabel(item))),
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        _openEditCategoryDialog({'code': item});
+                      },
+                      child: const Icon(Icons.edit, size: 18),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        _deleteCategory({'code': item});
+                      },
+                      child: const Icon(Icons.delete, size: 18),
+                    ),
+                  ],
+                )
+              ],
+            ),
         ),
       ),
       DropdownMenuItem<String>(
@@ -2438,14 +2460,4 @@ class _ExpensesPageState extends State<ExpensesPage> {
             ),
     );
   }
-
-
-  void _openEditCategoryDialog(Map<String, dynamic> category) async {
-    // TODO: implementação edit
-  }
-
-  void _deleteCategory(Map<String, dynamic> category) async {
-    // TODO: implementação delete
-  }
-
 }
