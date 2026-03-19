@@ -805,30 +805,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
   }
 
   return value;
-}
-    final normalized = _normalizeCategoryForUi(value);
-
-    switch (normalized) {
-      case 'food':
-        return _tr('category_food');
-      case 'transport':
-        return _tr('category_transport');
-      case 'rent':
-        return _tr('category_rent');
-      case 'services':
-        return _tr('category_services');
-      case 'fees':
-        return _tr('category_fees');
-      case 'other':
-        return _tr('category_other');
-      default:
-        final languageCode = Localizations.localeOf(context).languageCode;
-        final translated = _categoryTranslations[normalized]?[languageCode];
-        if (translated != null && translated.trim().isNotEmpty) {
-          return translated.trim();
-        }
-
-        final fallback = _categoryTranslations[normalized];
+}final fallback = _categoryTranslations[normalized];
         if (fallback != null) {
           for (final key in ['pt', 'en', 'ja', 'es']) {
             final candidate = fallback[key];
