@@ -1514,6 +1514,38 @@ requestHeaders: {'Content-Type': 'application/json'},
                         DropdownButtonFormField<String>(
                           value: _isCustomCategoryMode ? _addCategoryValue : _category,
                           decoration: _fieldDecoration(_tr('category')),
+
+const SizedBox(height: 8),
+Row(
+  children: [
+    TextButton.icon(
+      onPressed: (_category == null)
+          ? null
+          : () async {
+              await _openEditExpenseCategoryDialog(
+                setStateDialog,
+                _category,
+              );
+            },
+      icon: const Icon(Icons.edit_outlined, size: 18),
+      label: const Text('Editar categoria'),
+    ),
+    const SizedBox(width: 8),
+    TextButton.icon(
+      onPressed: (_category == null)
+          ? null
+          : () async {
+              await _deleteExpenseCategory(
+                setStateDialog,
+                _category,
+              );
+            },
+      icon: const Icon(Icons.delete_outline, size: 18),
+      label: const Text('Excluir categoria'),
+    ),
+  ],
+),
+
                           items: _expenseCategoryItems(),
                           onChanged: (value) async {
                             await _handleExpenseCategorySelection(value, setStateDialog);
