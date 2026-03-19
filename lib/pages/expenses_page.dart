@@ -376,7 +376,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
       sendData: jsonEncode({
         'mode': 'translate_category',
         'text': text,
-      }),
+      }),SizedBox(width:8),IconButton(icon:Icon(Icons.more_vert),onPressed:(){if(_category!=null){_showCategoryActions(_category!);}})],),
           ),
           const SizedBox(width: 8),
           IconButton(
@@ -1510,7 +1510,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           decoration: _fieldDecoration('${_tr('value')} (¥)'),
                         ),
                         const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
+                        Row(children:[Expanded(child: DropdownButtonFormField<String>(
                           value: _isCustomCategoryMode ? _addCategoryValue : _category,
                           decoration: _fieldDecoration(_tr('category')),
                           items: _expenseCategoryItems(),
