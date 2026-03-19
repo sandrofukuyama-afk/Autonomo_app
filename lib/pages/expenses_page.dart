@@ -376,7 +376,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
       sendData: jsonEncode({
         'mode': 'translate_category',
         'text': text,
-      }),SizedBox(width:8),IconButton(icon:Icon(Icons.more_vert),onPressed:(){if(_category!=null){_showCategoryActions(_category!);}})],),
+      }),
           ),
           const SizedBox(width: 8),
           IconButton(
@@ -1510,9 +1510,32 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           decoration: _fieldDecoration('${_tr('value')} (¥)'),
                         ),
                         const SizedBox(height: 16),
-                        Row(children:[Expanded(child: DropdownButtonFormField<String>(
+                        DropdownButtonFormField<String>(
                           value: _isCustomCategoryMode ? _addCategoryValue : _category,
                           decoration: _fieldDecoration(_tr('category')),
+
+const SizedBox(height: 8),
+
+Row(
+  children: [
+    TextButton.icon(
+      onPressed: _category == null ? null : () {
+        _openEditCategoryDialog();
+      },
+      icon: const Icon(Icons.edit_outlined, size: 18),
+      label: const Text('Editar categoria'),
+    ),
+    const SizedBox(width: 8),
+    TextButton.icon(
+      onPressed: _category == null ? null : () {
+        _deleteCurrentCategory();
+      },
+      icon: const Icon(Icons.delete_outline, size: 18),
+      label: const Text('Excluir categoria'),
+    ),
+  ],
+),
+
                           items: _expenseCategoryItems(),
                           onChanged: (value) async {
                             await _handleExpenseCategorySelection(value, setStateDialog);
