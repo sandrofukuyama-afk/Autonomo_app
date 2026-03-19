@@ -374,9 +374,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
       '${_apiBaseUrl()}/api/ai-help',
       method: 'POST',
       sendData: jsonEncode({
-        'mode': 'translate_category',
-        'text': text,
-      }),SizedBox(width:8),IconButton(icon:Icon(Icons.more_vert),onPressed:(){if(_category!=null){_showCategoryActions(_category!);}})],),
+  'mode': 'translate_category',
+  'text': text,
+}),
+requestHeaders: {'Content-Type': 'application/json'},
           ),
           const SizedBox(width: 8),
           IconButton(
