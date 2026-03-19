@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../l10n/app_localizations.dart'; // ✅ NOVO
 
 class SettingsCategoriesPage extends StatefulWidget {
   const SettingsCategoriesPage({super.key});
@@ -46,20 +47,22 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
   }
 
   Future<void> _addCategory(String type) async {
+    final t = AppLocalizations.of(context);
     final controller = TextEditingController();
 
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Nova categoria'),
+        title: Text(t.translate('new_category')),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(labelText: 'Nome'),
+          decoration:
+              InputDecoration(labelText: t.translate('category_name')),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text(t.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -77,7 +80,7 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
               Navigator.pop(context);
               _loadCategories();
             },
-            child: const Text('Salvar'),
+            child: Text(t.translate('save')),
           ),
         ],
       ),
@@ -86,21 +89,23 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
 
   Future<void> _editCategory(
       String type, Map<String, dynamic> category) async {
+    final t = AppLocalizations.of(context);
     final controller =
         TextEditingController(text: category['label_pt'] ?? '');
 
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Editar categoria'),
+        title: Text(t.translate('category_name')),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(labelText: 'Nome'),
+          decoration:
+              InputDecoration(labelText: t.translate('category_name')),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text(t.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -117,7 +122,7 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
               Navigator.pop(context);
               _loadCategories();
             },
-            child: const Text('Salvar'),
+            child: Text(t.translate('save')),
           ),
         ],
       ),
@@ -126,19 +131,21 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
 
   Future<void> _deleteCategory(
       String type, Map<String, dynamic> category) async {
+    final t = AppLocalizations.of(context);
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Confirmar'),
-        content: const Text('Deseja deletar esta categoria?'),
+        title: Text(t.translate('cancel')),
+        content: Text(t.translate('confirm_delete_entry')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: Text(t.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Deletar'),
+            child: Text(t.translate('delete_entry')),
           ),
         ],
       ),
@@ -155,7 +162,9 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
   }
 
   Widget _buildSection(
-      String title, String type, List<Map<String, dynamic>> data) {
+      String titleKey, String type, List<Map<String, dynamic>> data) {
+    final t = AppLocalizations.of(context);
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: Padding(
@@ -165,9 +174,11 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  t.translate(titleKey),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                ),
                 IconButton(
                   onPressed: () => _addCategory(type),
                   icon: const Icon(Icons.add),
@@ -201,6 +212,8 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+
     if (_loading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -208,15 +221,23 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Categorias')),
+      appBar: AppBar(
+        title: Text(t.translate('categories')), // ✅ corrigido
+      ),
       body: Padding(
         padding: const EdgeInsets.all(12),
         child: ListView(
           children: [
             _buildSection(
-                'Categorias de Despesas', 'expense', _expenseCategories),
+              'expenses',
+              'expense',
+              _expenseCategories,
+            ),
             _buildSection(
-                'Categorias de Entradas', 'entry', _entryCategories),
+              'entries',
+              'entry',
+              _entryCategories,
+            ),
           ],
         ),
       ),
