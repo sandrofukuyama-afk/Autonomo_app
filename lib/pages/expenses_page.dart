@@ -377,18 +377,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
         'mode': 'translate_category',
         'text': text,
       }),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () {
-              if (_selectedCategory != null) {
-                _showCategoryActions(_selectedCategory!);
-              }
-            },
-          ),
-        ],
-      ),
       requestHeaders: {'Content-Type': 'application/json'},
     );
 
@@ -861,10 +849,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
       ...categories.map(
         (item) => DropdownMenuItem<String>(
           value: item,
-          child: GestureDetector(
-            onLongPress: () => _showCategoryActions(item),
-            child: Text(_categoryLabel(item)),
-          ),
+          child: Text(_categoryLabel(item)),
         ),
       ),
       DropdownMenuItem<String>(
@@ -1518,20 +1503,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
                             await _handleExpenseCategorySelection(value, setStateDialog);
                           },
                         ),
-
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Text(
-                              'Toque e segure uma categoria para editar ou excluir',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-
                         if (_isCustomCategoryMode) ...[
                           const SizedBox(height: 12),
                           TextField(
