@@ -1,3 +1,4 @@
+import 'settings_categories_page.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -1321,7 +1322,24 @@ class _SettingsPageState extends State<SettingsPage> {
                   }).toList(),
                 ),
             ]),
-            const SizedBox(height: 18),
+            Card(
+  margin: const EdgeInsets.only(bottom: 12),
+  child: ListTile(
+    leading: const Icon(Icons.category_outlined),
+    title: const Text('Categorias'),
+    subtitle: const Text('Gerenciar categorias de entradas e despesas'),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const SettingsCategoriesPage(),
+        ),
+      );
+    },
+  ),
+),
+            const SizedBox(height: 18),          
             FilledButton(
               onPressed: _saving ? null : _save,
               style: FilledButton.styleFrom(
