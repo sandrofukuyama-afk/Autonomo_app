@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../l10n/app_localizations.dart';
-
+import '../data/auth_service.dart';
 class SettingsCategoriesPage extends StatefulWidget {
   const SettingsCategoriesPage({super.key});
 
@@ -25,14 +25,18 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
 
   Future<void> _loadCategories() async {
     try {
+      final companyId = await AuthService.instance.getCurrentCompanyId();
+
       final expenses = await _client
           .from('expense_categories')
           .select()
+          .eq('company_id', companyId)
           .order('created_at');
 
       final entries = await _client
           .from('entry_categories')
           .select()
+          .eq('company_id', companyId)
           .order('created_at');
 
       setState(() {
@@ -80,13 +84,24 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
               final table =
                   type == 'expense' ? 'expense_categories' : 'entry_categories';
 
-              await _client.from(table).insert({
-                'code': name.toLowerCase().replaceAll(' ', '_'),
-                'label_pt': name,
-              });
+              try {
+                final companyId = await AuthService.instance.getCurrentCompanyId();
 
-              Navigator.pop(context);
-              _loadCategories();
+                await _client.from(table).insert({
+                  'code': name.toLowerCase().replaceAll(' ', '_'),
+                  'label_pt': name,
+                  'company_id': companyId,
+                });
+
+                if (context.mounted) Navigator.pop(context);
+                _loadCategories();
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erro ao salvar: $e')),
+                  );
+                }
+              }
             },
             child: Text(t.translate('save')),
           ),
@@ -125,12 +140,20 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
 
               final lang = Localizations.localeOf(context).languageCode;
 
-              await _client.from(table).update({
-                'label_$lang': name,
-              }).eq('id', category['id']);
+              try {
+                await _client.from(table).update({
+                  'label_$lang': name,
+                }).eq('id', category['id']);
 
-              Navigator.pop(context);
-              _loadCategories();
+                if (context.mounted) Navigator.pop(context);
+                _loadCategories();
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erro ao atualizar: $e')),
+                  );
+                }
+              }
             },
             child: Text(t.translate('save')),
           ),
@@ -166,9 +189,16 @@ class _SettingsCategoriesPageState extends State<SettingsCategoriesPage> {
     final table =
         type == 'expense' ? 'expense_categories' : 'entry_categories';
 
-    await _client.from(table).delete().eq('id', category['id']);
-
-    _loadCategories();
+    try {
+      await _client.from(table).delete().eq('id', category['id']);
+      _loadCategories();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao excluir: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildSection(
