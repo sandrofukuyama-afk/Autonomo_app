@@ -525,7 +525,17 @@ class _EntriesPageState extends State<EntriesPage> {
 
     _creatingCategory = true;
     try {
-      final translations = await _translateCategoryWithAi(raw);
+      Map<String, String> translations;
+      try {
+        translations = await _translateCategoryWithAi(raw);
+      } catch (e) {
+        translations = {
+          'pt': raw,
+          'en': raw,
+          'ja': raw,
+          'es': raw,
+        };
+      }
 
       await SupabaseService.instance.createTranslatedEntryCategory(
         labelPt: translations['pt'] ?? raw,
