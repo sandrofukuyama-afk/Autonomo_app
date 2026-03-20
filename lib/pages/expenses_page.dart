@@ -894,7 +894,17 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
     _creatingCategory = true;
     try {
-      final translations = await _translateCategoryWithAi(raw);
+      Map<String, String> translations;
+      try {
+        translations = await _translateCategoryWithAi(raw);
+      } catch (e) {
+        translations = {
+          'pt': raw,
+          'en': raw,
+          'ja': raw,
+          'es': raw,
+        };
+      }
 
       await SupabaseService.instance.createTranslatedExpenseCategory(
         labelPt: translations['pt'] ?? raw,
