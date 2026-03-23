@@ -62,22 +62,11 @@ class AuthService {
     final AuthResponse response = await _client.auth.signUp(
       email: cleanEmail,
       password: cleanPassword,
-      data: {
-               'full_name': cleanFullName,
-                  'fullName': cleanFullName,
-                  'name': cleanFullName,
+      data:  {
+                  'full_name': cleanFullName,
                   'business_name': cleanBusinessName,
-                  'businessName': cleanBusinessName,
-                  'company_name': cleanBusinessName,
-                  'company': cleanBusinessName,
-                  'business': cleanBusinessName,
                   'language': 'pt',
                   'currency': 'JPY',
-                  'nome': cleanFullName,
-                  'display_name': cleanFullName,
-                  'empresa': cleanBusinessName,
-                  'nome_do_negocio': cleanBusinessName,
-                  'razao_social': cleanBusinessName,
       },
             );
     
