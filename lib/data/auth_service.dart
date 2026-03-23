@@ -1,4 +1,4 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+fimport 'package:supabase_flutter/supabase_flutter.dart';
 
 class SignUpResult {
   final bool requiresEmailConfirmation;
@@ -66,6 +66,8 @@ class AuthService {
       data: {
         'full_name': cleanFullName,
         'business_name': cleanBusinessName,
+        'company_name': cleanBusinessName,
+        'name': cleanFullName,
       },
     );
 
