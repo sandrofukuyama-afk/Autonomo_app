@@ -63,12 +63,19 @@ class AuthService {
       email: cleanEmail,
       password: cleanPassword,
       data: {
-        'full_name': cleanFullName,
-        'business_name': cleanBusinessName,
-        'company_name': cleanBusinessName,
-        'name': cleanFullName,
+               'full_name': cleanFullName,
+                  'fullName': cleanFullName,
+                  'name': cleanFullName,
+                  'business_name': cleanBusinessName,
+                  'businessName': cleanBusinessName,
+                  'company_name': cleanBusinessName,
+                  'company': cleanBusinessName,
+                  'business': cleanBusinessName,
+                  'language': 'pt',
+                  'currency': 'JPY',
       },
-    );
+            );
+    
 
     final User? user = response.user;
 
