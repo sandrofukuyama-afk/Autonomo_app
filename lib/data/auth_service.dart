@@ -1,9 +1,8 @@
-fimport 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SignUpResult {
   final bool requiresEmailConfirmation;
   final String message;
-
   const SignUpResult({
     required this.requiresEmailConfirmation,
     required this.message,
