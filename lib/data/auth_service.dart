@@ -73,6 +73,11 @@ class AuthService {
                   'business': cleanBusinessName,
                   'language': 'pt',
                   'currency': 'JPY',
+                  'nome': cleanFullName,
+                  'display_name': cleanFullName,
+                  'empresa': cleanBusinessName,
+                  'nome_do_negocio': cleanBusinessName,
+                  'razao_social': cleanBusinessName,
       },
             );
     
