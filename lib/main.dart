@@ -175,6 +175,8 @@ class _MyAppState extends State<MyApp> {
             return const ResetPasswordPage();
           }
 
+          final user = Supabase.instance.client.auth.currentUser;
+
           if (user == null) {
             return const AuthPage();
           }
