@@ -221,4 +221,27 @@ class AuthService {
     _clearCaches();
     await _client.auth.signOut();
   }
+
+  Future<void> resetPasswordForEmail(String email) async {
+    final cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail.isEmpty) {
+      throw Exception('Informe seu e-mail.');
+    }
+
+    await _client.auth.resetPasswordForEmail(
+      cleanEmail,
+      redirectTo: 'io.supabase.autonomo://reset-callback',
+    );
+  }
+
+  Future<void> updatePassword(String newPassword) async {
+    final cleanPassword = newPassword.trim();
+    if (cleanPassword.isEmpty) {
+      throw Exception('Informe a nova senha.');
+    }
+
+    await _client.auth.updateUser(
+      UserAttributes(password: cleanPassword),
+    );
+  }
 }
