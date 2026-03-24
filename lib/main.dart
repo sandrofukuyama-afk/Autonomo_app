@@ -12,6 +12,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Detecção ultra-precoce de recuperação de senha pelo URL
+  final url = Uri.base.toString();
+  if (url.contains('type=recovery') || url.contains('recovery')) {
+    AuthService.isRecoveryFromUrl = true;
+  }
+
   await Supabase.initialize(
     url: 'https://dzazwpgjncowkudkdhca.supabase.co',
     anonKey:
@@ -156,7 +162,8 @@ class _MyAppState extends State<MyApp> {
           final user = Supabase.instance.client.auth.currentUser;
           final isRecovery = Uri.base.toString().contains('type=recovery') ||
               Uri.base.toString().contains('recovery') ||
-              AuthService.instance.recoveryMode;
+              AuthService.instance.recoveryMode ||
+              AuthService.isRecoveryFromUrl;
 
           if (user == null || isRecovery) {
             return const AuthPage();

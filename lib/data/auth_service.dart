@@ -22,6 +22,8 @@ class AuthService {
     });
   }
 
+  static bool isRecoveryFromUrl = false; // Flag estática para detecção ultra-precoce
+
   static final AuthService instance = AuthService._private();
 
   final SupabaseClient _client = Supabase.instance.client;

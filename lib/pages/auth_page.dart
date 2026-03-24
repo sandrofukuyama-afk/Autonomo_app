@@ -52,7 +52,8 @@ class _AuthPageState extends State<AuthPage> {
     final hasRecovery = urlString.contains('type=recovery') || 
                        urlString.contains('recovery') ||
                        uri.fragment.contains('type=recovery') ||
-                       AuthService.instance.recoveryMode; // NOVA CHECAGEM
+                       AuthService.instance.recoveryMode ||
+                       AuthService.isRecoveryFromUrl; // NOVA CHECAGEM ESTÁTICA
 
     if (hasRecovery) {
       if (mounted) {
