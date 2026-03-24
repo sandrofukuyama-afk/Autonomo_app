@@ -11,11 +11,23 @@ class SignUpResult {
 }
 
 class AuthService {
-  AuthService._private();
+  AuthService._private() {
+    _client.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.passwordRecovery) {
+        _recoveryMode = true;
+      } else if (data.event == AuthChangeEvent.signedIn ||
+          data.event == AuthChangeEvent.signedOut) {
+        _recoveryMode = false;
+      }
+    });
+  }
 
   static final AuthService instance = AuthService._private();
 
   final SupabaseClient _client = Supabase.instance.client;
+
+  bool _recoveryMode = false;
+  bool get recoveryMode => _recoveryMode;
 
   String? _cachedCompanyId;
   String? _cachedCompanyUserId;

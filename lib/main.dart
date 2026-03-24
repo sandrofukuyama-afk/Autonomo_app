@@ -155,7 +155,8 @@ class _MyAppState extends State<MyApp> {
         builder: (context, snapshot) {
           final user = Supabase.instance.client.auth.currentUser;
           final isRecovery = Uri.base.toString().contains('type=recovery') ||
-              Uri.base.toString().contains('recovery');
+              Uri.base.toString().contains('recovery') ||
+              AuthService.instance.recoveryMode;
 
           if (user == null || isRecovery) {
             return const AuthPage();

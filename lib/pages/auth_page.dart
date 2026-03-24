@@ -51,7 +51,8 @@ class _AuthPageState extends State<AuthPage> {
     // Verifica tanto na URL completa quanto no fragmento específico
     final hasRecovery = urlString.contains('type=recovery') || 
                        urlString.contains('recovery') ||
-                       uri.fragment.contains('type=recovery');
+                       uri.fragment.contains('type=recovery') ||
+                       AuthService.instance.recoveryMode; // NOVA CHECAGEM
 
     if (hasRecovery) {
       if (mounted) {
