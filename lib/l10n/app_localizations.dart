@@ -826,6 +826,10 @@ class AppLocalizations {
     return _localizedValues[locale.languageCode]?[key] ?? key;
   }
 
+  String translateWithLocale(String key, String langCode) {
+    return _localizedValues[langCode]?[key] ?? translate(key);
+  }
+
   String translateWithParams(String key, Map<String, String> params) {
     var text = translate(key);
     params.forEach((paramKey, value) {

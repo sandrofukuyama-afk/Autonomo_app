@@ -12,13 +12,45 @@ class ResetPasswordPage extends StatefulWidget {
 class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool _loading = false;
+  late final StreamSubscription<AuthState> _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _authSubscription = AuthService.instance.authStateChanges.listen((data) {
+      if (mounted) {
+        setState(() {}); // Rebuild when session status change
+      }
+    });
+  }
+
+  // Helper to translate with priority to forced locale
+  String _t(String key, AppLocalizations l10n) {
+    if (_forcedLocale != null) {
+      return l10n.translateWithLocale(key, _forcedLocale!);
+    }
+    return l10n.translate(key);
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
     final l10n = AppLocalizations.of(context);
     final password = _passwordController.text.trim();
 
     if (password.isEmpty) {
-      _showMessage(l10n.translate('auth_fill_email_password')); // Use a generic or specific error
+      _showMessage(_t('auth_fill_email_password', l10n));
+      return;
+    }
+
+    final user = AuthService.instance.currentUser;
+    if (user == null) {
+      _showMessage('Erro: Sessão de recuperação não encontrada. Por favor, solicite um novo link.');
       return;
     }
 
@@ -26,13 +58,12 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
     try {
       await AuthService.instance.updatePassword(password);
-      _showMessage(l10n.translate('auth_password_updated'));
+      _showMessage(_t('auth_password_updated', l10n));
       
-      // Redirect back to login after success
       if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/'); 
-        // Note: Our main.dart doesn't use named routes, but home will rebuild 
-        // since we'll change state or just let the user know they can login now.
+        // Clear recovery flag and go home
+        AuthService.isRecoveryFromUrl = false;
+        Navigator.of(context).pushReplacementNamed('/');
       }
     } catch (e) {
       _showMessage(e.toString().replaceFirst('Exception: ', ''));
@@ -66,26 +97,53 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    l10n.translate('auth_new_password_title'),
+                    _t('auth_new_password_title', l10n),
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
                   ),
+                  const SizedBox(height: 8),
+                  // BANNER DE DIAGNÓSTICO
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Sessão: ${AuthService.instance.currentUser != null ? "ATIVA ✅" : "AGUARDANDO... ⏳"}',
+                          style: TextStyle(
+                            fontSize: 12, 
+                            fontWeight: FontWeight.bold,
+                            color: AuthService.instance.currentUser != null ? Colors.green : Colors.orange,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'URL: ${Uri.base.toString().substring(0, Uri.base.toString().length > 40 ? 40 : Uri.base.toString().length)}...',
+                          style: const TextStyle(fontSize: 10),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   TextField(
                     controller: _passwordController,
                     obscureText: true,
                     decoration: InputDecoration(
-                      labelText: l10n.translate('auth_new_password_label'),
+                      labelText: _t('auth_new_password_label', l10n),
                       prefixIcon: const Icon(Icons.lock_outline),
                       border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: _loading ? null : _submit,
+                    onPressed: (_loading || AuthService.instance.currentUser == null) ? null : _submit,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
@@ -95,17 +153,26 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Text(l10n.translate('auth_update_password_button')),
+                        : Text(_t('auth_update_password_button', l10n)),
                   ),
+                  if (AuthService.instance.currentUser == null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Text(
+                        'Aguardando validação do link... Isso pode levar alguns segundos.',
+                        style: TextStyle(color: Colors.orange.shade800, fontSize: 11),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {
-                      // Just go back to home if they want to cancel
-                      // In our main.dart, this means showing login page again
-                      // We can achieve this by cleared the URL or just reloading
-                      // For now, let's just use Navigator if available or instructions.
-                    },
-                    child: Text(l10n.translate('auth_back_to_login')),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _langButton('PT'),
+                      _langButton('ES'),
+                      _langButton('EN'),
+                      _langButton('JP'),
+                    ],
                   ),
                 ],
               ),
@@ -113,6 +180,27 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _langButton(String label) {
+    final Map<String, String> codes = {
+      'PT': 'pt',
+      'ES': 'es',
+      'EN': 'en',
+      'JP': 'ja',
+    };
+    return TextButton(
+      style: TextButton.styleFrom(
+        minimumSize: const Size(40, 40),
+        padding: EdgeInsets.zero,
+      ),
+      onPressed: () {
+        setState(() {
+          _forcedLocale = codes[label];
+        });
+      },
+      child: Text(label, style: const TextStyle(fontSize: 12)),
     );
   }
 }
