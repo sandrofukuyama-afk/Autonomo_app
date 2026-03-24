@@ -26,6 +26,7 @@ class _AuthPageState extends State<AuthPage> {
   @override
   void initState() {
     super.initState();
+    _checkInitialRecovery();
     _authSubscription = AuthService.instance.authStateChanges.listen((data) {
       if (data.event == AuthChangeEvent.passwordRecovery) {
         setState(() {
@@ -35,6 +36,18 @@ class _AuthPageState extends State<AuthPage> {
         });
       }
     });
+  }
+
+  void _checkInitialRecovery() {
+    // No ambiente Web, o Supabase passa os dados no fragment (#)
+    final fragment = Uri.base.toString();
+    if (fragment.contains('type=recovery') || fragment.contains('recovery')) {
+      setState(() {
+        _isRecovering = true;
+        _isLogin = false;
+        _isResetPassword = false;
+      });
+    }
   }
 
   @override
