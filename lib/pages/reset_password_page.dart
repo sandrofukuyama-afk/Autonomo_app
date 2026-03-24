@@ -25,6 +25,19 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         setState(() {}); // Rebuild when session status change
       }
     });
+
+    _attemptManualExchange();
+  }
+
+  Future<void> _attemptManualExchange() async {
+    final code = Uri.base.queryParameters['code'];
+    if (code != null && AuthService.instance.currentUser == null) {
+      try {
+        await AuthService.instance.exchangeCodeForSession(code);
+      } catch (e) {
+        debugPrint('Erro na troca manual de código: $e');
+      }
+    }
   }
 
   // Helper to translate with priority to forced locale

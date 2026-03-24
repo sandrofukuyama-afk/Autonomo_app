@@ -42,6 +42,10 @@ class AuthService {
 
   User? get currentUser => _client.auth.currentUser;
 
+  Future<void> exchangeCodeForSession(String code) async {
+    await _client.auth.exchangeCodeForSession(code);
+  }
+
   Future<void> signIn({
     required String email,
     required String password,
