@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SignUpResult {
@@ -228,9 +229,13 @@ class AuthService {
       throw Exception('Informe seu e-mail.');
     }
 
+    final String redirectTo = kIsWeb
+        ? Uri.base.origin
+        : 'io.supabase.autonomo://reset-callback';
+
     await _client.auth.resetPasswordForEmail(
       cleanEmail,
-      redirectTo: 'io.supabase.autonomo://reset-callback',
+      redirectTo: redirectTo,
     );
   }
 
