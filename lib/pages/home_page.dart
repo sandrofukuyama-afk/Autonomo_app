@@ -31,6 +31,8 @@ class _HomePageState extends State<HomePage> {
 
   bool _loading = true;
   String? _companyId;
+  String? _businessName;
+  String? _fullName;
   String? _error;
 
   int _pendingExpenseReviews = 0;
@@ -64,8 +66,10 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _initializeDashboard() async {
     try {
-      final companyId =
+      final String companyId =
           await AuthService.instance.getCurrentCompanyId(forceRefresh: true);
+      final String businessName = await AuthService.instance.getCurrentBusinessName();
+      final String fullName = await AuthService.instance.getCurrentFullName();
 
       await _loadDashboard(companyId);
       await _loadExpenseReviewCount(companyId);
@@ -77,6 +81,8 @@ class _HomePageState extends State<HomePage> {
 
       setState(() {
         _companyId = companyId;
+        _businessName = businessName;
+        _fullName = fullName;
         _loading = false;
         _error = null;
       });
@@ -853,7 +859,9 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            t.translate('financial_dashboard'),
+            (_businessName != null && _businessName!.isNotEmpty)
+                ? _businessName!
+                : t.translate('financial_dashboard'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -2348,7 +2356,11 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Autonomo App'),
+        title: Text(
+          (_businessName != null && _businessName!.isNotEmpty)
+              ? _businessName!
+              : 'Autonomo App',
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),

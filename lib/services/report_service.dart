@@ -462,7 +462,18 @@ class ReportService {
         .maybeSingle();
 
     if (data == null) return null;
-    return Map<String, dynamic>.from(data);
+    final Map<String, dynamic> settings = Map<String, dynamic>.from(data);
+
+    if (settings['full_name'] == null || settings['full_name'].toString().isEmpty) {
+      settings['full_name'] = await AuthService.instance.getCurrentFullName();
+    }
+    if (settings['display_name'] == null ||
+        settings['display_name'].toString().isEmpty) {
+      settings['display_name'] =
+          await AuthService.instance.getCurrentBusinessName();
+    }
+
+    return settings;
   }
 
   Future<List<Map<String, dynamic>>> _loadMonthlySummary(

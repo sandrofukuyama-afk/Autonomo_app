@@ -493,8 +493,20 @@ class _SettingsPageState extends State<SettingsPage> {
           .eq('company_id', companyId)
           .single();
 
-      _fullName.text = (data['full_name'] ?? '').toString();
-      _displayName.text = (data['display_name'] ?? '').toString();
+      final String fetchedFullName = (data['full_name'] ?? '').toString();
+      final String fetchedDisplayName = (data['display_name'] ?? '').toString();
+
+      if (fetchedFullName.isEmpty) {
+        _fullName.text = await AuthService.instance.getCurrentFullName();
+      } else {
+        _fullName.text = fetchedFullName;
+      }
+
+      if (fetchedDisplayName.isEmpty) {
+        _displayName.text = await AuthService.instance.getCurrentBusinessName();
+      } else {
+        _displayName.text = fetchedDisplayName;
+      }
       _phone.text = (data['phone'] ?? '').toString();
       _postalCode.text = (data['postal_code'] ?? '').toString();
       _prefecture.text = (data['prefecture'] ?? '').toString();

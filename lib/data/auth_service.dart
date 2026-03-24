@@ -20,6 +20,8 @@ class AuthService {
   String? _cachedCompanyUserId;
   String? _cachedLanguageCode;
   String? _cachedLanguageUserId;
+  String? _cachedFullName;
+  String? _cachedBusinessName;
 
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
@@ -62,13 +64,13 @@ class AuthService {
     final AuthResponse response = await _client.auth.signUp(
       email: cleanEmail,
       password: cleanPassword,
-      data:  {
-                  'full_name': cleanFullName,
-                  'business_name': cleanBusinessName,
-                  'language': 'pt',
-                  'currency': 'JPY',
+      data: {
+        'full_name': cleanFullName,
+        'business_name': cleanBusinessName,
+        'language': 'pt',
+        'currency': 'JPY',
       },
-            );
+    );
     
 
     final User? user = response.user;
@@ -115,7 +117,7 @@ class AuthService {
 
     final profile = await _client
         .from('profiles')
-        .select('id, company_id, language_code')
+        .select('id, company_id, language_code, full_name')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -123,23 +125,36 @@ class AuthService {
       throw Exception('Perfil não encontrado.');
     }
 
-    final companyId = profile['company_id'];
+    final String? companyId = profile['company_id']?.toString();
+    final String languageCode = (profile['language_code'] ?? 'pt').toString();
+    final String fullName = (profile['full_name'] ?? '').toString();
 
     if (companyId == null) {
       throw Exception('Usuário não possui empresa vinculada.');
     }
 
-    final languageCode = (profile['language_code'] ?? 'pt').toString();
+    // Fetch business name from companies table
+    final company = await _client
+        .from('companies')
+        .select('business_name')
+        .eq('id', companyId)
+        .maybeSingle();
 
-    _cachedCompanyId = companyId.toString();
+    final String businessName = (company?['business_name'] ?? '').toString();
+
+    _cachedCompanyId = companyId;
     _cachedCompanyUserId = user.id;
     _cachedLanguageCode = languageCode;
     _cachedLanguageUserId = user.id;
+    _cachedFullName = fullName;
+    _cachedBusinessName = businessName;
 
     return {
       'id': user.id,
       'company_id': _cachedCompanyId,
       'language_code': _cachedLanguageCode,
+      'full_name': _cachedFullName,
+      'business_name': _cachedBusinessName,
     };
   }
 
@@ -152,6 +167,16 @@ class AuthService {
     }
 
     return companyId.toString();
+  }
+
+  Future<String> getCurrentFullName({bool forceRefresh = false}) async {
+    final profile = await getCurrentProfile(forceRefresh: forceRefresh);
+    return (profile['full_name'] ?? '').toString();
+  }
+
+  Future<String> getCurrentBusinessName({bool forceRefresh = false}) async {
+    final profile = await getCurrentProfile(forceRefresh: forceRefresh);
+    return (profile['business_name'] ?? '').toString();
   }
 
   Future<String> getCurrentLanguageCode({bool forceRefresh = false}) async {
@@ -188,6 +213,8 @@ class AuthService {
     _cachedCompanyUserId = null;
     _cachedLanguageCode = null;
     _cachedLanguageUserId = null;
+    _cachedFullName = null;
+    _cachedBusinessName = null;
   }
 
   Future<void> signOut() async {
