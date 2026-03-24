@@ -45,23 +45,24 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context);
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     if (_isResetPassword) {
       if (email.isEmpty) {
-        _showMessage('Informe seu e-mail.');
+        _showMessage(l10n.translate('auth_fill_email'));
         return;
       }
     } else if (email.isEmpty || password.isEmpty) {
-      _showMessage('Preencha e-mail e senha.');
+      _showMessage(l10n.translate('auth_fill_email_password'));
       return;
     }
 
     if (!_isLogin && !_isResetPassword && !_isRecovering) {
       if (_fullNameController.text.trim().isEmpty ||
           _businessNameController.text.trim().isEmpty) {
-        _showMessage('Preencha nome e nome do negócio.');
+        _showMessage(l10n.translate('auth_fill_signup_fields'));
         return;
       }
     }
@@ -71,7 +72,7 @@ class _AuthPageState extends State<AuthPage> {
     try {
       if (_isRecovering) {
         await AuthService.instance.updatePassword(password);
-        _showMessage('Senha atualizada com sucesso!');
+        _showMessage(l10n.translate('auth_password_updated'));
         setState(() {
           _isRecovering = false;
           _isLogin = true;
@@ -79,7 +80,7 @@ class _AuthPageState extends State<AuthPage> {
         _passwordController.clear();
       } else if (_isResetPassword) {
         await AuthService.instance.resetPasswordForEmail(email);
-        _showMessage('E-mail de recuperação enviado!');
+        _showMessage(l10n.translate('auth_reset_email_sent'));
         setState(() {
           _isResetPassword = false;
           _isLogin = true;
@@ -125,19 +126,23 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   String _getButtonText() {
-    if (_isRecovering) return 'Atualizar senha';
-    if (_isResetPassword) return 'Enviar e-mail de recuperação';
-    return _isLogin ? 'Entrar' : 'Criar conta';
+    final l10n = AppLocalizations.of(context);
+    if (_isRecovering) return l10n.translate('auth_update_password_button');
+    if (_isResetPassword) return l10n.translate('auth_send_reset_email');
+    return _isLogin ? l10n.translate('auth_login') : l10n.translate('auth_signup');
   }
 
   String _getTitleText() {
-    if (_isRecovering) return 'Nova senha';
-    if (_isResetPassword) return 'Recuperar senha';
-    return _isLogin ? 'Entrar' : 'Criar conta';
+    final l10n = AppLocalizations.of(context);
+    if (_isRecovering) return l10n.translate('auth_new_password_title');
+    if (_isResetPassword) return l10n.translate('auth_reset_password_title');
+    return _isLogin ? l10n.translate('auth_login') : l10n.translate('auth_signup');
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -162,19 +167,19 @@ class _AuthPageState extends State<AuthPage> {
                   if (!_isLogin && !_isResetPassword && !_isRecovering) ...[
                     TextField(
                       controller: _fullNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nome completo',
-                        prefixIcon: Icon(Icons.person_outline),
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.translate('auth_full_name'),
+                        prefixIcon: const Icon(Icons.person_outline),
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _businessNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nome do negócio',
-                        prefixIcon: Icon(Icons.business_outlined),
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.translate('auth_business_name'),
+                        prefixIcon: const Icon(Icons.business_outlined),
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -183,10 +188,10 @@ class _AuthPageState extends State<AuthPage> {
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'E-mail',
-                        prefixIcon: Icon(Icons.email_outlined),
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.translate('auth_email'),
+                        prefixIcon: const Icon(Icons.email_outlined),
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -196,7 +201,9 @@ class _AuthPageState extends State<AuthPage> {
                       controller: _passwordController,
                       obscureText: true,
                       decoration: InputDecoration(
-                        labelText: _isRecovering ? 'Nova senha' : 'Senha',
+                        labelText: _isRecovering 
+                          ? l10n.translate('auth_new_password_label') 
+                          : l10n.translate('auth_password'),
                         prefixIcon: const Icon(Icons.lock_outline),
                         border: const OutlineInputBorder(),
                       ),
@@ -214,7 +221,7 @@ class _AuthPageState extends State<AuthPage> {
                                     _isLogin = false;
                                   });
                                 },
-                          child: const Text('Esqueceu a senha?'),
+                          child: Text(l10n.translate('auth_forgot_password')),
                         ),
                       ),
                   ],
@@ -255,10 +262,10 @@ class _AuthPageState extends State<AuthPage> {
                           },
                     child: Text(
                       _isResetPassword || _isRecovering
-                          ? 'Voltar para o login'
+                          ? l10n.translate('auth_back_to_login')
                           : (_isLogin
-                              ? 'Não tem uma conta? Criar conta'
-                              : 'Já tem uma conta? Entrar'),
+                              ? l10n.translate('auth_no_account')
+                              : l10n.translate('auth_already_have_account')),
                     ),
                   ),
                 ],
