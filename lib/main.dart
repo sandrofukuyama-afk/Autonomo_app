@@ -160,9 +160,14 @@ class _MyAppState extends State<MyApp> {
       home: StreamBuilder<AuthState>(
         stream: AuthService.instance.authStateChanges,
         builder: (context, snapshot) {
-          final user = Supabase.instance.client.auth.currentUser;
-          final isRecovery = Uri.base.toString().contains('type=recovery') ||
-              Uri.base.toString().contains('recovery') ||
+          final String fullUrl = Uri.base.toString();
+          final String fragment = Uri.base.fragment;
+          final String? code = Uri.base.queryParameters['code'];
+          
+          final isRecovery = fullUrl.contains('type=recovery') ||
+              fullUrl.contains('recovery') ||
+              fragment.contains('type=recovery') ||
+              code != null || // PKCE flow redirect usually has 'code'
               AuthService.instance.recoveryMode ||
               AuthService.isRecoveryFromUrl;
 

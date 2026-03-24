@@ -142,6 +142,16 @@ class _AuthPageState extends State<AuthPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // BANNER DE DEBUG TEMPORÁRIO (Remover após resolver)
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    color: Colors.yellow.shade100,
+                    child: Text(
+                      'URL Debug: ${Uri.base.toString().substring(0, Uri.base.toString().length > 60 ? 60 : Uri.base.toString().length)}...',
+                      style: const TextStyle(fontSize: 10, color: Colors.orange),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Text(
                     _getTitleText(),
                     style: const TextStyle(
