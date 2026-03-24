@@ -27,26 +27,40 @@ class _AuthPageState extends State<AuthPage> {
   void initState() {
     super.initState();
     _checkInitialRecovery();
+    // Re-checar após um curto delay para garantir que capturamos se o evento disparar tarde
+    Future.delayed(const Duration(milliseconds: 500), _checkInitialRecovery);
+    
     _authSubscription = AuthService.instance.authStateChanges.listen((data) {
       if (data.event == AuthChangeEvent.passwordRecovery) {
+        if (mounted) {
+          setState(() {
+            _isRecovering = true;
+            _isLogin = false;
+            _isResetPassword = false;
+          });
+        }
+      }
+    });
+  }
+
+  void _checkInitialRecovery() {
+    // No ambiente Web, o Supabase passa os dados no fragment (#) ou query
+    final uri = Uri.base;
+    final urlString = uri.toString();
+    
+    // Verifica tanto na URL completa quanto no fragmento específico
+    final hasRecovery = urlString.contains('type=recovery') || 
+                       urlString.contains('recovery') ||
+                       uri.fragment.contains('type=recovery');
+
+    if (hasRecovery) {
+      if (mounted) {
         setState(() {
           _isRecovering = true;
           _isLogin = false;
           _isResetPassword = false;
         });
       }
-    });
-  }
-
-  void _checkInitialRecovery() {
-    // No ambiente Web, o Supabase passa os dados no fragment (#)
-    final fragment = Uri.base.toString();
-    if (fragment.contains('type=recovery') || fragment.contains('recovery')) {
-      setState(() {
-        _isRecovering = true;
-        _isLogin = false;
-        _isResetPassword = false;
-      });
     }
   }
 
