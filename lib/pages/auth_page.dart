@@ -19,51 +19,16 @@ class _AuthPageState extends State<AuthPage> {
 
   bool _isLogin = true;
   bool _isResetPassword = false;
-  bool _isRecovering = false;
   bool _loading = false;
   StreamSubscription<AuthState>? _authSubscription;
 
   @override
   void initState() {
     super.initState();
-    _checkInitialRecovery();
-    // Re-checar após um curto delay para garantir que capturamos se o evento disparar tarde
-    Future.delayed(const Duration(milliseconds: 500), _checkInitialRecovery);
-    
     _authSubscription = AuthService.instance.authStateChanges.listen((data) {
-      if (data.event == AuthChangeEvent.passwordRecovery) {
-        if (mounted) {
-          setState(() {
-            _isRecovering = true;
-            _isLogin = false;
-            _isResetPassword = false;
-          });
-        }
-      }
+      // The recovery flow is now handled by ResetPasswordPage via main.dart routing.
+      // We keep the listener for other potential auth events if needed.
     });
-  }
-
-  void _checkInitialRecovery() {
-    // No ambiente Web, o Supabase passa os dados no fragment (#) ou query
-    final uri = Uri.base;
-    final urlString = uri.toString();
-    
-    // Verifica tanto na URL completa quanto no fragmento específico
-    final hasRecovery = urlString.contains('type=recovery') || 
-                       urlString.contains('recovery') ||
-                       uri.fragment.contains('type=recovery') ||
-                       AuthService.instance.recoveryMode ||
-                       AuthService.isRecoveryFromUrl; // NOVA CHECAGEM ESTÁTICA
-
-    if (hasRecovery) {
-      if (mounted) {
-        setState(() {
-          _isRecovering = true;
-          _isLogin = false;
-          _isResetPassword = false;
-        });
-      }
-    }
   }
 
   @override
@@ -91,7 +56,7 @@ class _AuthPageState extends State<AuthPage> {
       return;
     }
 
-    if (!_isLogin && !_isResetPassword && !_isRecovering) {
+    if (!_isLogin && !_isResetPassword) {
       if (_fullNameController.text.trim().isEmpty ||
           _businessNameController.text.trim().isEmpty) {
         _showMessage(l10n.translate('auth_fill_signup_fields'));
@@ -102,15 +67,7 @@ class _AuthPageState extends State<AuthPage> {
     setState(() => _loading = true);
 
     try {
-      if (_isRecovering) {
-        await AuthService.instance.updatePassword(password);
-        _showMessage(l10n.translate('auth_password_updated'));
-        setState(() {
-          _isRecovering = false;
-          _isLogin = true;
-        });
-        _passwordController.clear();
-      } else if (_isResetPassword) {
+      if (_isResetPassword) {
         await AuthService.instance.resetPasswordForEmail(email);
         _showMessage(l10n.translate('auth_reset_email_sent'));
         setState(() {
@@ -159,14 +116,12 @@ class _AuthPageState extends State<AuthPage> {
 
   String _getButtonText() {
     final l10n = AppLocalizations.of(context);
-    if (_isRecovering) return l10n.translate('auth_update_password_button');
     if (_isResetPassword) return l10n.translate('auth_send_reset_email');
     return _isLogin ? l10n.translate('auth_login') : l10n.translate('auth_signup');
   }
 
   String _getTitleText() {
     final l10n = AppLocalizations.of(context);
-    if (_isRecovering) return l10n.translate('auth_new_password_title');
     if (_isResetPassword) return l10n.translate('auth_reset_password_title');
     return _isLogin ? l10n.translate('auth_login') : l10n.translate('auth_signup');
   }
@@ -196,7 +151,7 @@ class _AuthPageState extends State<AuthPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
-                  if (!_isLogin && !_isResetPassword && !_isRecovering) ...[
+                  if (!_isLogin && !_isResetPassword) ...[
                     TextField(
                       controller: _fullNameController,
                       decoration: InputDecoration(
@@ -216,7 +171,7 @@ class _AuthPageState extends State<AuthPage> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  if (!_isRecovering) ...[
+                  if (true) ...[ // Always show email except in recovery (handled by another page)
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -233,15 +188,13 @@ class _AuthPageState extends State<AuthPage> {
                       controller: _passwordController,
                       obscureText: true,
                       decoration: InputDecoration(
-                        labelText: _isRecovering 
-                          ? l10n.translate('auth_new_password_label') 
-                          : l10n.translate('auth_password'),
+                        labelText: l10n.translate('auth_password'),
                         prefixIcon: const Icon(Icons.lock_outline),
                         border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    if (_isLogin && !_isRecovering)
+                    if (_isLogin)
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
@@ -283,9 +236,8 @@ class _AuthPageState extends State<AuthPage> {
                         ? null
                         : () {
                             setState(() {
-                              if (_isResetPassword || _isRecovering) {
+                              if (_isResetPassword) {
                                 _isResetPassword = false;
-                                _isRecovering = false;
                                 _isLogin = true;
                               } else {
                                 _isLogin = !_isLogin;
@@ -293,7 +245,7 @@ class _AuthPageState extends State<AuthPage> {
                             });
                           },
                     child: Text(
-                      _isResetPassword || _isRecovering
+                      _isResetPassword
                           ? l10n.translate('auth_back_to_login')
                           : (_isLogin
                               ? l10n.translate('auth_no_account')

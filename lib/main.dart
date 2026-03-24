@@ -4,6 +4,7 @@ import 'package:autonomo_app/data/auth_service.dart';
 import 'package:autonomo_app/l10n/app_localizations.dart';
 import 'package:autonomo_app/pages/auth_page.dart';
 import 'package:autonomo_app/pages/home_page.dart';
+import 'package:autonomo_app/pages/reset_password_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -165,7 +166,11 @@ class _MyAppState extends State<MyApp> {
               AuthService.instance.recoveryMode ||
               AuthService.isRecoveryFromUrl;
 
-          if (user == null || isRecovery) {
+          if (isRecovery) {
+            return const ResetPasswordPage();
+          }
+
+          if (user == null) {
             return const AuthPage();
           }
 
