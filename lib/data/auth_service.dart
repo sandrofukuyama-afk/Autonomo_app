@@ -46,6 +46,10 @@ class AuthService {
     await _client.auth.exchangeCodeForSession(code);
   }
 
+  void clearRecoveryMode() {
+    _recoveryMode = false;
+  }
+
   Future<void> signIn({
     required String email,
     required String password,
@@ -248,7 +252,7 @@ class AuthService {
     }
 
     final String redirectTo = kIsWeb
-        ? Uri.base.origin
+        ? '${Uri.base.origin}/?type=recovery'
         : 'io.supabase.autonomo://reset-callback';
 
     await _client.auth.resetPasswordForEmail(
