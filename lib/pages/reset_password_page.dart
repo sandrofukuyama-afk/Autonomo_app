@@ -16,6 +16,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool _loading = false;
   String? _forcedLocale;
+  String? _exchangeError;
   late final StreamSubscription<AuthState> _authSubscription;
 
   @override
@@ -33,11 +34,13 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   Future<void> _attemptManualExchange() async {
     final code = Uri.base.queryParameters['code'];
     if (code != null && AuthService.instance.currentUser == null) {
+      setState(() => _exchangeError = null);
       try {
         await AuthService.instance.exchangeCodeForSession(code);
       } catch (e) {
         if (mounted) {
-          _showMessage(e.toString().replaceFirst('Exception: ', ''));
+          setState(() => _exchangeError = e.toString().replaceFirst('Exception: ', ''));
+          _showMessage(_exchangeError!);
         }
       }
     }
@@ -124,6 +127,59 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  // DIAGNOSTIC BANNER
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Sessão: ${AuthService.instance.currentUser != null ? "ATIVA ✅" : "AGUARDANDO... ⏳"}',
+                          style: TextStyle(
+                            fontSize: 12, 
+                            fontWeight: FontWeight.bold,
+                            color: AuthService.instance.currentUser != null ? Colors.green : Colors.orange,
+                          ),
+                        ),
+                        if (_exchangeError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Column(
+                              children: [
+                                Text(
+                                  _exchangeError!.toLowerCase().contains('code verifier') 
+                                    ? 'Erro: O link expirou ou foi aberto em outra aba/navegador.' 
+                                    : 'Erro: $_exchangeError',
+                                  style: const TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 4),
+                                if (_exchangeError!.contains('Code verifier'))
+                                  const Text(
+                                    'Por favor, solicite um novo link de recuperação na página de login.',
+                                    style: TextStyle(fontSize: 9, color: Colors.red),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                TextButton(
+                                  onPressed: _attemptManualExchange,
+                                  child: const Text('Tentar validar novamente', style: TextStyle(fontSize: 10)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'URL: ${Uri.base.toString().substring(0, Uri.base.toString().length > 40 ? 40 : Uri.base.toString().length)}...',
+                          style: const TextStyle(fontSize: 10),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 24),
                   TextField(
