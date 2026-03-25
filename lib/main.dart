@@ -23,7 +23,9 @@ Future<void> main() async {
           url: 'https://dzazwpgjncowkudkdhca.supabase.co',
           anonKey:
               'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6YXp3cGdqbmNvd2t1ZGtkaGNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MDIyODAsImV4cCI6MjA4ODM3ODI4MH0.mQBxjBlgPQpxb5-QyFNhgitM_WOnWlkEzFStYZPr5Pk',
-          authFlowType: AuthFlowType.pkce,
+          authOptions: const FlutterAuthClientOptions(
+            authFlowType: AuthFlowType.pkce,
+          ),
         );
 
     runApp(const MyApp());
@@ -166,7 +168,7 @@ class _MyAppState extends State<MyApp> {
                                         final String? code = Uri.base.queryParameters['code'];
                                         final String? error = Uri.base.queryParameters['error'];
 
-                                        final user = snapshot.data?.user ?? AuthService.instance.currentUser;
+                                        final user = snapshot.data?.session?.user ?? AuthService.instance.currentUser;
                                         final recoveryMode = AuthService.instance.recoveryMode || AuthService.isRecoveryFromUrl;
 
                                         final isRecovery = (fullUrl.contains('type=recovery') ||
