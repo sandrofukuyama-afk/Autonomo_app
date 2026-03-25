@@ -5,7 +5,8 @@ import '../data/auth_service.dart';
 import '../l10n/app_localizations.dart';
 
 class ResetPasswordPage extends StatefulWidget {
-  const ResetPasswordPage({super.key});
+  final Function(Locale)? onLocaleChanged;
+  const ResetPasswordPage({super.key, this.onLocaleChanged});
 
   @override
   State<ResetPasswordPage> createState() => _ResetPasswordPageState();
@@ -189,9 +190,13 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         padding: EdgeInsets.zero,
       ),
       onPressed: () {
-        setState(() {
-          _forcedLocale = codes[label];
-        });
+        if (widget.onLocaleChanged != null) {
+          widget.onLocaleChanged!(Locale(codes[label]!));
+        } else {
+          setState(() {
+            _forcedLocale = codes[label];
+          });
+        }
       },
       child: Text(label, style: const TextStyle(fontSize: 12)),
     );

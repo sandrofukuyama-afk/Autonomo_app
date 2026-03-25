@@ -5,7 +5,8 @@ import '../data/auth_service.dart';
 import '../l10n/app_localizations.dart';
 
 class AuthPage extends StatefulWidget {
-  const AuthPage({super.key});
+  final Function(Locale)? onLocaleChanged;
+  const AuthPage({super.key, this.onLocaleChanged});
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -20,15 +21,34 @@ class _AuthPageState extends State<AuthPage> {
   bool _isLogin = true;
   bool _isResetPassword = false;
   bool _loading = false;
+  String? _urlErrorMessage;
   StreamSubscription<AuthState>? _authSubscription;
 
   @override
   void initState() {
     super.initState();
+    _checkUrlErrors();
     _authSubscription = AuthService.instance.authStateChanges.listen((data) {
       // The recovery flow is now handled by ResetPasswordPage via main.dart routing.
       // We keep the listener for other potential auth events if needed.
     });
+  }
+
+  void _checkUrlErrors() {
+    final error = Uri.base.queryParameters['error'];
+    final errorDescription = Uri.base.queryParameters['error_description']?.toLowerCase() ?? '';
+    
+    if (error != null) {
+      if (error == 'access_denied') {
+        if (errorDescription.contains('expired')) {
+          _urlErrorMessage = 'auth_error_link_expired';
+        } else {
+          _urlErrorMessage = 'auth_error_access_denied';
+        }
+      } else {
+        _urlErrorMessage = 'auth_error_invalid_link';
+      }
+    }
   }
 
   @override
@@ -142,6 +162,45 @@ class _AuthPageState extends State<AuthPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                   // Improved error display
+                  if (_urlErrorMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade100),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              l10n.translate(_urlErrorMessage!),
+                              style: TextStyle(color: Colors.red.shade900, fontSize: 13),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 16),
+                            onPressed: () => setState(() => _urlErrorMessage = null),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ] else if (Uri.base.queryParameters.containsKey('error')) ...[
+                    // Temporary debug banner only if NOT handled by our specific translations
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      color: Colors.yellow.shade100,
+                      child: Text(
+                        'URL Debug: ${Uri.base.toString().substring(0, Uri.base.toString().length > 60 ? 60 : Uri.base.toString().length)}...',
+                        style: const TextStyle(fontSize: 10, color: Colors.orange),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   Text(
                     _getTitleText(),
                     style: const TextStyle(
@@ -252,12 +311,34 @@ class _AuthPageState extends State<AuthPage> {
                               : l10n.translate('auth_already_have_account')),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  if (widget.onLocaleChanged != null)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _langButton('PT', const Locale('pt')),
+                        _langButton('ES', const Locale('es')),
+                        _langButton('EN', const Locale('en')),
+                        _langButton('JP', const Locale('ja')),
+                      ],
+                    ),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _langButton(String label, Locale locale) {
+    return TextButton(
+      style: TextButton.styleFrom(
+        minimumSize: const Size(40, 40),
+        padding: EdgeInsets.zero,
+      ),
+      onPressed: () => widget.onLocaleChanged!(locale),
+      child: Text(label, style: const TextStyle(fontSize: 12)),
     );
   }
 }

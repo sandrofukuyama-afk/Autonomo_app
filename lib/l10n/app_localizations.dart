@@ -209,6 +209,9 @@ class AppLocalizations {
       'auth_fill_email': 'Informe seu e-mail.',
       'auth_fill_email_password': 'Preencha e-mail e senha.',
       'auth_fill_signup_fields': 'Preencha nome e nome do negócio.',
+      'auth_error_access_denied': 'Acesso negado. O link pode ser inválido.',
+      'auth_error_link_expired': 'O link de recuperação expirou. Solicite um novo.',
+      'auth_error_invalid_link': 'Link inválido ou já utilizado.',
     },
     'en': {
       'description': 'Description',
@@ -414,6 +417,9 @@ class AppLocalizations {
       'auth_fill_email': 'Please enter your email.',
       'auth_fill_email_password': 'Please fill in email and password.',
       'auth_fill_signup_fields': 'Please fill in name and business name.',
+      'auth_error_access_denied': 'Access denied. The link may be invalid.',
+      'auth_error_link_expired': 'The recovery link has expired. Please request a new one.',
+      'auth_error_invalid_link': 'Invalid or already used link.',
     },
     'ja': {
       'description': '説明',
@@ -614,6 +620,9 @@ class AppLocalizations {
       'auth_fill_email': 'メールアドレスを入力してください。',
       'auth_fill_email_password': 'メールアドレスとパスワードを入力してください。',
       'auth_fill_signup_fields': '氏名と屋号を入力してください。',
+      'auth_error_access_denied': 'アクセスが拒idoされました。リンクが無効な可能性があります。',
+      'auth_error_link_expired': '再設定リンクの期限が切れました。新しくリクエストしてください。',
+      'auth_error_invalid_link': 'リンクが無効か、すでに使用されています。',
     },
     'es': {
       'description': 'Descripción',
@@ -817,8 +826,11 @@ class AppLocalizations {
       'auth_reset_email_sent': '¡Correo de recuperación enviado!',
       'auth_password_updated': '¡Contraseña actualizada con éxito!',
       'auth_fill_email': 'Ingrese su correo electrónico.',
-      'auth_fill_email_password': 'Complete correo y contraseña.',
-      'auth_fill_signup_fields': 'Complete nombre y nombre del negocio.',
+      'auth_fill_email_password': 'Por favor complete el email y la contraseña.',
+      'auth_fill_signup_fields': 'Por favor complete el nombre y el nombre del negocio.',
+      'auth_error_access_denied': 'Acceso denegado. El enlace puede ser inválido.',
+      'auth_error_link_expired': 'El enlace de recuperación ha expirado. Solicite uno nuevo.',
+      'auth_error_invalid_link': 'Enlace inválido o ya utilizado.',
     },
   };
 

@@ -164,6 +164,7 @@ class _MyAppState extends State<MyApp> {
                                         final String fullUrl = Uri.base.toString();
                                         final String fragment = Uri.base.fragment;
                                         final String? code = Uri.base.queryParameters['code'];
+                                        final String? error = Uri.base.queryParameters['error'];
 
                                         final user = snapshot.data?.user ?? AuthService.instance.currentUser;
                                         final recoveryMode = AuthService.instance.recoveryMode || AuthService.isRecoveryFromUrl;
@@ -172,14 +173,15 @@ class _MyAppState extends State<MyApp> {
                                                                               fullUrl.contains('recovery') ||
                                                                               fragment.contains('type=recovery') ||
                                                                               code != null) &&
+                                                        error == null &&
                                                         (user == null || recoveryMode);
 
                                         if (isRecovery) {
-                                                      return const ResetPasswordPage();
+                                                      return ResetPasswordPage(onLocaleChanged: _setLocale);
                                         }
 
                                         if (user == null) {
-                                                      return const AuthPage();
+                                                      return AuthPage(onLocaleChanged: _setLocale);
                                         }
 
                                         return HomePage(
