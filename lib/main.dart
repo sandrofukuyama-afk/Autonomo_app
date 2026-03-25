@@ -11,182 +11,183 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // Detecção ultra-precoce de recuperação de senha pelo URL
-  final url = Uri.base.toString();
-  if (url.contains('type=recovery') || url.contains('recovery')) {
-    AuthService.isRecoveryFromUrl = true;
-  }
+    // Deteccao ultra-precoce de recuperacao de senha pelo URL
+    final url = Uri.base.toString();
+    if (url.contains('type=recovery') || url.contains('recovery')) {
+          AuthService.isRecoveryFromUrl = true;
+    }
 
-  await Supabase.initialize(
-    url: 'https://dzazwpgjncowkudkdhca.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6YXp3cGdqbmNvd2t1ZGtkaGNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MDIyODAsImV4cCI6MjA4ODM3ODI4MH0.mQBxjBlgPQpxb5-QyFNhgitM_WOnWlkEzFStYZPr5Pk',
-  );
+    await Supabase.initialize(
+          url: 'https://dzazwpgjncowkudkdhca.supabase.co',
+          anonKey:
+              'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6YXp3cGdqbmNvd2t1ZGtkaGNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MDIyODAsImV4cCI6MjA4ODM3ODI4MH0.mQBxjBlgPQpxb5-QyFNhgitM_WOnWlkEzFStYZPr5Pk',
+          authFlowType: AuthFlowType.pkce,
+        );
 
-  runApp(const MyApp());
+    runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+    const MyApp({super.key});
 
-  @override
-  State<MyApp> createState() => _MyAppState();
+    @override
+    State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
-  static const String _localeStorageKey = 'app_locale';
+    static const String _localeStorageKey = 'app_locale';
 
-  Locale? _locale;
-  bool _localeReady = false;
-  StreamSubscription<AuthState>? _authSubscription;
+    Locale? _locale;
+    bool _localeReady = false;
+    StreamSubscription<AuthState>? _authSubscription;
 
-  static const List<String> _allowedLanguageCodes = ['pt', 'es', 'en', 'ja'];
+    static const List<String> _allowedLanguageCodes = ['pt', 'es', 'en', 'ja'];
 
-  @override
-  void initState() {
-    super.initState();
-    _initializeLocale();
-    _listenToAuthChanges();
-  }
-
-  @override
-  void dispose() {
-    _authSubscription?.cancel();
-    super.dispose();
-  }
-
-  void _listenToAuthChanges() {
-    _authSubscription = AuthService.instance.authStateChanges.listen((_) async {
-      await _syncLocaleFromUserProfile();
-    });
-  }
-
-  Future<void> _initializeLocale() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedCode = prefs.getString(_localeStorageKey);
-
-    Locale? initialLocale;
-    if (savedCode != null &&
-        savedCode.isNotEmpty &&
-        _allowedLanguageCodes.contains(savedCode)) {
-      initialLocale = Locale(savedCode);
+    @override
+    void initState() {
+          super.initState();
+          _initializeLocale();
+          _listenToAuthChanges();
     }
 
-    if (!mounted) return;
-
-    setState(() {
-      _locale = initialLocale;
-      _localeReady = true;
-    });
-
-    await _syncLocaleFromUserProfile();
-  }
-
-  Future<void> _syncLocaleFromUserProfile() async {
-    final user = AuthService.instance.currentUser;
-    if (user == null) return;
-
-    try {
-      final languageCode =
-          await AuthService.instance.getCurrentLanguageCode(forceRefresh: true);
-
-      if (!_allowedLanguageCodes.contains(languageCode)) return;
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_localeStorageKey, languageCode);
-
-      if (!mounted) return;
-
-      setState(() {
-        _locale = Locale(languageCode);
-      });
-    } catch (_) {}
-  }
-
-  Future<void> _setLocale(Locale locale) async {
-    if (!_allowedLanguageCodes.contains(locale.languageCode)) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_localeStorageKey, locale.languageCode);
-
-    if (AuthService.instance.currentUser != null) {
-      try {
-        await AuthService.instance.updateCurrentLanguageCode(
-          locale.languageCode,
-        );
-      } catch (_) {}
+    @override
+    void dispose() {
+          _authSubscription?.cancel();
+          super.dispose();
     }
 
-    if (!mounted) return;
-
-    setState(() {
-      _locale = locale;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_localeReady) {
-      return const MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
-      );
+    void _listenToAuthChanges() {
+          _authSubscription = AuthService.instance.authStateChanges.listen((_) async {
+                  await _syncLocaleFromUserProfile();
+          });
     }
 
-    return MaterialApp(
-      title: 'Autonomo App',
-      debugShowCheckedModeBanner: false,
-      locale: _locale,
-      supportedLocales: const [
-        Locale('pt'),
-        Locale('en'),
-        Locale('ja'),
-        Locale('es'),
-      ],
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-      ),
-      home: StreamBuilder<AuthState>(
-        stream: AuthService.instance.authStateChanges,
-        builder: (context, snapshot) {
-          final String fullUrl = Uri.base.toString();
-          final String fragment = Uri.base.fragment;
-          final String? code = Uri.base.queryParameters['code'];
-          
-          final isRecovery = fullUrl.contains('type=recovery') ||
-              fullUrl.contains('recovery') ||
-              fragment.contains('type=recovery') ||
-              code != null || // PKCE flow redirect usually has 'code'
-              AuthService.instance.recoveryMode ||
-              AuthService.isRecoveryFromUrl;
+    Future<void> _initializeLocale() async {
+          final prefs = await SharedPreferences.getInstance();
+          final savedCode = prefs.getString(_localeStorageKey);
 
-          if (isRecovery) {
-            return const ResetPasswordPage();
+          Locale? initialLocale;
+          if (savedCode != null &&
+                      savedCode.isNotEmpty &&
+                      _allowedLanguageCodes.contains(savedCode)) {
+                  initialLocale = Locale(savedCode);
           }
 
-          final user = Supabase.instance.client.auth.currentUser;
+          if (!mounted) return;
 
-          if (user == null) {
-            return const AuthPage();
+          setState(() {
+                  _locale = initialLocale;
+                  _localeReady = true;
+          });
+
+          await _syncLocaleFromUserProfile();
+    }
+
+    Future<void> _syncLocaleFromUserProfile() async {
+          final user = AuthService.instance.currentUser;
+          if (user == null) return;
+
+          try {
+                  final languageCode =
+                              await AuthService.instance.getCurrentLanguageCode(forceRefresh: true);
+
+                  if (!_allowedLanguageCodes.contains(languageCode)) return;
+
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString(_localeStorageKey, languageCode);
+
+                  if (!mounted) return;
+
+                  setState(() {
+                            _locale = Locale(languageCode);
+                  });
+          } catch (_) {}
+    }
+
+    Future<void> _setLocale(Locale locale) async {
+          if (!_allowedLanguageCodes.contains(locale.languageCode)) return;
+
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_localeStorageKey, locale.languageCode);
+
+          if (AuthService.instance.currentUser != null) {
+                  try {
+                            await AuthService.instance.updateCurrentLanguageCode(
+                                        locale.languageCode,
+                                      );
+                  } catch (_) {}
           }
 
-          return HomePage(
-            currentLocale: _locale,
-            onLocaleChanged: _setLocale,
-          );
-        },
-      ),
-    );
-  }
+          if (!mounted) return;
+
+          setState(() {
+                  _locale = locale;
+          });
+    }
+
+    @override
+    Widget build(BuildContext context) {
+          if (!_localeReady) {
+                  return const MaterialApp(
+                            debugShowCheckedModeBanner: false,
+                            home: Scaffold(
+                                        body: Center(child: CircularProgressIndicator()),
+                                      ),
+                          );
+          }
+
+          return MaterialApp(
+                  title: 'Autonomo App',
+                  debugShowCheckedModeBanner: false,
+                  locale: _locale,
+                  supportedLocales: const [
+                            Locale('pt'),
+                            Locale('en'),
+                            Locale('ja'),
+                            Locale('es'),
+                          ],
+                  localizationsDelegates: const [
+                            AppLocalizations.delegate,
+                            GlobalMaterialLocalizations.delegate,
+                            GlobalWidgetsLocalizations.delegate,
+                            GlobalCupertinoLocalizations.delegate,
+                          ],
+                  theme: ThemeData(
+                            useMaterial3: true,
+                            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+                          ),
+                  home: StreamBuilder<AuthState>(
+                            stream: AuthService.instance.authStateChanges,
+                            builder: (context, snapshot) {
+                                        final String fullUrl = Uri.base.toString();
+                                        final String fragment = Uri.base.fragment;
+                                        final String? code = Uri.base.queryParameters['code'];
+
+                                        final user = snapshot.data?.user ?? AuthService.instance.currentUser;
+                                        final recoveryMode = AuthService.instance.recoveryMode || AuthService.isRecoveryFromUrl;
+
+                                        final isRecovery = (fullUrl.contains('type=recovery') ||
+                                                                              fullUrl.contains('recovery') ||
+                                                                              fragment.contains('type=recovery') ||
+                                                                              code != null) &&
+                                                        (user == null || recoveryMode);
+
+                                        if (isRecovery) {
+                                                      return const ResetPasswordPage();
+                                        }
+
+                                        if (user == null) {
+                                                      return const AuthPage();
+                                        }
+
+                                        return HomePage(
+                                                      currentLocale: _locale,
+                                                      onLocaleChanged: _setLocale,
+                                                    );
+                            },
+                          ),
+                );
+    }
 }
