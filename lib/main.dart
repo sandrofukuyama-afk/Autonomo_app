@@ -174,10 +174,10 @@ class _MyAppState extends State<MyApp> {
                                         final isRecovery = (fullUrl.contains('type=recovery') ||
                                                                               fullUrl.contains('recovery') ||
                                                                               fragment.contains('type=recovery') ||
-                                                                              code != null) &&
+                                                                              code != null ||
+                                                                              recoveryMode) &&
                                                         error == null &&
-                                                        !AuthService.instance.hasCompletedRecovery &&
-                                                        (user == null || recoveryMode);
+                                                        !AuthService.instance.hasCompletedRecovery;
 
                                         if (isRecovery) {
                                                       return ResetPasswordPage(onLocaleChanged: _setLocale);
