@@ -176,6 +176,7 @@ class _MyAppState extends State<MyApp> {
                                                                               fragment.contains('type=recovery') ||
                                                                               code != null) &&
                                                         error == null &&
+                                                        !AuthService.instance.hasCompletedRecovery &&
                                                         (user == null || recoveryMode);
 
                                         if (isRecovery) {

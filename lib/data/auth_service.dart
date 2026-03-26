@@ -15,12 +15,14 @@ class AuthService {
     _client.auth.onAuthStateChange.listen((data) {
       if (data.event == AuthChangeEvent.passwordRecovery) {
         _recoveryMode = true;
-      } else if (data.event == AuthChangeEvent.signedIn ||
-          data.event == AuthChangeEvent.signedOut) {
+        hasCompletedRecovery = false;
+      } else if (data.event == AuthChangeEvent.signedOut) {
         _recoveryMode = false;
       }
     });
   }
+
+  bool hasCompletedRecovery = false;
 
   static bool isRecoveryFromUrl = false; // Flag estática para detecção ultra-precoce
 
@@ -48,6 +50,7 @@ class AuthService {
 
   void clearRecoveryMode() {
     _recoveryMode = false;
+    hasCompletedRecovery = true;
   }
 
   Future<void> signIn({
