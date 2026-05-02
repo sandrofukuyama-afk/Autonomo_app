@@ -55,9 +55,8 @@ type MonthlySummary = {
   profit: number;
 };
 
-const SUPABASE_URL = 'https://dzazwpgjncowkudkdhca.supabase.co';
-const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6YXp3cGdqbmNvd2t1ZGtkaGNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MDIyODAsImV4cCI6MjA4ODM3ODI4MH0.mQBxjBlgPQpxb5-QyFNhgitM_WOnWlkEzFStYZPr5Pk';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://dzazwpgjncowkudkdhca.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 
 const A4 = { width: 595.28, height: 841.89 };
 const PAGE_MARGIN = 40;
