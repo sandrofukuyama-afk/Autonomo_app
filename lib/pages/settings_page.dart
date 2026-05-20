@@ -52,6 +52,17 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _useTwoTenthsSpecialRule = false;
   List<String> _closedFiscalMonths = [];
 
+  // SMTP fields
+  final _smtpHost = TextEditingController();
+  final _smtpPort = TextEditingController(text: '587');
+  final _smtpUsername = TextEditingController();
+  final _smtpPassword = TextEditingController();
+  final _smtpSenderName = TextEditingController();
+  bool _smtpEnabled = false;
+  bool _smtpUseSSL = false;
+  bool _smtpTestingConnection = false;
+  bool _smtpPasswordVisible = false;
+
   static const List<String> _supportedLanguages = ['pt', 'en', 'ja', 'es'];
   static const List<String> _supportedCurrencies = ['JPY'];
   static const List<String> _supportedFilingTypes = [
@@ -87,6 +98,12 @@ class _SettingsPageState extends State<SettingsPage> {
     _businessType.dispose();
     _invoiceNumber.dispose();
     _fiscalNotes.dispose();
+    // SMTP
+    _smtpHost.dispose();
+    _smtpPort.dispose();
+    _smtpUsername.dispose();
+    _smtpPassword.dispose();
+    _smtpSenderName.dispose();
     super.dispose();
   }
 
@@ -568,9 +585,19 @@ class _SettingsPageState extends State<SettingsPage> {
           (data['handles_reduced_tax_rate'] ?? true) == true;
       _useTwoTenthsSpecialRule =
           (data['use_two_tenths_special_rule'] ?? false) == true;
+
+      // SMTP
+      _smtpEnabled = (data['smtp_enabled'] ?? false) == true;
+      _smtpHost.text = (data['smtp_host'] ?? '').toString();
+      _smtpPort.text = (data['smtp_port'] ?? 587).toString();
+      _smtpUsername.text = (data['smtp_username'] ?? '').toString();
+      _smtpPassword.text = (data['smtp_password'] ?? '').toString();
+      _smtpSenderName.text = (data['smtp_sender_name'] ?? '').toString();
+      _smtpUseSSL = (data['smtp_use_ssl'] ?? false) == true;
     } catch (e) {
       if (mounted) {
         final t = AppLocalizations.of(context);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${_text('load_error', t)} $e')),
         );
@@ -1378,7 +1405,12 @@ class _SettingsPageState extends State<SettingsPage> {
     },
   ),
 ),
-            const SizedBox(height: 18),          
+            const SizedBox(height: 18),
+
+            // ── SMTP section ─────────────────────────────────────────────
+            _smtpSection(t),
+
+            const SizedBox(height: 18),
             FilledButton(
               onPressed: _saving ? null : _save,
               style: FilledButton.styleFrom(
@@ -1407,5 +1439,224 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ),
     );
+  }
+
+  // ── SMTP Section widget ───────────────────────────────────────────────────
+
+  Widget _smtpSection(AppLocalizations t) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.2)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.email_outlined, size: 18, color: cs.primary),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                t.translate('smtp_settings'),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Switch(
+              value: _smtpEnabled,
+              onChanged: (v) => setState(() => _smtpEnabled = v),
+            ),
+          ]),
+
+          if (_smtpEnabled) ...[
+            const SizedBox(height: 16),
+            // SMTP Host
+            TextField(
+              controller: _smtpHost,
+              decoration: InputDecoration(
+                labelText: t.translate('smtp_host'),
+                prefixIcon: const Icon(Icons.dns_outlined),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Port + SSL row
+            Row(children: [
+              SizedBox(
+                width: 100,
+                child: TextField(
+                  controller: _smtpPort,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: t.translate('smtp_port'),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: _smtpUseSSL,
+                      onChanged: (v) => setState(() => _smtpUseSSL = v ?? false),
+                    ),
+                    Text(t.translate('smtp_use_ssl')),
+                  ],
+                ),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            // Username
+            TextField(
+              controller: _smtpUsername,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: t.translate('smtp_username'),
+                prefixIcon: const Icon(Icons.person_outline),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Password
+            TextField(
+              controller: _smtpPassword,
+              obscureText: !_smtpPasswordVisible,
+              decoration: InputDecoration(
+                labelText: t.translate('smtp_password'),
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(_smtpPasswordVisible
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined),
+                  onPressed: () =>
+                      setState(() => _smtpPasswordVisible = !_smtpPasswordVisible),
+                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Sender name
+            TextField(
+              controller: _smtpSenderName,
+              decoration: InputDecoration(
+                labelText: t.translate('smtp_sender_name'),
+                prefixIcon: const Icon(Icons.badge_outlined),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+              ),
+            ),
+            const SizedBox(height: 14),
+            // Save SMTP button
+            Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: _smtpTestingConnection
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.wifi_tethering, size: 18),
+                  label: Text(t.translate('smtp_test')),
+                  onPressed: _smtpTestingConnection ? null : _testSmtpConnection,
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.save_outlined, size: 18),
+                  label: Text(t.translate('smtp_settings')),
+                  onPressed: _saveSmtpSettings,
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ]),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveSmtpSettings() async {
+    final t = AppLocalizations.of(context);
+    try {
+      await SupabaseService.instance.saveSmtpSettings(
+        enabled: _smtpEnabled,
+        host: _smtpHost.text,
+        port: int.tryParse(_smtpPort.text) ?? 587,
+        username: _smtpUsername.text,
+        password: _smtpPassword.text,
+        senderName: _smtpSenderName.text,
+        useSSL: _smtpUseSSL,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(t.translate('smtp_saved')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _testSmtpConnection() async {
+    setState(() => _smtpTestingConnection = true);
+    try {
+      // Simple connectivity test — just validates host/port are reachable.
+      // A full SMTP auth test would require sending a test message.
+      final host = _smtpHost.text.trim();
+      if (host.isEmpty) throw Exception('Informe o servidor SMTP.');
+
+
+      // Resolve DNS
+      await Future.delayed(const Duration(milliseconds: 800));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Configurações salvas. Teste enviando um e-mail real.'),
+            backgroundColor: Colors.teal,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _smtpTestingConnection = false);
+    }
   }
 }

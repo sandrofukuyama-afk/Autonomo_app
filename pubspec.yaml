@@ -21,6 +21,9 @@ dependencies:
   intl: ^0.20.2
   file_picker: ^10.3.10
   archive: ^3.6.1
+  share_plus: ^10.0.3
+  mailer: ^6.1.2
+  flutter_secure_storage: ^9.2.4
 
 dev_dependencies:
   flutter_test:

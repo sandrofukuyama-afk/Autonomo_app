@@ -1362,4 +1362,177 @@ class SupabaseService {
         return null;
     }
   }
+
+  // ─── RECEIPTS ──────────────────────────────────────────────────────────────
+
+  /// Returns the next sequential receipt number in format YYYYMMDD-NN.
+  Future<String> getNextReceiptNumber(DateTime date) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final prefix = _receiptDatePrefix(date);
+
+    final List<dynamic> rows = await _client
+        .from('receipts')
+        .select('receipt_number')
+        .eq('company_id', companyId)
+        .like('receipt_number', '$prefix-%')
+        .order('receipt_number', ascending: false)
+        .limit(1);
+
+    if (rows.isEmpty) {
+      return '$prefix-01';
+    }
+
+    final lastNumber = (rows.first['receipt_number'] as String?) ?? '';
+    final parts = lastNumber.split('-');
+    if (parts.length < 2) return '$prefix-01';
+
+    final seq = int.tryParse(parts.last) ?? 0;
+    return '$prefix-${(seq + 1).toString().padLeft(2, '0')}';
+  }
+
+  String _receiptDatePrefix(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y$m$d';
+  }
+
+  /// Saves an issued receipt to the database.
+  Future<String> saveReceipt(Map<String, dynamic> data) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final inserted = await _client
+        .from('receipts')
+        .insert({
+          'company_id': companyId,
+          'entry_id': data['entry_id'],
+          'receipt_number': data['receipt_number'],
+          'issue_date': data['issue_date'],
+          'client_name': data['client_name'],
+          'client_email': data['client_email'],
+          'description': data['description'],
+          'amount': data['amount'],
+          'tax_amount': data['tax_amount'] ?? 0,
+          'payment_method': _normalizePaymentMethod(data['payment_method']),
+          'notes': data['notes'],
+          'format': data['format'] ?? 'a4',
+          'language': data['language'] ?? 'pt',
+          'issued_by': data['issued_by'],
+          'company_address': data['company_address'],
+          'company_phone': data['company_phone'],
+          'invoice_number': data['invoice_number'],
+          'created_at': DateTime.now().toIso8601String(),
+        })
+        .select('id')
+        .single();
+
+    return inserted['id'].toString();
+  }
+
+  /// Returns all receipts issued for a specific entry.
+  Future<List<Map<String, dynamic>>> getReceiptsByEntry(String entryId) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final List<dynamic> rows = await _client
+        .from('receipts')
+        .select()
+        .eq('company_id', companyId)
+        .eq('entry_id', entryId)
+        .order('created_at', ascending: false);
+
+    return rows.map((r) => Map<String, dynamic>.from(r as Map)).toList();
+  }
+
+  /// Returns all receipts for this company (for history view).
+  Future<List<Map<String, dynamic>>> getAllReceipts() async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final List<dynamic> rows = await _client
+        .from('receipts')
+        .select()
+        .eq('company_id', companyId)
+        .order('created_at', ascending: false);
+
+    return rows.map((r) => Map<String, dynamic>.from(r as Map)).toList();
+  }
+
+  /// Checks if a given entry already has at least one receipt issued.
+  Future<bool> entryHasReceipt(String entryId) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final List<dynamic> rows = await _client
+        .from('receipts')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('entry_id', entryId)
+        .limit(1);
+
+    return rows.isNotEmpty;
+  }
+
+  /// Returns company profile fields used to populate receipts.
+  Future<Map<String, String?>> getCompanyProfile() async {
+    final settings = await getAppSettings();
+
+    final displayName = _normalizeNullableText(settings['display_name']);
+    final fullName = _normalizeNullableText(settings['full_name']);
+    final address1 = _normalizeNullableText(settings['address_line1']);
+    final city = _normalizeNullableText(settings['city']);
+    final prefecture = _normalizeNullableText(settings['prefecture']);
+    final phone = _normalizeNullableText(settings['phone']);
+    final invoiceNo = _normalizeNullableText(settings['invoice_registration_no']);
+    final language = _normalizeNullableText(settings['language']) ?? 'pt';
+
+    final nameParts = [displayName ?? fullName].whereType<String>().toList();
+    final addressParts = [address1, city, prefecture].whereType<String>().toList();
+
+    return {
+      'name': nameParts.isNotEmpty ? nameParts.first : null,
+      'address': addressParts.isNotEmpty ? addressParts.join(', ') : null,
+      'phone': phone,
+      'invoice_number': invoiceNo,
+      'language': language,
+    };
+  }
+
+  /// Returns SMTP configuration stored in app_settings.
+  Future<Map<String, dynamic>?> getSmtpSettings() async {
+    final settings = await getAppSettings();
+
+    final enabled = settings['smtp_enabled'] as bool? ?? false;
+    if (!enabled) return null;
+
+    return {
+      'host': settings['smtp_host'],
+      'port': settings['smtp_port'] ?? 587,
+      'username': settings['smtp_username'],
+      'password': settings['smtp_password'],
+      'sender_name': settings['smtp_sender_name'],
+      'use_ssl': settings['smtp_use_ssl'] ?? false,
+    };
+  }
+
+  /// Saves SMTP settings to app_settings.
+  Future<void> saveSmtpSettings({
+    required bool enabled,
+    required String host,
+    required int port,
+    required String username,
+    required String password,
+    required String senderName,
+    required bool useSSL,
+  }) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    await _client.from('app_settings').update({
+      'smtp_enabled': enabled,
+      'smtp_host': host.trim().isEmpty ? null : host.trim(),
+      'smtp_port': port,
+      'smtp_username': username.trim().isEmpty ? null : username.trim(),
+      'smtp_password': password.trim().isEmpty ? null : password.trim(),
+      'smtp_sender_name': senderName.trim().isEmpty ? null : senderName.trim(),
+      'smtp_use_ssl': useSSL,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('company_id', companyId);
+  }
 }
