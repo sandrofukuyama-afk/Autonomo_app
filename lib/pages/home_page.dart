@@ -2492,6 +2492,144 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildDrawer(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final email = currentUserEmail ?? '';
+
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          UserAccountsDrawerHeader(
+            accountName: Text((_businessName != null && _businessName!.isNotEmpty)
+                ? _businessName!
+                : 'Autonomo App'),
+            accountEmail: Text(email),
+            currentAccountPicture: const CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.business, color: Colors.blue, size: 32),
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.blue,
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.add_circle_outline, color: Colors.green),
+            title: Text(t.translate('nav_entries')),
+            onTap: () {
+              Navigator.pop(context);
+              _openEntriesPage();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.receipt_long_outlined, color: Colors.red),
+            title: Text(t.translate('nav_expenses')),
+            onTap: () {
+              Navigator.pop(context);
+              _openExpensesPage();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.receipt_outlined, color: Colors.orange),
+            title: Text(t.translate('issue_receipt')),
+            onTap: () {
+              Navigator.pop(context);
+              _openReceiptIssuePage();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.people_outline, color: Colors.blue),
+            title: Text(t.translate('clients_title')),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ClientsPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.assessment_outlined, color: Colors.purple),
+            title: Text(t.translate('nav_reports')),
+            onTap: () {
+              Navigator.pop(context);
+              _openReportsPage();
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.smart_toy_outlined),
+            title: Text(t.translate('ask_ai')),
+            onTap: () {
+              Navigator.pop(context);
+              _showAiDialog();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings_outlined),
+            title: Text(t.translate('settings')),
+            onTap: () {
+              Navigator.pop(context);
+              _openSettingsPage();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout_outlined),
+            title: Text(t.translate('logout') == 'logout' ? 'Sair' : t.translate('logout')),
+            onTap: () {
+              Navigator.pop(context);
+              _handleLogout();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddOptions(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.green,
+                    child: Icon(Icons.add, color: Colors.white),
+                  ),
+                  title: Text(t.translate('nav_entries'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openEntriesPage();
+                  },
+                ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.red,
+                    child: Icon(Icons.remove, color: Colors.white),
+                  ),
+                  title: Text(t.translate('nav_expenses'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openExpensesPage();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
@@ -2513,22 +2651,9 @@ class _HomePageState extends State<HomePage> {
                 onPressed: _showAdminAccessDialog,
                 tooltip: _adminText(t, 'admin_role_label'),
               ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: _openSettingsPage,
-            tooltip: t.translate('settings'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.receipt_outlined),
-            onPressed: _openReceiptIssuePage,
-            tooltip: t.translate('issue_receipt'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _handleLogout,
-            ),
           ],
         ),
+        drawer: _buildDrawer(context),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -2556,79 +2681,19 @@ class _HomePageState extends State<HomePage> {
               tooltip: _adminText(t, 'admin_role_label'),
             ),
           IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: _openSettingsPage,
-            tooltip: t.translate('settings'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.receipt_outlined),
-            onPressed: _openReceiptIssuePage,
-            tooltip: t.translate('issue_receipt'),
-          ),
-          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _refreshDashboard,
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _handleLogout,
-          ),
         ],
       ),
+      drawer: _buildDrawer(context),
       body: RefreshIndicator(
         onRefresh: _refreshDashboard,
         child: _buildMainContent(),
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'entry',
-            icon: const Icon(Icons.add),
-            label: Text(t.translate('nav_entries')),
-            onPressed: _openEntriesPage,
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton.extended(
-            heroTag: 'expense',
-            icon: const Icon(Icons.receipt),
-            label: Text(t.translate('nav_expenses')),
-            onPressed: _openExpensesPage,
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton.extended(
-            heroTag: 'issue_receipt',
-            icon: const Icon(Icons.receipt_long),
-            label: Text(t.translate('issue_receipt')),
-            onPressed: _openReceiptIssuePage,
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton.extended(
-            heroTag: 'clients',
-            icon: const Icon(Icons.people),
-            label: Text(t.translate('clients_title')),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ClientsPage()),
-              );
-            },
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton.extended(
-            heroTag: 'report',
-            icon: const Icon(Icons.assessment),
-            label: Text(t.translate('nav_reports')),
-            onPressed: _openReportsPage,
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton.extended(
-            heroTag: 'ai_help',
-            icon: const Icon(Icons.smart_toy_outlined),
-            label: Text(_helpButtonLabel()),
-            onPressed: _openAiHelp,
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddOptions(context),
+        child: const Icon(Icons.add),
       ),
     );
   }
