@@ -192,7 +192,6 @@ class _Labels {
           thankYou: 'Obrigado!',
           currencyFmt: '¥#,##0',
           dueDate: 'Data de Vencimento',
-          dueDate: '支払期限',
         );
     }
   }
