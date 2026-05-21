@@ -273,6 +273,8 @@ class AppLocalizations {
       'email_sent': 'E-mail enviado!',
       'client_email_required': 'Informe o e-mail do cliente.',
       'error_generating_pdf': 'Erro ao gerar o PDF.',
+      'test_mode_title': 'Modo de Teste',
+      'test_mode_description': 'Quando ativo, nenhuma alteração será salva no banco de dados.',
     },
     'en': {
       'description': 'Description',
@@ -542,6 +544,8 @@ class AppLocalizations {
       'email_sent': 'Email sent!',
       'client_email_required': 'Enter the client email address.',
       'error_generating_pdf': 'Error generating the PDF.',
+      'test_mode_title': 'Test Mode',
+      'test_mode_description': 'When active, no changes will be saved to the database.',
     },
     'ja': {
       'description': '説明',
@@ -799,6 +803,8 @@ class AppLocalizations {
       'email_sent': 'メールを送信しました！',
       'client_email_required': '顧客のメールアドレスを入力してください。',
       'error_generating_pdf': 'PDFの生成中にエラーが発生しました。',
+      'test_mode_title': 'テストモード',
+      'test_mode_description': '有効な場合、データベースに変更は保存されません。',
     },
     'es': {
       'description': 'Descripción',
@@ -1068,6 +1074,8 @@ class AppLocalizations {
       'email_sent': '¡Email enviado!',
       'client_email_required': 'Ingrese el email del cliente.',
       'error_generating_pdf': 'Error al generar el PDF.',
+      'test_mode_title': 'Modo de Prueba',
+      'test_mode_description': 'Cuando está activo, no se guardarán cambios en la base de datos.',
     },
   };
 

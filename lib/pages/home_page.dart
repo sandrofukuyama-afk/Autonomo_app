@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 
 import '../data/auth_service.dart';
+import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
 import 'entries_page.dart';
 import 'expenses_page.dart';
@@ -2314,6 +2315,22 @@ class _HomePageState extends State<HomePage> {
                         label: Text(currentUserEmail!),
                       ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  title: Text(
+                    _adminText(t, 'test_mode_title'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(_adminText(t, 'test_mode_description')),
+                  value: SupabaseService.instance.isTestModeEnabled,
+                  onChanged: (val) {
+                    setState(() {
+                      SupabaseService.instance.isTestModeEnabled = val;
+                    });
+                  },
+                  activeColor: Colors.amber.shade900,
+                  contentPadding: EdgeInsets.zero,
                 ),
               ],
             ),

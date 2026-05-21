@@ -9,6 +9,7 @@ class SupabaseService {
   static final SupabaseService instance = SupabaseService._private();
 
   final SupabaseClient _client = Supabase.instance.client;
+  bool isTestModeEnabled = false;
 
   static const List<String> _defaultEntryCategories = [
     'service',
@@ -668,6 +669,7 @@ class SupabaseService {
   }
 
   Future<void> closeFiscalMonth(String fiscalMonth) async {
+    if (isTestModeEnabled) return;
     final companyId = await AuthService.instance.getCurrentCompanyId();
     final currentMonths = await getClosedFiscalMonths();
 
@@ -744,6 +746,7 @@ class SupabaseService {
     required dynamic dateValue,
     required String errorMessage,
   }) async {
+    if (isTestModeEnabled) return;
     final fiscalMonth = _extractFiscalMonth(dateValue);
     final closedMonths = await getClosedFiscalMonths();
 
@@ -779,6 +782,7 @@ class SupabaseService {
   }
 
   Future<void> addEntry(Map<String, dynamic> data) async {
+    if (isTestModeEnabled) return;
     final companyId = await AuthService.instance.getCurrentCompanyId();
 
     await _assertFiscalMonthOpen(
@@ -825,6 +829,7 @@ class SupabaseService {
   }
 
   Future<void> updateEntry(String id, Map<String, dynamic> data) async {
+    if (isTestModeEnabled) return;
     final existingRow = await _getOwnedEntryRow(id);
 
     if (existingRow == null) {
@@ -857,6 +862,7 @@ class SupabaseService {
   }
 
   Future<void> deleteEntry(String id) async {
+    if (isTestModeEnabled) return;
     final companyId = await AuthService.instance.getCurrentCompanyId();
 
     final row = await _client
@@ -882,6 +888,7 @@ class SupabaseService {
   }
 
   Future<void> addExpense(Map<String, dynamic> data) async {
+    if (isTestModeEnabled) return;
     final companyId = await AuthService.instance.getCurrentCompanyId();
     final receiptUrl = data['receipt_url'];
 
@@ -971,6 +978,7 @@ class SupabaseService {
   }
 
   Future<void> updateExpense(String id, Map<String, dynamic> data) async {
+    if (isTestModeEnabled) return;
     final existingRow = await _getOwnedExpenseRow(id);
 
     if (existingRow == null) {
@@ -1011,6 +1019,7 @@ class SupabaseService {
     String expenseId,
     Map<String, dynamic> data,
   ) async {
+    if (isTestModeEnabled) return;
     final companyId = await AuthService.instance.getCurrentCompanyId();
     final receiptUrl = data['receipt_url'];
 
@@ -1044,6 +1053,7 @@ class SupabaseService {
   }
 
   Future<void> deleteExpense(String id) async {
+    if (isTestModeEnabled) return;
     final companyId = await AuthService.instance.getCurrentCompanyId();
 
     final row = await _client
@@ -1489,6 +1499,7 @@ class SupabaseService {
 
   /// Saves an issued receipt to the database.
   Future<String> saveReceipt(Map<String, dynamic> data) async {
+    if (isTestModeEnabled) return 'test_receipt_id';
     final companyId = await AuthService.instance.getCurrentCompanyId();
     final paymentCondition = _normalizePaymentCondition(
       data['payment_condition'],
