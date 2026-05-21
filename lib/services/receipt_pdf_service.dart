@@ -112,6 +112,8 @@ class _Labels {
       case 'ja':
         return const _Labels(
           receipt: '領収書',
+          invoice: '請求書',
+          invoiceNumberLabel: '請求書番号',
           receiptNumber: '領収書番号',
           date: '発行日',
           issuedBy: '発行者',
@@ -129,6 +131,8 @@ class _Labels {
       case 'es':
         return const _Labels(
           receipt: 'RECIBO',
+          invoice: 'FACTURA',
+          invoiceNumberLabel: 'Nº de Factura',
           receiptNumber: 'Nº de Recibo',
           date: 'Fecha',
           issuedBy: 'Emisor',
@@ -146,6 +150,8 @@ class _Labels {
       case 'en':
         return const _Labels(
           receipt: 'RECEIPT',
+          invoice: 'INVOICE',
+          invoiceNumberLabel: 'Invoice No.',
           receiptNumber: 'Receipt No.',
           date: 'Date',
           issuedBy: 'Issued By',
@@ -163,6 +169,8 @@ class _Labels {
       default: // pt
         return const _Labels(
           receipt: 'RECIBO',
+          invoice: 'FATURA',
+          invoiceNumberLabel: 'Nº da Fatura',
           receiptNumber: 'Nº do Recibo',
           date: 'Data',
           issuedBy: 'Emitido por',
