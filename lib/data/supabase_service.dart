@@ -1815,4 +1815,56 @@ class SupabaseService {
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('company_id', companyId);
   }
+
+  // ==========================================
+  // CLIENTS
+  // ==========================================
+
+  Future<List<Map<String, dynamic>>> getClients() async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final response = await _client
+        .from('clients')
+        .select()
+        .eq('company_id', companyId)
+        .order('name', ascending: true);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<void> createClient(Map<String, dynamic> data) async {
+    if (isTestModeEnabled) return;
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    await _client.from('clients').insert({
+      ...data,
+      'company_id': companyId,
+    });
+  }
+
+  Future<void> updateClient(String id, Map<String, dynamic> data) async {
+    if (isTestModeEnabled) return;
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    // Confirm ownership
+    final existing = await _client
+        .from('clients')
+        .select('id')
+        .eq('id', id)
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+    if (existing == null) throw Exception('Cliente não encontrado ou sem permissão.');
+
+    await _client.from('clients').update({
+      ...data,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', id);
+  }
+
+  Future<void> deleteClient(String id) async {
+    if (isTestModeEnabled) return;
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    await _client
+        .from('clients')
+        .delete()
+        .eq('id', id)
+        .eq('company_id', companyId);
+  }
 }

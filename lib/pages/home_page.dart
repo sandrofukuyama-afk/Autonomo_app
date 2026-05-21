@@ -11,6 +11,7 @@ import 'entries_page.dart';
 import 'expenses_page.dart';
 import 'expense_review_page.dart';
 import 'receipt_issue_page.dart';
+import 'clients_page.dart';
 import 'reports_page.dart';
 import 'settings_page.dart';
 
@@ -2600,6 +2601,18 @@ class _HomePageState extends State<HomePage> {
             icon: const Icon(Icons.receipt_long),
             label: Text(t.translate('issue_receipt')),
             onPressed: _openReceiptIssuePage,
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
+            heroTag: 'clients',
+            icon: const Icon(Icons.people),
+            label: Text(t.translate('clients_title')),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ClientsPage()),
+              );
+            },
           ),
           const SizedBox(height: 10),
           FloatingActionButton.extended(
