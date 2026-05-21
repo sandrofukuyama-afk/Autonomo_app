@@ -11,6 +11,7 @@ import 'package:printing/printing.dart';
 class ReceiptData {
   final String receiptNumber;
   final DateTime issueDate;
+  final String documentKind;
   final String description;
   final double amount;
   final double taxAmount;
@@ -28,6 +29,7 @@ class ReceiptData {
   const ReceiptData({
     required this.receiptNumber,
     required this.issueDate,
+    required this.documentKind,
     required this.description,
     required this.amount,
     required this.taxAmount,
@@ -70,7 +72,9 @@ class SmtpConfig {
 
 class _Labels {
   final String receipt;
+  final String invoice;
   final String receiptNumber;
+  final String invoiceNumberLabel;
   final String date;
   final String issuedBy;
   final String issuedTo;
@@ -86,7 +90,9 @@ class _Labels {
 
   const _Labels({
     required this.receipt,
+    required this.invoice,
     required this.receiptNumber,
+    required this.invoiceNumberLabel,
     required this.date,
     required this.issuedBy,
     required this.issuedTo,

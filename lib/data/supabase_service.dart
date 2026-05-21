@@ -1260,6 +1260,81 @@ class SupabaseService {
     return null;
   }
 
+  Future<List<Map<String, dynamic>>> getServiceCatalog() async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    try {
+      final List<dynamic> rows = await _client
+          .from('service_catalog')
+          .select()
+          .eq('company_id', companyId)
+          .order('name', ascending: true);
+
+      return rows.map((row) => Map<String, dynamic>.from(row as Map)).toList();
+    } on PostgrestException catch (e) {
+      if (e.code == '42P01') {
+        return [];
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> createServiceCatalogItem({
+    required String name,
+    String? description,
+    double? defaultAmount,
+  }) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final normalizedName = name.trim();
+
+    if (normalizedName.isEmpty) {
+      throw Exception('Informe o nome do serviço.');
+    }
+
+    await _client.from('service_catalog').insert({
+      'company_id': companyId,
+      'name': normalizedName,
+      'description': _normalizeNullableText(description),
+      'default_amount': defaultAmount,
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<void> updateServiceCatalogItem({
+    required String id,
+    required String name,
+    String? description,
+    double? defaultAmount,
+  }) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final normalizedName = name.trim();
+
+    if (normalizedName.isEmpty) {
+      throw Exception('Informe o nome do serviço.');
+    }
+
+    await _client
+        .from('service_catalog')
+        .update({
+          'name': normalizedName,
+          'description': _normalizeNullableText(description),
+          'default_amount': defaultAmount,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('company_id', companyId)
+        .eq('id', id);
+  }
+
+  Future<void> deleteServiceCatalogItem(String id) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    await _client
+        .from('service_catalog')
+        .delete()
+        .eq('company_id', companyId)
+        .eq('id', id);
+  }
+
   String _normalizePaymentMethod(dynamic value) {
     if (value == null) return 'other';
 
@@ -1401,30 +1476,48 @@ class SupabaseService {
   Future<String> saveReceipt(Map<String, dynamic> data) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
 
-    final inserted = await _client
-        .from('receipts')
-        .insert({
-          'company_id': companyId,
-          'entry_id': data['entry_id'],
-          'receipt_number': data['receipt_number'],
-          'issue_date': data['issue_date'],
-          'client_name': data['client_name'],
-          'client_email': data['client_email'],
-          'description': data['description'],
-          'amount': data['amount'],
-          'tax_amount': data['tax_amount'] ?? 0,
-          'payment_method': _normalizePaymentMethod(data['payment_method']),
-          'notes': data['notes'],
-          'format': data['format'] ?? 'a4',
-          'language': data['language'] ?? 'pt',
-          'issued_by': data['issued_by'],
-          'company_address': data['company_address'],
-          'company_phone': data['company_phone'],
-          'invoice_number': data['invoice_number'],
-          'created_at': DateTime.now().toIso8601String(),
-        })
-        .select('id')
-        .single();
+    final basePayload = {
+      'company_id': companyId,
+      'entry_id': data['entry_id'],
+      'receipt_number': data['receipt_number'],
+      'issue_date': data['issue_date'],
+      'document_kind': data['document_kind'] ?? 'ryoushuusho',
+      'client_name': data['client_name'],
+      'client_email': data['client_email'],
+      'description': data['description'],
+      'amount': data['amount'],
+      'tax_amount': data['tax_amount'] ?? 0,
+      'payment_method': _normalizePaymentMethod(data['payment_method']),
+      'notes': data['notes'],
+      'format': data['format'] ?? 'a4',
+      'language': data['language'] ?? 'pt',
+      'issued_by': data['issued_by'],
+      'company_address': data['company_address'],
+      'company_phone': data['company_phone'],
+      'invoice_number': data['invoice_number'],
+      'created_at': DateTime.now().toIso8601String(),
+    };
+
+    late final Map<String, dynamic> inserted;
+    try {
+      inserted = await _client
+          .from('receipts')
+          .insert({
+            ...basePayload,
+            'document_kind': data['document_kind'] ?? 'ryoushuusho',
+            'item_type': data['item_type'] ?? 'product',
+            'service_id': data['service_id'],
+          })
+          .select('id')
+          .single();
+    } on PostgrestException catch (e) {
+      if (e.code != '42703') rethrow;
+      inserted = await _client
+          .from('receipts')
+          .insert(basePayload)
+          .select('id')
+          .single();
+    }
 
     return inserted['id'].toString();
   }

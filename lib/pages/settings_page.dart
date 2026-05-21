@@ -1,4 +1,6 @@
 import 'settings_categories_page.dart';
+import 'receipt_history_page.dart';
+import 'settings_services_page.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -1361,50 +1363,45 @@ class _SettingsPageState extends State<SettingsPage> {
                   }).toList(),
                 ),
             ]),
-            Card(
-  margin: const EdgeInsets.only(bottom: 16),
-  elevation: 2,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(14),
-  ),
-  child: ListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    leading: Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Icon(
-        Icons.category,
-        color: Theme.of(context).colorScheme.primary,
-      ),
-    ),
-    title: Text(
-      _text('categories', t), // ✅ traduzido
-      style: const TextStyle(
-        fontWeight: FontWeight.w600,
-        fontSize: 15,
-      ),
-    ),
-    subtitle: Text(
-      _text('manage_categories_desc', t), // ✅ traduzido
-      style: TextStyle(
-        color: Colors.grey.shade600,
-        fontSize: 13,
-      ),
-    ),
-    trailing: const Icon(Icons.chevron_right),
-    onTap: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const SettingsCategoriesPage(),
-        ),
-      );
-    },
-  ),
-),
+            _settingsShortcutCard(
+              icon: Icons.category,
+              title: _text('categories', t),
+              subtitle: _text('manage_categories_desc', t),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SettingsCategoriesPage(),
+                  ),
+                );
+              },
+            ),
+            _settingsShortcutCard(
+              icon: Icons.design_services_outlined,
+              title: _text('service_catalog', t),
+              subtitle: _text('service_catalog_desc', t),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SettingsServicesPage(),
+                  ),
+                );
+              },
+            ),
+            _settingsShortcutCard(
+              icon: Icons.receipt_long_outlined,
+              title: _text('receipt_history', t),
+              subtitle: _text('view_receipts_desc', t),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ReceiptHistoryPage(),
+                  ),
+                );
+              },
+            ),
             const SizedBox(height: 18),
 
             // ── SMTP section ─────────────────────────────────────────────
@@ -1596,6 +1593,49 @@ class _SettingsPageState extends State<SettingsPage> {
             ]),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _settingsShortcutCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: theme.colorScheme.primary),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            color: Colors.grey.shade600,
+            fontSize: 13,
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
       ),
     );
   }

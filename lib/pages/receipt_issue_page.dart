@@ -1,16 +1,15 @@
+import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
 
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
 import '../services/receipt_pdf_service.dart';
-
-// ─── Format option model ─────────────────────────────────────────────────────
 
 class _FormatOption {
   final String value;
@@ -28,10 +27,7 @@ const _formats = [
   _FormatOption('email', 'format_email', Icons.email_outlined),
 ];
 
-// ─── Page ────────────────────────────────────────────────────────────────────
-
 class ReceiptIssuePage extends StatefulWidget {
-  /// Entry data to pre-populate the form.
   final Map<String, dynamic>? entryData;
 
   const ReceiptIssuePage({super.key, this.entryData});
@@ -43,7 +39,6 @@ class ReceiptIssuePage extends StatefulWidget {
 class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _receiptNumberCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
@@ -55,20 +50,26 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
   DateTime _issueDate = DateTime.now();
   String _selectedFormat = 'a4';
   String _paymentMethod = 'cash';
+  String _documentKind = 'ryoushuusho';
+  String _selectedItemType = 'product';
+  String? _selectedServiceId;
   bool _loading = true;
   bool _saving = false;
   bool _sendingEmail = false;
 
-  // Company profile
   Map<String, String?> _companyProfile = {};
   String _language = 'pt';
+  List<Map<String, dynamic>> _services = [];
 
-  // Generated PDF bytes (cached)
   Uint8List? _cachedPdfBytes;
   String? _cachedFormat;
 
   static const _paymentMethods = [
-    'cash', 'credit_card', 'bank_transfer', 'paypay', 'other'
+    'cash',
+    'credit_card',
+    'bank_transfer',
+    'paypay',
+    'other',
   ];
 
   @override
@@ -91,31 +92,35 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
 
   Future<void> _loadInitialData() async {
     try {
-      final profile = await SupabaseService.instance.getCompanyProfile();
-      final nextNumber = await SupabaseService.instance
-          .getNextReceiptNumber(DateTime.now());
-
-      _companyProfile = profile;
-      _language = profile['language'] ?? 'pt';
-
-      _receiptNumberCtrl.text = nextNumber;
-
-      // Pre-fill from entry data if provided
       final entry = widget.entryData;
+      if (entry?['entry_date'] != null) {
+        final parsed = DateTime.tryParse(entry!['entry_date'].toString());
+        if (parsed != null) {
+          _issueDate = parsed;
+        }
+      }
+
+      final results = await Future.wait([
+        SupabaseService.instance.getCompanyProfile(),
+        SupabaseService.instance.getServiceCatalog(),
+        SupabaseService.instance.getNextReceiptNumber(_issueDate),
+      ]);
+
+      _companyProfile = Map<String, String?>.from(results[0] as Map);
+      _services = List<Map<String, dynamic>>.from(results[1] as List);
+      _language = _companyProfile['language'] ?? 'pt';
+      _receiptNumberCtrl.text = results[2] as String;
+
       if (entry != null) {
-        _descriptionCtrl.text =
-            (entry['description'] ?? '').toString();
-        final amount = (entry['amount'] ?? 0).toDouble();
-        final taxAmount = (entry['tax_amount'] ?? 0).toDouble();
-        _amountCtrl.text = amount.toStringAsFixed(0);
-        _taxAmountCtrl.text = taxAmount.toStringAsFixed(0);
+        _descriptionCtrl.text = (entry['description'] ?? '').toString();
+        final amount = double.tryParse((entry['amount'] ?? 0).toString()) ?? 0;
+        final taxAmount = double.tryParse((entry['tax_amount'] ?? 0).toString()) ?? 0;
+        _amountCtrl.text = amount == 0 ? '' : amount.toStringAsFixed(0);
+        _taxAmountCtrl.text = taxAmount == 0 ? '' : taxAmount.toStringAsFixed(0);
         _paymentMethod = _normalizePayment(entry['payment_method']);
+        _selectedItemType = _inferItemType(entry);
         if (entry['customer_name'] != null) {
           _clientNameCtrl.text = entry['customer_name'].toString();
-        }
-        if (entry['entry_date'] != null) {
-          final parsed = DateTime.tryParse(entry['entry_date'].toString());
-          if (parsed != null) _issueDate = parsed;
         }
       }
     } catch (e) {
@@ -125,8 +130,27 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         );
       }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
+  }
+
+  String _inferItemType(Map<String, dynamic> entry) {
+    final category = (entry['category'] ?? '').toString().toLowerCase();
+    if (category.contains('service') || category.contains('serv')) {
+      return 'service';
+    }
+    return 'product';
+  }
+
+  Future<void> _refreshReceiptNumber() async {
+    final nextNumber = await SupabaseService.instance.getNextReceiptNumber(_issueDate);
+    if (!mounted) return;
+    setState(() {
+      _receiptNumberCtrl.text = nextNumber;
+      _invalidatePdfCache();
+    });
   }
 
   String _normalizePayment(dynamic value) {
@@ -135,10 +159,42 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     return 'cash';
   }
 
+  Map<String, dynamic>? get _selectedService {
+    if (_selectedServiceId == null) return null;
+    for (final service in _services) {
+      if (service['id'].toString() == _selectedServiceId) {
+        return service;
+      }
+    }
+    return null;
+  }
+
+  void _applySelectedService(String? serviceId) {
+    setState(() {
+      _selectedServiceId = serviceId;
+      final service = _selectedService;
+      if (service != null) {
+        final description = (service['description'] ?? '').toString().trim();
+        _descriptionCtrl.text = description.isEmpty
+            ? (service['name'] ?? '').toString()
+            : description;
+        final amount = service['default_amount'];
+        if (amount != null) {
+          final parsedAmount = double.tryParse(amount.toString());
+          if (parsedAmount != null && parsedAmount > 0) {
+            _amountCtrl.text = parsedAmount.toStringAsFixed(0);
+          }
+        }
+      }
+      _invalidatePdfCache();
+    });
+  }
+
   ReceiptData _buildReceiptData() {
     return ReceiptData(
       receiptNumber: _receiptNumberCtrl.text.trim(),
       issueDate: _issueDate,
+      documentKind: _documentKind,
       description: _descriptionCtrl.text.trim(),
       amount: double.tryParse(_amountCtrl.text.replaceAll(',', '')) ?? 0,
       taxAmount: double.tryParse(_taxAmountCtrl.text.replaceAll(',', '')) ?? 0,
@@ -162,7 +218,6 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
   Future<Uint8List> _generatePdf() async {
     final data = _buildReceiptData();
 
-    // Use cache if format hasn't changed
     if (_cachedFormat == _selectedFormat && _cachedPdfBytes != null) {
       return _cachedPdfBytes!;
     }
@@ -178,7 +233,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
       case 'a5':
         bytes = await ReceiptPdfService.buildA5(data);
         break;
-      default: // a4
+      default:
         bytes = await ReceiptPdfService.buildA4(data);
     }
 
@@ -198,7 +253,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
       final bytes = await _generatePdf();
       if (!mounted) return;
       await Printing.layoutPdf(onLayout: (_) => Future.value(bytes));
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         _showError(AppLocalizations.of(context).translate('error_generating_pdf'));
       }
@@ -299,6 +354,9 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         'entry_id': widget.entryData?['id'],
         'receipt_number': data.receiptNumber,
         'issue_date': DateFormat('yyyy-MM-dd').format(data.issueDate),
+        'document_kind': _documentKind,
+        'item_type': _selectedItemType,
+        'service_id': _selectedItemType == 'service' ? _selectedServiceId : null,
         'client_name': data.clientName,
         'client_email': data.clientEmail,
         'description': data.description,
@@ -335,8 +393,6 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
-
-  // ─── Build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -377,11 +433,8 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // ── Receipt data section ──────────────────────────────
             _sectionHeader(context, t.translate('receipt_data'), Icons.receipt_outlined),
             const SizedBox(height: 12),
-
-            // Receipt number (editable)
             _textField(
               controller: _receiptNumberCtrl,
               label: t.translate('receipt_number'),
@@ -390,12 +443,16 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               onChanged: (_) => _invalidatePdfCache(),
             ),
             const SizedBox(height: 12),
-
-            // Issue date
             _datePicker(context, t),
             const SizedBox(height: 12),
-
-            // Description
+            _documentKindSelector(context, t),
+            const SizedBox(height: 12),
+            _itemTypeSelector(context, t),
+            if (_selectedItemType == 'service') ...[
+              const SizedBox(height: 12),
+              _serviceSelector(context, t),
+            ],
+            const SizedBox(height: 12),
             _textField(
               controller: _descriptionCtrl,
               label: t.translate('description'),
@@ -405,41 +462,35 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               onChanged: (_) => _invalidatePdfCache(),
             ),
             const SizedBox(height: 12),
-
-            // Amount + Tax row
-            Row(children: [
-              Expanded(
-                child: _textField(
-                  controller: _amountCtrl,
-                  label: t.translate('value'),
-                  icon: Icons.attach_money,
-                  keyboardType: TextInputType.number,
-                  validator: _requiredValidator,
-                  onChanged: (_) => _invalidatePdfCache(),
+            Row(
+              children: [
+                Expanded(
+                  child: _textField(
+                    controller: _amountCtrl,
+                    label: t.translate('value'),
+                    icon: Icons.attach_money,
+                    keyboardType: TextInputType.number,
+                    validator: _requiredValidator,
+                    onChanged: (_) => _invalidatePdfCache(),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _textField(
-                  controller: _taxAmountCtrl,
-                  label: t.translate('tax_rate'),
-                  icon: Icons.percent,
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) => _invalidatePdfCache(),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _textField(
+                    controller: _taxAmountCtrl,
+                    label: t.translate('tax_rate'),
+                    icon: Icons.percent,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => _invalidatePdfCache(),
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
             const SizedBox(height: 12),
-
-            // Payment method
             _paymentSelector(context, t),
-
             const SizedBox(height: 24),
-
-            // ── Client data section ────────────────────────────────
             _sectionHeader(context, t.translate('client_data'), Icons.person_outline),
             const SizedBox(height: 12),
-
             _textField(
               controller: _clientNameCtrl,
               label: t.translate('client_name'),
@@ -454,17 +505,11 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               keyboardType: TextInputType.emailAddress,
               onChanged: (_) => _invalidatePdfCache(),
             ),
-
             const SizedBox(height: 24),
-
-            // ── Format selector ────────────────────────────────────
             _sectionHeader(context, t.translate('receipt_format'), Icons.tune),
             const SizedBox(height: 12),
             _formatSelector(context, t),
-
             const SizedBox(height: 24),
-
-            // ── Notes ─────────────────────────────────────────────
             _textField(
               controller: _notesCtrl,
               label: t.translate('notes'),
@@ -472,12 +517,8 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               maxLines: 3,
               onChanged: (_) => _invalidatePdfCache(),
             ),
-
             const SizedBox(height: 32),
-
-            // ── Action buttons ─────────────────────────────────────
             _actionButtons(context, t),
-
             const SizedBox(height: 24),
           ],
         ),
@@ -485,29 +526,29 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     );
   }
 
-  // ─── Section header ───────────────────────────────────────────────────────
-
   Widget _sectionHeader(BuildContext context, String title, IconData icon) {
     final cs = Theme.of(context).colorScheme;
-    return Row(children: [
-      Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: cs.primaryContainer,
-          borderRadius: BorderRadius.circular(8),
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: cs.primaryContainer,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 18, color: cs.primary),
         ),
-        child: Icon(icon, size: 18, color: cs.primary),
-      ),
-      const SizedBox(width: 10),
-      Text(title,
+        const SizedBox(width: 10),
+        Text(
+          title,
           style: Theme.of(context)
               .textTheme
               .titleMedium
-              ?.copyWith(fontWeight: FontWeight.bold)),
-    ]);
+              ?.copyWith(fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
   }
-
-  // ─── Text field ───────────────────────────────────────────────────────────
 
   Widget _textField({
     required TextEditingController controller,
@@ -535,13 +576,10 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
 
   String? _requiredValidator(String? value) {
     if ((value ?? '').trim().isEmpty) {
-      return AppLocalizations.of(context)
-          .translate('error_fill_mandatory_fields');
+      return AppLocalizations.of(context).translate('error_fill_mandatory_fields');
     }
     return null;
   }
-
-  // ─── Date picker ─────────────────────────────────────────────────────────
 
   Widget _datePicker(BuildContext context, AppLocalizations t) {
     final theme = Theme.of(context);
@@ -553,13 +591,13 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
           context: context,
           initialDate: _issueDate,
           firstDate: DateTime(2020),
-          lastDate: DateTime(2030),
+          lastDate: DateTime(2035),
         );
         if (picked != null) {
           setState(() {
             _issueDate = picked;
-            _invalidatePdfCache();
           });
+          await _refreshReceiptNumber();
         }
       },
       borderRadius: BorderRadius.circular(12),
@@ -575,7 +613,94 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     );
   }
 
-  // ─── Payment selector ─────────────────────────────────────────────────────
+  Widget _itemTypeSelector(BuildContext context, AppLocalizations t) {
+    return DropdownButtonFormField<String>(
+      value: _selectedItemType,
+      decoration: InputDecoration(
+        labelText: t.translate('receipt_item_type'),
+        prefixIcon: const Icon(Icons.category_outlined),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+      ),
+      items: [
+        DropdownMenuItem(
+          value: 'product',
+          child: Text(t.translate('receipt_item_product')),
+        ),
+        DropdownMenuItem(
+          value: 'service',
+          child: Text(t.translate('receipt_item_service')),
+        ),
+      ],
+      onChanged: (value) {
+        if (value == null) return;
+        setState(() {
+          _selectedItemType = value;
+          if (value == 'product') {
+            _selectedServiceId = null;
+          }
+          _invalidatePdfCache();
+        });
+      },
+    );
+  }
+
+  Widget _documentKindSelector(BuildContext context, AppLocalizations t) {
+    return DropdownButtonFormField<String>(
+      value: _documentKind,
+      decoration: InputDecoration(
+        labelText: t.translate('document_kind'),
+        prefixIcon: const Icon(Icons.description_outlined),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+      ),
+      items: [
+        DropdownMenuItem(
+          value: 'seikyuusho',
+          child: Text(t.translate('document_kind_seikyuusho')),
+        ),
+        DropdownMenuItem(
+          value: 'ryoushuusho',
+          child: Text(t.translate('document_kind_ryoushuusho')),
+        ),
+      ],
+      onChanged: (value) {
+        if (value == null) return;
+        setState(() {
+          _documentKind = value;
+          _invalidatePdfCache();
+        });
+      },
+    );
+  }
+
+  Widget _serviceSelector(BuildContext context, AppLocalizations t) {
+    return DropdownButtonFormField<String>(
+      value: _selectedServiceId,
+      decoration: InputDecoration(
+        labelText: t.translate('choose_service'),
+        prefixIcon: const Icon(Icons.design_services_outlined),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+        helperText: _services.isEmpty ? t.translate('no_services_registered') : null,
+      ),
+      validator: (value) {
+        if (_selectedItemType == 'service' && (value == null || value.isEmpty)) {
+          return t.translate('service_required');
+        }
+        return null;
+      },
+      items: _services
+          .map(
+            (service) => DropdownMenuItem<String>(
+              value: service['id'].toString(),
+              child: Text((service['name'] ?? '').toString()),
+            ),
+          )
+          .toList(),
+      onChanged: _services.isEmpty ? null : _applySelectedService,
+    );
+  }
 
   Widget _paymentSelector(BuildContext context, AppLocalizations t) {
     return DropdownButtonFormField<String>(
@@ -586,124 +711,130 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
       ),
-      items: _paymentMethods.map((m) {
-        return DropdownMenuItem(
-          value: m,
-          child: Text(t.translate('payment_$m')),
-        );
-      }).toList(),
-      onChanged: (v) {
-        if (v != null) {
-          setState(() {
-            _paymentMethod = v;
-            _invalidatePdfCache();
-          });
-        }
+      items: _paymentMethods
+          .map(
+            (method) => DropdownMenuItem(
+              value: method,
+              child: Text(t.translate('payment_$method')),
+            ),
+          )
+          .toList(),
+      onChanged: (value) {
+        if (value == null) return;
+        setState(() {
+          _paymentMethod = value;
+          _invalidatePdfCache();
+        });
       },
     );
   }
 
-  // ─── Format selector ─────────────────────────────────────────────────────
-
   Widget _formatSelector(BuildContext context, AppLocalizations t) {
     final cs = Theme.of(context).colorScheme;
 
-    return Wrap(spacing: 8, runSpacing: 8, children: _formats.map((f) {
-      final isSelected = _selectedFormat == f.value;
-      return GestureDetector(
-        onTap: () => setState(() {
-          _selectedFormat = f.value;
-          _invalidatePdfCache();
-        }),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? cs.primary : cs.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? cs.primary : cs.outline.withValues(alpha: 0.3),
-            ),
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(
-              f.icon,
-              size: 18,
-              color: isSelected ? cs.onPrimary : cs.onSurface,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              t.translate(f.labelKey),
-              style: TextStyle(
-                color: isSelected ? cs.onPrimary : cs.onSurface,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 13,
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: _formats.map((format) {
+        final isSelected = _selectedFormat == format.value;
+        return GestureDetector(
+          onTap: () => setState(() {
+            _selectedFormat = format.value;
+            _invalidatePdfCache();
+          }),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected ? cs.primary : cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected ? cs.primary : cs.outline.withValues(alpha: 0.3),
               ),
             ),
-          ]),
-        ),
-      );
-    }).toList());
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  format.icon,
+                  size: 18,
+                  color: isSelected ? cs.onPrimary : cs.onSurface,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  t.translate(format.labelKey),
+                  style: TextStyle(
+                    color: isSelected ? cs.onPrimary : cs.onSurface,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
-
-  // ─── Action buttons ───────────────────────────────────────────────────────
 
   Widget _actionButtons(BuildContext context, AppLocalizations t) {
     final cs = Theme.of(context).colorScheme;
     final isEmail = _selectedFormat == 'email';
 
-    return Column(children: [
-      // Row 1: Preview / Print / Share
-      Row(children: [
-        _actionBtn(
-          icon: Icons.visibility_outlined,
-          label: t.translate('preview_receipt'),
-          color: cs.tertiary,
-          onTap: _previewPdf,
-          flex: 2,
+    return Column(
+      children: [
+        Row(
+          children: [
+            _actionBtn(
+              icon: Icons.visibility_outlined,
+              label: t.translate('preview_receipt'),
+              color: cs.tertiary,
+              onTap: _previewPdf,
+              flex: 2,
+            ),
+            const SizedBox(width: 8),
+            if (!isEmail)
+              _actionBtn(
+                icon: Icons.print_outlined,
+                label: t.translate('print_receipt'),
+                color: cs.secondary,
+                onTap: _printPdf,
+                flex: 2,
+              ),
+            if (!isEmail) const SizedBox(width: 8),
+            _actionBtn(
+              icon: Icons.share_outlined,
+              label: t.translate('share_receipt'),
+              color: cs.primary,
+              onTap: _sharePdf,
+              flex: 2,
+            ),
+          ],
         ),
-        const SizedBox(width: 8),
-        if (!isEmail)
-          _actionBtn(
-            icon: Icons.print_outlined,
-            label: t.translate('print_receipt'),
-            color: cs.secondary,
-            onTap: _printPdf,
-            flex: 2,
-          ),
-        if (!isEmail) const SizedBox(width: 8),
-        _actionBtn(
-          icon: Icons.share_outlined,
-          label: t.translate('share_receipt'),
-          color: cs.primary,
-          onTap: _sharePdf,
-          flex: 2,
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _actionBtn(
+              icon: Icons.email_outlined,
+              label: t.translate('send_by_email'),
+              color: Colors.teal,
+              onTap: _sendEmail,
+              flex: 2,
+              loading: _sendingEmail,
+            ),
+            const SizedBox(width: 8),
+            _actionBtn(
+              icon: Icons.save_outlined,
+              label: t.translate('save_receipt'),
+              color: Colors.green,
+              onTap: _saveReceipt,
+              flex: 3,
+              loading: _saving,
+            ),
+          ],
         ),
-      ]),
-
-      const SizedBox(height: 8),
-
-      // Row 2: Send email / Save
-      Row(children: [
-        _actionBtn(
-          icon: Icons.email_outlined,
-          label: t.translate('send_by_email'),
-          color: Colors.teal,
-          onTap: _sendEmail,
-          flex: 2,
-          loading: _sendingEmail,
-        ),
-        const SizedBox(width: 8),
-        _actionBtn(
-          icon: Icons.save_outlined,
-          label: t.translate('save_receipt'),
-          color: Colors.green,
-          onTap: _saveReceipt,
-          flex: 3,
-          loading: _saving,
-        ),
-      ]),
-    ]);
+      ],
+    );
   }
 
   Widget _actionBtn({
