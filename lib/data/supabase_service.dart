@@ -1361,6 +1361,21 @@ class SupabaseService {
     }
   }
 
+  String _normalizePaymentCondition(dynamic value) {
+    if (value == null) return 'a_vista';
+
+    final normalized = value.toString().trim().toLowerCase();
+
+    switch (normalized) {
+      case 'faturado':
+        return 'faturado';
+      case 'parcelado':
+        return 'parcelado';
+      default:
+        return 'a_vista';
+    }
+  }
+
   String _normalizeExpenseCategory(dynamic value) {
     if (value == null) return 'other';
 
@@ -1475,6 +1490,14 @@ class SupabaseService {
   /// Saves an issued receipt to the database.
   Future<String> saveReceipt(Map<String, dynamic> data) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
+    final paymentCondition = _normalizePaymentCondition(
+      data['payment_condition'],
+    );
+    final schedules = (data['receivable_schedules'] as List?)
+            ?.whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList() ??
+        const <Map<String, dynamic>>[];
 
     final basePayload = {
       'company_id': companyId,
@@ -1495,6 +1518,11 @@ class SupabaseService {
       'company_address': data['company_address'],
       'company_phone': data['company_phone'],
       'invoice_number': data['invoice_number'],
+      'due_date': data['due_date'],
+      'payment_condition': paymentCondition,
+      'down_payment_amount': data['down_payment_amount'] ?? 0,
+      'installments_count': data['installments_count'] ?? 1,
+      'installment_value': data['installment_value'],
       'created_at': DateTime.now().toIso8601String(),
     };
 
@@ -1519,7 +1547,153 @@ class SupabaseService {
           .single();
     }
 
-    return inserted['id'].toString();
+    final receiptId = inserted['id'].toString();
+
+    try {
+      if (schedules.isNotEmpty) {
+        await _client.from('receipt_payment_schedules').insert(
+          schedules
+              .map(
+                (item) => {
+                  'company_id': companyId,
+                  'receipt_id': receiptId,
+                  'installment_number': item['installment_number'],
+                  'due_date': item['due_date'],
+                  'amount': item['amount'],
+                  'status': item['status'] ?? 'pending',
+                  'payment_method': _normalizePaymentMethod(
+                    item['payment_method'] ?? data['payment_method'],
+                  ),
+                  'notes': item['notes'],
+                  'created_at': DateTime.now().toIso8601String(),
+                },
+              )
+              .toList(),
+        );
+      }
+    } on PostgrestException catch (e) {
+      if (e.code == '42P01' || e.code == '42703') {
+        await _client.from('receipts').delete().eq('id', receiptId);
+        throw Exception(
+          'A estrutura de recebimentos ainda não foi criada no banco. Execute a migration de contas a receber e tente novamente.',
+        );
+      }
+      rethrow;
+    }
+
+    return receiptId;
+  }
+
+  Future<List<Map<String, dynamic>>> getReceiptPaymentSchedules() async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    try {
+      final List<dynamic> rows = await _client
+          .from('receipt_payment_schedules')
+          .select('''
+            id,
+            receipt_id,
+            installment_number,
+            due_date,
+            amount,
+            status,
+            paid_at,
+            paid_amount,
+            payment_method,
+            notes,
+            created_at,
+            receipts (
+              receipt_number,
+              client_name,
+              description,
+              issue_date,
+              amount,
+              payment_condition
+            )
+          ''')
+          .eq('company_id', companyId)
+          .order('due_date', ascending: true)
+          .order('installment_number', ascending: true);
+
+      return rows.map((r) => Map<String, dynamic>.from(r as Map)).toList();
+    } on PostgrestException catch (e) {
+      if (e.code == '42P01') {
+        return [];
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> markReceiptPaymentScheduleAsPaid(
+    String scheduleId, {
+    String? paymentMethod,
+    double? paidAmount,
+  }) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    await _client
+        .from('receipt_payment_schedules')
+        .update({
+          'status': 'paid',
+          'paid_at': DateTime.now().toIso8601String(),
+          'paid_amount': paidAmount,
+          'payment_method': paymentMethod == null
+              ? null
+              : _normalizePaymentMethod(paymentMethod),
+        })
+        .eq('company_id', companyId)
+        .eq('id', scheduleId);
+  }
+
+  Future<void> reopenReceiptPaymentSchedule(String scheduleId) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    await _client
+        .from('receipt_payment_schedules')
+        .update({
+          'status': 'pending',
+          'paid_at': null,
+          'paid_amount': null,
+        })
+        .eq('company_id', companyId)
+        .eq('id', scheduleId);
+  }
+
+  Future<void> updateReceiptPaymentScheduleDueDate(
+    String scheduleId,
+    DateTime dueDate,
+  ) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    await _client
+        .from('receipt_payment_schedules')
+        .update({
+          'due_date': dueDate.toIso8601String().split('T').first,
+        })
+        .eq('company_id', companyId)
+        .eq('id', scheduleId);
+  }
+
+  Future<List<Map<String, dynamic>>> getReceiptSchedulesByReceipt(
+    String receiptId,
+  ) async {
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    try {
+      final List<dynamic> rows = await _client
+          .from('receipt_payment_schedules')
+          .select()
+          .eq('company_id', companyId)
+          .eq('receipt_id', receiptId)
+          .order('installment_number', ascending: true);
+
+      return rows.map((r) => Map<String, dynamic>.from(r as Map)).toList();
+    } on PostgrestException catch (e) {
+      if (e.code == '42P01') {
+        return [];
+      }
+      rethrow;
+    }
   }
 
   /// Returns all receipts issued for a specific entry.

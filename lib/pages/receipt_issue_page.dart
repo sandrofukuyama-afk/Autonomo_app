@@ -223,17 +223,137 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     }
   }
 
+  DateTime _normalizeDate(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
+  }
+
+  DateTime _addMonths(DateTime value, int months) {
+    final year = value.year + ((value.month - 1 + months) ~/ 12);
+    final month = ((value.month - 1 + months) % 12) + 1;
+    final maxDay = DateTime(year, month + 1, 0).day;
+    final day = value.day > maxDay ? maxDay : value.day;
+    return DateTime(year, month, day);
+  }
+
+  double _receiptTotal() {
+    final amount = double.tryParse(_amountCtrl.text.replaceAll(',', '')) ?? 0.0;
+    final taxAmount =
+        double.tryParse(_taxAmountCtrl.text.replaceAll(',', '')) ?? 0.0;
+    return amount + taxAmount;
+  }
+
+  List<Map<String, dynamic>> _buildReceivableSchedules() {
+    final total = _receiptTotal();
+    if (_paymentCondition == 'a_vista' || total <= 0) {
+      return const [];
+    }
+
+    final dueDate = _dueDate ?? _normalizeDate(DateTime.now());
+
+    if (_paymentCondition == 'faturado') {
+      return [
+        {
+          'installment_number': 1,
+          'due_date': DateFormat('yyyy-MM-dd').format(dueDate),
+          'amount': total,
+          'status': 'pending',
+          'payment_method': _paymentMethod,
+          'notes': 'Recebimento faturado',
+        },
+      ];
+    }
+
+    final downPayment =
+        double.tryParse(_downPaymentCtrl.text.replaceAll(',', '')) ?? 0.0;
+    final installmentsCount = int.tryParse(
+          _installmentsCountCtrl.text.replaceAll(RegExp(r'[^0-9]'), ''),
+        ) ??
+        0;
+    final installmentValue =
+        double.tryParse(_installmentValueCtrl.text.replaceAll(',', '')) ?? 0.0;
+
+    if (installmentsCount <= 0 || installmentValue <= 0) {
+      return const [];
+    }
+
+    final financedAmount = (total - downPayment).clamp(0.0, double.infinity);
+    final schedules = <Map<String, dynamic>>[];
+
+    for (var index = 0; index < installmentsCount; index++) {
+      final isLast = index == installmentsCount - 1;
+      final accumulated = installmentValue * index;
+      final amount = isLast
+          ? (financedAmount - accumulated).clamp(0.0, double.infinity)
+          : installmentValue;
+
+      schedules.add({
+        'installment_number': index + 1,
+        'due_date': DateFormat(
+          'yyyy-MM-dd',
+        ).format(_addMonths(dueDate, index)),
+        'amount': amount,
+        'status': 'pending',
+        'payment_method': _paymentMethod,
+        'notes': 'Parcela ${index + 1} de $installmentsCount',
+      });
+    }
+
+    return schedules;
+  }
+
+  String? _validateReceivableSetup() {
+    if (_paymentCondition == 'a_vista') return null;
+    if (_dueDate == null) {
+      return 'Informe a data de vencimento.';
+    }
+
+    if (_paymentCondition == 'parcelado') {
+      final installmentsCount = int.tryParse(
+            _installmentsCountCtrl.text.replaceAll(RegExp(r'[^0-9]'), ''),
+          ) ??
+          0;
+      final installmentValue =
+          double.tryParse(_installmentValueCtrl.text.replaceAll(',', '')) ?? 0.0;
+      final downPayment =
+          double.tryParse(_downPaymentCtrl.text.replaceAll(',', '')) ?? 0.0;
+
+      if (installmentsCount <= 0) {
+        return 'Informe a quantidade de parcelas.';
+      }
+      if (installmentValue <= 0) {
+        return 'Informe o valor da parcela.';
+      }
+      if (downPayment > _receiptTotal()) {
+        return 'A entrada não pode ser maior que o total.';
+      }
+    }
+
+    return null;
+  }
+
   String? _buildCombinedNotes() {
     final baseNotes = _notesCtrl.text.trim();
     final parts = <String>[];
     
     if (_paymentCondition == 'faturado') {
       parts.add('Condição: Faturado');
+      if (_dueDate != null) {
+        parts.add('Vencimento: ${DateFormat('dd/MM/yyyy').format(_dueDate!)}');
+      }
     } else if (_paymentCondition == 'parcelado') {
       parts.add('Condição: Parcelado');
-      if (_downPaymentCtrl.text.isNotEmpty) parts.add('Entrada: ');
-      if (_installmentsCountCtrl.text.isNotEmpty) parts.add('Parcelas: ');
-      if (_installmentValueCtrl.text.isNotEmpty) parts.add('Valor da Parcela: ');
+      if (_downPaymentCtrl.text.trim().isNotEmpty) {
+        parts.add('Entrada: ¥${_downPaymentCtrl.text.trim()}');
+      }
+      if (_installmentsCountCtrl.text.trim().isNotEmpty) {
+        parts.add('Parcelas: ${_installmentsCountCtrl.text.trim()}x');
+      }
+      if (_installmentValueCtrl.text.trim().isNotEmpty) {
+        parts.add('Valor da Parcela: ¥${_installmentValueCtrl.text.trim()}');
+      }
+      if (_dueDate != null) {
+        parts.add('Primeiro Vencimento: ${DateFormat('dd/MM/yyyy').format(_dueDate!)}');
+      }
     }
     
     if (baseNotes.isNotEmpty) {
@@ -401,14 +521,22 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
 
   Future<void> _saveReceipt() async {
     if (!_formKey.currentState!.validate()) return;
+    final receivableError = _validateReceivableSetup();
+    if (receivableError != null) {
+      _showError(receivableError);
+      return;
+    }
 
     setState(() => _saving = true);
     try {
       final data = _buildReceiptData();
+      final schedules = _buildReceivableSchedules();
       await SupabaseService.instance.saveReceipt({
         'entry_id': widget.entryData?['id'],
         'receipt_number': data.receiptNumber,
         'issue_date': DateFormat('yyyy-MM-dd').format(data.issueDate),
+        'due_date':
+            _dueDate == null ? null : DateFormat('yyyy-MM-dd').format(_dueDate!),
         'document_kind': _documentKind,
         'item_type': _selectedItemType,
         'service_id': _selectedItemType == 'service' ? _selectedServiceId : null,
@@ -418,7 +546,17 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         'amount': data.amount,
         'tax_amount': data.taxAmount,
         'payment_method': data.paymentMethod,
-        'notes': data.notes,
+        'payment_condition': _paymentCondition,
+        'down_payment_amount':
+            double.tryParse(_downPaymentCtrl.text.replaceAll(',', '')) ?? 0,
+        'installments_count': int.tryParse(
+              _installmentsCountCtrl.text.replaceAll(RegExp(r'[^0-9]'), ''),
+            ) ??
+            1,
+        'installment_value':
+            double.tryParse(_installmentValueCtrl.text.replaceAll(',', '')),
+        'receivable_schedules': schedules,
+        'notes': _buildCombinedNotes(),
         'format': _selectedFormat,
         'language': _language,
         'issued_by': data.issuedBy,

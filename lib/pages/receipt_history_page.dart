@@ -50,6 +50,17 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
     return 'JPY ${amount.toStringAsFixed(0)}';
   }
 
+  String _paymentConditionLabel(dynamic value) {
+    switch ((value ?? '').toString()) {
+      case 'faturado':
+        return 'Faturado';
+      case 'parcelado':
+        return 'Parcelado';
+      default:
+        return 'À vista';
+    }
+  }
+
   void _showDetails(Map<String, dynamic> receipt) {
     final t = AppLocalizations.of(context);
     final itemType = (receipt['item_type'] ?? 'product').toString();
@@ -80,6 +91,10 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
                 Text('${t.translate('client_email')}: ${(receipt['client_email'] ?? '-').toString()}'),
                 const SizedBox(height: 8),
                 Text('${t.translate('payment_method')}: ${(receipt['payment_method'] ?? '-').toString()}'),
+                const SizedBox(height: 8),
+                Text('Condição: ${_paymentConditionLabel(receipt['payment_condition'])}'),
+                const SizedBox(height: 8),
+                Text('Vencimento: ${_formatDate(receipt['due_date'])}'),
                 const SizedBox(height: 8),
                 Text('${t.translate('notes')}: ${(receipt['notes'] ?? '-').toString()}'),
               ],

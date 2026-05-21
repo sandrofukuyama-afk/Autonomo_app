@@ -1,4 +1,5 @@
 import 'settings_categories_page.dart';
+import 'accounts_receivable_page.dart';
 import 'receipt_history_page.dart';
 import 'settings_services_page.dart';
 import 'package:flutter/material.dart';
@@ -1385,6 +1386,19 @@ class _SettingsPageState extends State<SettingsPage> {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const SettingsServicesPage(),
+                  ),
+                );
+              },
+            ),
+            _settingsShortcutCard(
+              icon: Icons.account_balance_wallet_outlined,
+              title: 'Contas a Receber',
+              subtitle: 'Acompanhar faturados e parcelas em aberto',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AccountsReceivablePage(),
                   ),
                 );
               },
