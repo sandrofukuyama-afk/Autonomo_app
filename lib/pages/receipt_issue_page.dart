@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
 import '../services/receipt_pdf_service.dart';
+import 'client_form_page.dart';
 
 class _FormatOption {
   final String value;
@@ -751,7 +752,31 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               ),
             ],
             const SizedBox(height: 24),
-            _sectionHeader(context, t.translate('client_data'), Icons.person_outline),
+            _sectionHeader(
+              context,
+              t.translate('client_data'),
+              Icons.person_outline,
+              trailing: TextButton.icon(
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Novo Cliente'),
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ClientFormPage()),
+                  );
+                  try {
+                    final clients = await SupabaseService.instance.getClients();
+                    if (mounted) {
+                      setState(() {
+                        _clients = List<Map<String, dynamic>>.from(clients);
+                      });
+                    }
+                  } catch (e) {
+                    debugPrint('Erro ao recarregar clientes: $e');
+                  }
+                },
+              ),
+            ),
             const SizedBox(height: 12),
             if (_clients.isNotEmpty) ...[
               DropdownButtonFormField<Map<String, dynamic>>(
@@ -821,7 +846,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     );
   }
 
-  Widget _sectionHeader(BuildContext context, String title, IconData icon) {
+  Widget _sectionHeader(BuildContext context, String title, IconData icon, {Widget? trailing}) {
     final cs = Theme.of(context).colorScheme;
     return Row(
       children: [
@@ -841,6 +866,10 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               .titleMedium
               ?.copyWith(fontWeight: FontWeight.bold),
         ),
+        if (trailing != null) ...[
+          const Spacer(),
+          trailing,
+        ],
       ],
     );
   }
