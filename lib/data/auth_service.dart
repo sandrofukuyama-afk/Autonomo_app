@@ -153,11 +153,23 @@ class AuthService {
       };
     }
 
-    final profile = await _client
-        .from('profiles')
-        .select('id, company_id, language_code, full_name, role')
-        .eq('id', user.id)
-        .maybeSingle();
+    Map<String, dynamic>? profile;
+
+    try {
+      profile = await _client
+          .from('profiles')
+          .select('id, company_id, language_code, full_name, role')
+          .eq('id', user.id)
+          .maybeSingle();
+    } on PostgrestException catch (e) {
+      if (!_isMissingRoleColumnError(e)) rethrow;
+
+      profile = await _client
+          .from('profiles')
+          .select('id, company_id, language_code, full_name')
+          .eq('id', user.id)
+          .maybeSingle();
+    }
 
     if (profile == null) {
       throw Exception('Perfil não encontrado.');
@@ -275,6 +287,14 @@ class AuthService {
       return normalized;
     }
     return AppRoles.member;
+  }
+
+  bool _isMissingRoleColumnError(PostgrestException error) {
+    final code = (error.code ?? '').trim();
+    final message = (error.message).toLowerCase();
+    return code == '42703' &&
+        message.contains('column') &&
+        message.contains('profiles.role');
   }
 
   Future<void> signOut() async {
