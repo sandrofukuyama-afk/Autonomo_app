@@ -46,10 +46,15 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
   final _clientNameCtrl = TextEditingController();
   final _clientEmailCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
+  final _downPaymentCtrl = TextEditingController();
+  final _installmentsCountCtrl = TextEditingController();
+  final _installmentValueCtrl = TextEditingController();
 
   DateTime _issueDate = DateTime.now();
+  DateTime? _dueDate;
   String _selectedFormat = 'a4';
   String _paymentMethod = 'cash';
+  String _paymentCondition = 'a_vista';
   String _documentKind = 'ryoushuusho';
   String _selectedItemType = 'product';
   String? _selectedServiceId;
@@ -87,6 +92,9 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     _clientNameCtrl.dispose();
     _clientEmailCtrl.dispose();
     _notesCtrl.dispose();
+    _downPaymentCtrl.dispose();
+    _installmentsCountCtrl.dispose();
+    _installmentValueCtrl.dispose();
     super.dispose();
   }
 
@@ -190,10 +198,32 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     });
   }
 
+  String? _buildCombinedNotes() {
+    final baseNotes = _notesCtrl.text.trim();
+    final parts = <String>[];
+    
+    if (_paymentCondition == 'faturado') {
+      parts.add('Condição: Faturado');
+    } else if (_paymentCondition == 'parcelado') {
+      parts.add('Condição: Parcelado');
+      if (_downPaymentCtrl.text.isNotEmpty) parts.add('Entrada: ');
+      if (_installmentsCountCtrl.text.isNotEmpty) parts.add('Parcelas: ');
+      if (_installmentValueCtrl.text.isNotEmpty) parts.add('Valor da Parcela: ');
+    }
+    
+    if (baseNotes.isNotEmpty) {
+      parts.add(baseNotes);
+    }
+    
+    if (parts.isEmpty) return null;
+    return parts.join('\n');
+  }
+
   ReceiptData _buildReceiptData() {
     return ReceiptData(
       receiptNumber: _receiptNumberCtrl.text.trim(),
       issueDate: _issueDate,
+      dueDate: _dueDate,
       documentKind: _documentKind,
       description: _descriptionCtrl.text.trim(),
       amount: double.tryParse(_amountCtrl.text.replaceAll(',', '')) ?? 0,
@@ -446,6 +476,10 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
             _datePicker(context, t),
             const SizedBox(height: 12),
             _documentKindSelector(context, t),
+            if (_documentKind == 'seikyuusho') ...[
+              const SizedBox(height: 12),
+              _dueDatePicker(context, t),
+            ],
             const SizedBox(height: 12),
             _itemTypeSelector(context, t),
             if (_selectedItemType == 'service') ...[
@@ -486,8 +520,58 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
                 ),
               ],
             ),
+            if (_documentKind != 'seikyuusho') ...[
+              const SizedBox(height: 12),
+              _paymentSelector(context, t),
+            ],
             const SizedBox(height: 12),
-            _paymentSelector(context, t),
+            _paymentConditionSelector(context, t),
+            if (_paymentCondition == 'faturado' && _documentKind != 'seikyuusho') ...[
+              const SizedBox(height: 12),
+              _dueDatePicker(context, t),
+            ],
+            if (_paymentCondition == 'parcelado') ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _textField(
+                      controller: _downPaymentCtrl,
+                      label: 'Valor Entrada',
+                      icon: Icons.payments_outlined,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => _invalidatePdfCache(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _textField(
+                      controller: _installmentsCountCtrl,
+                      label: 'Parcelas',
+                      icon: Icons.format_list_numbered,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => _invalidatePdfCache(),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _textField(
+                      controller: _installmentValueCtrl,
+                      label: 'Valor Parcela',
+                      icon: Icons.attach_money,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => _invalidatePdfCache(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: _dueDatePicker(context, t)),
+                ],
+              ),
+            ],
             const SizedBox(height: 24),
             _sectionHeader(context, t.translate('client_data'), Icons.person_outline),
             const SizedBox(height: 12),
@@ -581,6 +665,38 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     return null;
   }
 
+  Widget _dueDatePicker(BuildContext context, AppLocalizations t) {
+    final theme = Theme.of(context);
+    final dateStr = _dueDate == null ? '' : DateFormat('dd/MM/yyyy').format(_dueDate!);
+
+    return InkWell(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: _dueDate ?? DateTime.now().add(const Duration(days: 30)),
+          firstDate: DateTime.now().subtract(const Duration(days: 365)),
+          lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+        );
+        if (picked != null) {
+          setState(() {
+            _dueDate = picked;
+          });
+          _invalidatePdfCache();
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Data de Vencimento', // Or add to localizations: t.translate('due_date')
+          prefixIcon: const Icon(Icons.event),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          filled: true,
+        ),
+        child: Text(dateStr, style: theme.textTheme.bodyLarge),
+      ),
+    );
+  }
+
   Widget _datePicker(BuildContext context, AppLocalizations t) {
     final theme = Theme.of(context);
     final dateStr = DateFormat('dd/MM/yyyy').format(_issueDate);
@@ -668,6 +784,13 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         if (value == null) return;
         setState(() {
           _documentKind = value;
+          if (value == 'seikyuusho') {
+            _dueDate ??= DateTime.now().add(const Duration(days: 30));
+            final bankInfo = _companyProfile['bank_info'];
+            if (bankInfo != null && bankInfo.isNotEmpty) {
+              _notesCtrl.text = bankInfo;
+            }
+          }
           _invalidatePdfCache();
         });
       },
@@ -723,6 +846,33 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         if (value == null) return;
         setState(() {
           _paymentMethod = value;
+          _invalidatePdfCache();
+        });
+      },
+    );
+  }
+
+  Widget _paymentConditionSelector(BuildContext context, AppLocalizations t) {
+    return DropdownButtonFormField<String>(
+      value: _paymentCondition,
+      decoration: InputDecoration(
+        labelText: 'Condição de Pagamento', // You could use t.translate('payment_condition')
+        prefixIcon: const Icon(Icons.handshake_outlined),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+      ),
+      items: const [
+        DropdownMenuItem(value: 'a_vista', child: Text('À vista')),
+        DropdownMenuItem(value: 'faturado', child: Text('Faturado')),
+        DropdownMenuItem(value: 'parcelado', child: Text('Parcelado')),
+      ],
+      onChanged: (value) {
+        if (value == null) return;
+        setState(() {
+          _paymentCondition = value;
+          if ((value == 'faturado' || value == 'parcelado') && _dueDate == null) {
+            _dueDate = DateTime.now().add(const Duration(days: 30));
+          }
           _invalidatePdfCache();
         });
       },

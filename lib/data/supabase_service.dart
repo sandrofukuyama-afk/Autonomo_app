@@ -1575,6 +1575,7 @@ class SupabaseService {
     final phone = _normalizeNullableText(settings['phone']);
     final invoiceNo = _normalizeNullableText(settings['invoice_registration_no']);
     final language = _normalizeNullableText(settings['language']) ?? 'pt';
+    final bankInfo = _normalizeNullableText(settings['bank_account_info']);
 
     final nameParts = [displayName ?? fullName].whereType<String>().toList();
     final addressParts = [address1, city, prefecture].whereType<String>().toList();
@@ -1585,6 +1586,7 @@ class SupabaseService {
       'phone': phone,
       'invoice_number': invoiceNo,
       'language': language,
+      'bank_info': bankInfo,
     };
   }
 

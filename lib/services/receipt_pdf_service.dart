@@ -25,6 +25,7 @@ class ReceiptData {
   final String? clientEmail;
   final String? notes;
   final String language;
+  final DateTime? dueDate;
 
   const ReceiptData({
     required this.receiptNumber,
@@ -43,6 +44,7 @@ class ReceiptData {
     this.clientEmail,
     this.notes,
     this.language = 'pt',
+    this.dueDate,
   });
 
   double get total => amount + taxAmount;
@@ -87,6 +89,7 @@ class _Labels {
   final String invoiceNumber;
   final String thankYou;
   final String currencyFmt;
+  final String dueDate;
 
   const _Labels({
     required this.receipt,
@@ -105,6 +108,7 @@ class _Labels {
     required this.invoiceNumber,
     required this.thankYou,
     required this.currencyFmt,
+    required this.dueDate,
   });
 
   static _Labels forLocale(String lang) {
@@ -127,6 +131,7 @@ class _Labels {
           invoiceNumber: '登録番号',
           thankYou: 'ありがとうございます。',
           currencyFmt: '¥#,##0',
+          dueDate: '支払期限',
         );
       case 'es':
         return const _Labels(
@@ -146,6 +151,7 @@ class _Labels {
           invoiceNumber: 'Nº Invoice',
           thankYou: '¡Gracias!',
           currencyFmt: '¥#,##0',
+          dueDate: 'Fecha de vencimiento',
         );
       case 'en':
         return const _Labels(
@@ -165,6 +171,7 @@ class _Labels {
           invoiceNumber: 'Invoice No.',
           thankYou: 'Thank you!',
           currencyFmt: '¥#,##0',
+          dueDate: 'Due Date',
         );
       default: // pt
         return const _Labels(
@@ -184,6 +191,8 @@ class _Labels {
           invoiceNumber: 'Nº Invoice',
           thankYou: 'Obrigado!',
           currencyFmt: '¥#,##0',
+          dueDate: 'Data de Vencimento',
+          dueDate: '支払期限',
         );
     }
   }
@@ -405,7 +414,7 @@ class ReceiptPdfService {
                 pw.Container(
                   padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: pw.BoxDecoration(color: _accent, borderRadius: pw.BorderRadius.circular(6)),
-                  child: pw.Text(l.receipt, style: b(size: 13).copyWith(color: _white)),
+                  child: pw.Text(data.documentKind == 'seikyuusho' ? l.invoice : l.receipt, style: b(size: 13).copyWith(color: _white)),
                 ),
                 pw.SizedBox(height: 4),
                 pw.Text(data.receiptNumber, style: r(size: 10).copyWith(color: const PdfColor.fromInt(0xFFE0E0E0))),
