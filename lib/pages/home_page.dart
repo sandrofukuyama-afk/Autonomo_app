@@ -2596,6 +2596,13 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 10),
           FloatingActionButton.extended(
+            heroTag: 'issue_receipt',
+            icon: const Icon(Icons.receipt_long),
+            label: Text(t.translate('issue_receipt')),
+            onPressed: _openReceiptIssuePage,
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
             heroTag: 'report',
             icon: const Icon(Icons.assessment),
             label: Text(t.translate('nav_reports')),
