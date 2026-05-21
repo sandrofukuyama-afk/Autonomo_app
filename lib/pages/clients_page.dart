@@ -83,6 +83,8 @@ class _ClientsPageState extends State<ClientsPage> {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            if (client['email'] != null && client['email'].isNotEmpty)
+                              Text('${client['email']}'),
                             if (client['phone'] != null && client['phone'].isNotEmpty)
                               Text('${t.translate('client_phone')}: ${client['phone']}'),
                             if (client['postal_code'] != null && client['postal_code'].isNotEmpty)

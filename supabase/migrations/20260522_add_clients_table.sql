@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS public.clients (
   id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   company_id      UUID NOT NULL,
   name            TEXT NOT NULL,
+  email           TEXT,
   phone           TEXT,
   postal_code     TEXT,
   province        TEXT,

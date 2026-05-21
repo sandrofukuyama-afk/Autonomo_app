@@ -65,6 +65,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
   Map<String, String?> _companyProfile = {};
   String _language = 'pt';
   List<Map<String, dynamic>> _services = [];
+  List<Map<String, dynamic>> _clients = [];
 
   Uint8List? _cachedPdfBytes;
   String? _cachedFormat;
@@ -112,12 +113,14 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         SupabaseService.instance.getCompanyProfile(),
         SupabaseService.instance.getServiceCatalog(),
         SupabaseService.instance.getNextReceiptNumber(_issueDate),
+        SupabaseService.instance.getClients(),
       ]);
 
       _companyProfile = Map<String, String?>.from(results[0] as Map);
       _services = List<Map<String, dynamic>>.from(results[1] as List);
       _language = _companyProfile['language'] ?? 'pt';
       _receiptNumberCtrl.text = results[2] as String;
+      _clients = List<Map<String, dynamic>>.from(results[3] as List);
 
       if (entry != null) {
         _descriptionCtrl.text = (entry['description'] ?? '').toString();
@@ -750,6 +753,39 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
             const SizedBox(height: 24),
             _sectionHeader(context, t.translate('client_data'), Icons.person_outline),
             const SizedBox(height: 12),
+            if (_clients.isNotEmpty) ...[
+              DropdownButtonFormField<Map<String, dynamic>>(
+                decoration: InputDecoration(
+                  labelText: 'Selecionar Cliente (Opcional)',
+                  prefixIcon: const Icon(Icons.contacts_outlined),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Nenhum (Digitar manualmente)'),
+                  ),
+                  ..._clients.map((c) => DropdownMenuItem(
+                        value: c,
+                        child: Text(c['name'] ?? ''),
+                      )),
+                ],
+                onChanged: (client) {
+                  setState(() {
+                    if (client != null) {
+                      _clientNameCtrl.text = client['name'] ?? '';
+                      _clientEmailCtrl.text = client['email'] ?? '';
+                    } else {
+                      _clientNameCtrl.text = '';
+                      _clientEmailCtrl.text = '';
+                    }
+                  });
+                  _invalidatePdfCache();
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
             _textField(
               controller: _clientNameCtrl,
               label: t.translate('client_name'),

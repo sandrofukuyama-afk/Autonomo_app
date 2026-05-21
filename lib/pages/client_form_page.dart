@@ -19,6 +19,7 @@ class _ClientFormPageState extends State<ClientFormPage> {
   bool _isFetchingAddress = false;
 
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _postalCodeController = TextEditingController();
   final _provinceController = TextEditingController();
@@ -32,6 +33,7 @@ class _ClientFormPageState extends State<ClientFormPage> {
     super.initState();
     if (widget.client != null) {
       _nameController.text = widget.client!['name'] ?? '';
+      _emailController.text = widget.client!['email'] ?? '';
       _phoneController.text = widget.client!['phone'] ?? '';
       _postalCodeController.text = widget.client!['postal_code'] ?? '';
       _provinceController.text = widget.client!['province'] ?? '';
@@ -45,6 +47,7 @@ class _ClientFormPageState extends State<ClientFormPage> {
   @override
   void dispose() {
     _nameController.dispose();
+    _emailController.dispose();
     _phoneController.dispose();
     _postalCodeController.dispose();
     _provinceController.dispose();
@@ -96,6 +99,7 @@ class _ClientFormPageState extends State<ClientFormPage> {
     try {
       final data = {
         'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
         'postal_code': _postalCodeController.text.trim(),
         'province': _provinceController.text.trim(),
@@ -153,6 +157,15 @@ class _ClientFormPageState extends State<ClientFormPage> {
                         if (val == null || val.trim().isEmpty) return 'Campo obrigatório';
                         return null;
                       },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: InputDecoration(
+                        labelText: t.translate('client_email') == 'client_email' ? 'E-mail do Cliente' : t.translate('client_email'),
+                        border: const OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
