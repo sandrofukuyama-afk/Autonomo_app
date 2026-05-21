@@ -2559,10 +2559,10 @@ class _HomePageState extends State<HomePage> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.smart_toy_outlined),
-            title: Text(t.translate('ask_ai')),
+            title: Text(_helpButtonLabel()),
             onTap: () {
               Navigator.pop(context);
-              _showAiDialog();
+              _openAiHelp();
             },
           ),
           ListTile(
@@ -2651,9 +2651,22 @@ class _HomePageState extends State<HomePage> {
                 onPressed: _showAdminAccessDialog,
                 tooltip: _adminText(t, 'admin_role_label'),
               ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: _openSettingsPage,
+            tooltip: t.translate('settings'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.receipt_outlined),
+            onPressed: _openReceiptIssuePage,
+            tooltip: t.translate('issue_receipt'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _handleLogout,
+            ),
           ],
         ),
-        drawer: _buildDrawer(context),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
