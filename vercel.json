@@ -9,7 +9,7 @@
       "destination": "/index.html"
     }
   ],
-  "installCommand": "rm -rf flutter && git clone --depth 1 --branch stable https://github.com/flutter/flutter.git && ./flutter/bin/flutter --version && ./flutter/bin/flutter config --enable-web && ./flutter/bin/flutter precache --web",
+  "installCommand": "rm -rf flutter && git clone --branch stable https://github.com/flutter/flutter.git && ./flutter/bin/flutter --version && ./flutter/bin/flutter config --enable-web && ./flutter/bin/flutter precache --web",
   "buildCommand": "./flutter/bin/flutter build web --release",
   "outputDirectory": "build/web",
 
