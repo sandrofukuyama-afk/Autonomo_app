@@ -9,6 +9,7 @@ import '../l10n/app_localizations.dart';
 import 'entries_page.dart';
 import 'expenses_page.dart';
 import 'expense_review_page.dart';
+import 'receipt_issue_page.dart';
 import 'reports_page.dart';
 import 'settings_page.dart';
 
@@ -33,6 +34,7 @@ class _HomePageState extends State<HomePage> {
   String? _companyId;
   String? _businessName;
   String? _fullName;
+  bool _isAdmin = false;
   String? _error;
 
   int _pendingExpenseReviews = 0;
@@ -70,6 +72,9 @@ class _HomePageState extends State<HomePage> {
           await AuthService.instance.getCurrentCompanyId(forceRefresh: true);
       final String businessName = await AuthService.instance.getCurrentBusinessName();
       final String fullName = await AuthService.instance.getCurrentFullName();
+      final String role = await AuthService.instance.getCurrentRole(
+        forceRefresh: true,
+      );
 
       await _loadDashboard(companyId);
       await _loadExpenseReviewCount(companyId);
@@ -83,6 +88,7 @@ class _HomePageState extends State<HomePage> {
         _companyId = companyId;
         _businessName = businessName;
         _fullName = fullName;
+        _isAdmin = role == AppRoles.admin;
         _loading = false;
         _error = null;
       });
@@ -621,6 +627,15 @@ class _HomePageState extends State<HomePage> {
     await _refreshDashboard();
   }
 
+  Future<void> _openReceiptIssuePage() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ReceiptIssuePage(),
+      ),
+    );
+  }
+
   String _apiBaseUrl() {
     final uri = Uri.base;
     return '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
@@ -638,6 +653,69 @@ class _HomePageState extends State<HomePage> {
     final t = AppLocalizations.of(context);
     return t.translate('ask_ai');
   }
+
+  String _receiptShortcutSubtitle() {
+    switch (widget.currentLocale?.languageCode) {
+      case 'ja':
+        return 'PDF領収書を作成して保存';
+      case 'es':
+        return 'Crear y guardar recibos en PDF';
+      case 'en':
+        return 'Create and save PDF receipts';
+      default:
+        return 'Criar e salvar recibos em PDF';
+    }
+  }
+
+  String _translatedOrEnglish(AppLocalizations t, String key) {
+    final translated = t.translate(key);
+    if (translated == key) {
+      return t.translateWithLocale(key, 'en');
+    }
+    return translated;
+  }
+
+  String _roleLabel(AppLocalizations t) {
+    return _isAdmin
+        ? _adminText(t, 'admin_role_label')
+        : _adminText(t, 'member_role_label');
+  }
+
+  String _adminText(AppLocalizations t, String key) {
+    return _translatedOrEnglish(t, key);
+  }
+
+  Future<void> _showAdminAccessDialog() async {
+    final t = AppLocalizations.of(context);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(_adminText(t, 'admin_access_title')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_adminText(t, 'admin_access_description')),
+              const SizedBox(height: 12),
+              Text('${t.translate('auth_email')}: ${currentUserEmail ?? '-'}'),
+              const SizedBox(height: 6),
+              Text('${_adminText(t, 'access_level_label')}: ${_roleLabel(t)}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(t.translate('cancel')),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String? get currentUserEmail => AuthService.instance.currentUser?.email;
 
   String _helpDialogTitle() {
     final t = AppLocalizations.of(context);
@@ -1290,10 +1368,17 @@ class _HomePageState extends State<HomePage> {
         'color': Colors.blue,
         'onTap': _openReportsPage,
       },
+      {
+        'title': t.translate('issue_receipt'),
+        'subtitle': _receiptShortcutSubtitle(),
+        'icon': Icons.receipt_outlined,
+        'color': Colors.orange,
+        'onTap': _openReceiptIssuePage,
+      },
     ];
 
     final width = MediaQuery.of(context).size.width;
-    final crossAxisCount = width >= 1000 ? 3 : width >= 650 ? 3 : 1;
+    final crossAxisCount = width >= 1000 ? 4 : width >= 650 ? 2 : 1;
     final childAspectRatio = width >= 650 ? 1.8 : 2.8;
 
     return GridView.builder(
@@ -2173,6 +2258,71 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildAdminAccessBanner() {
+    final t = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.amber.shade200),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.admin_panel_settings_outlined,
+              color: Colors.amber.shade900,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _adminText(t, 'admin_access_title'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _adminText(t, 'admin_access_description'),
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Chip(
+                      avatar: const Icon(Icons.verified_user, size: 18),
+                      label: Text(_roleLabel(t)),
+                    ),
+                    if (currentUserEmail != null && currentUserEmail!.isNotEmpty)
+                      Chip(
+                        avatar: const Icon(Icons.email_outlined, size: 18),
+                        label: Text(currentUserEmail!),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMainContent() {
     final t = AppLocalizations.of(context);
     final width = MediaQuery.of(context).size.width;
@@ -2183,6 +2333,10 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.all(16),
         children: [
           _buildHeroCard(),
+          if (_isAdmin) ...[
+            const SizedBox(height: 14),
+            _buildAdminAccessBanner(),
+          ],
           const SizedBox(height: 14),
           _buildFiscalLockBanner(),
           if (_pendingExpenseReviews > 0) ...[
@@ -2242,6 +2396,10 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.all(16),
       children: [
         _buildHeroCard(),
+        if (_isAdmin) ...[
+          const SizedBox(height: 14),
+          _buildAdminAccessBanner(),
+        ],
         const SizedBox(height: 14),
         _buildFiscalLockBanner(),
         if (_pendingExpenseReviews > 0) ...[
@@ -2331,14 +2489,25 @@ class _HomePageState extends State<HomePage> {
         appBar: AppBar(
           title: const Text('Autonomo App'),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: _openSettingsPage,
-              tooltip: t.translate('settings'),
-            ),
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: _handleLogout,
+            if (_isAdmin)
+              IconButton(
+                icon: const Icon(Icons.admin_panel_settings_outlined),
+                onPressed: _showAdminAccessDialog,
+                tooltip: _adminText(t, 'admin_role_label'),
+              ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: _openSettingsPage,
+            tooltip: t.translate('settings'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.receipt_outlined),
+            onPressed: _openReceiptIssuePage,
+            tooltip: t.translate('issue_receipt'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _handleLogout,
             ),
           ],
         ),
@@ -2362,10 +2531,21 @@ class _HomePageState extends State<HomePage> {
               : 'Autonomo App',
         ),
         actions: [
+          if (_isAdmin)
+            IconButton(
+              icon: const Icon(Icons.admin_panel_settings_outlined),
+              onPressed: _showAdminAccessDialog,
+              tooltip: _adminText(t, 'admin_role_label'),
+            ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: _openSettingsPage,
             tooltip: t.translate('settings'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.receipt_outlined),
+            onPressed: _openReceiptIssuePage,
+            tooltip: t.translate('issue_receipt'),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),

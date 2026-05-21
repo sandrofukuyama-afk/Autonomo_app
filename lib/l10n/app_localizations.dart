@@ -61,7 +61,14 @@ class AppLocalizations {
           'Escolha o idioma exibido no aplicativo.',
       'save_changes': 'Salvar alterações',
       'cancel': 'Cancelar',
+      'close': 'Fechar',
       'language_updated': 'Idioma atualizado com sucesso.',
+      'admin_role_label': 'Administrador',
+      'member_role_label': 'Membro',
+      'admin_access_title': 'Acesso administrativo ativo',
+      'admin_access_description':
+          'Esta conta possui permissÃµes administrativas no aplicativo.',
+      'access_level_label': 'NÃ­vel de acesso',
 
       'financial_dashboard': 'Dashboard financeiro',
       'month_summary': 'Resumo do mês',
@@ -306,7 +313,14 @@ class AppLocalizations {
           'Choose the language shown in the application.',
       'save_changes': 'Save changes',
       'cancel': 'Cancel',
+      'close': 'Close',
       'language_updated': 'Language updated successfully.',
+      'admin_role_label': 'Administrator',
+      'member_role_label': 'Member',
+      'admin_access_title': 'Administrative access active',
+      'admin_access_description':
+          'This account has administrative permissions in the app.',
+      'access_level_label': 'Access level',
 
       'financial_dashboard': 'Financial dashboard',
       'month_summary': 'Month summary',
@@ -793,7 +807,14 @@ class AppLocalizations {
           'Elija el idioma que se mostrará en la aplicación.',
       'save_changes': 'Guardar cambios',
       'cancel': 'Cancelar',
+      'close': 'Cerrar',
       'language_updated': 'Idioma actualizado correctamente.',
+      'admin_role_label': 'Administrador',
+      'member_role_label': 'Miembro',
+      'admin_access_title': 'Acceso administrativo activo',
+      'admin_access_description':
+          'Esta cuenta tiene permisos administrativos en la aplicaciÃ³n.',
+      'access_level_label': 'Nivel de acceso',
 
       'financial_dashboard': 'Panel financiero',
       'month_summary': 'Resumen del mes',

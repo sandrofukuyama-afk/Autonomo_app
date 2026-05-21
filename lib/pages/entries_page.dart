@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
-import 'receipt_issue_page.dart';
 
 class EntriesPage extends StatefulWidget {
   const EntriesPage({super.key});
@@ -1320,29 +1319,6 @@ class _EntriesPageState extends State<EntriesPage> {
     }
   }
 
-  /// Opens the ReceiptIssuePage pre-populated with the given entry's data.
-  Future<void> _openReceiptPage(Map<String, dynamic> entry) async {
-    final entryForReceipt = {
-      'id': entry['id'],
-      'description': entry['description'],
-      'amount': entry['amount'],
-      'tax_amount': entry['tax_amount'] ?? 0,
-      'payment_method': entry['payment_method'],
-      'entry_date': entry['date'],
-    };
-
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ReceiptIssuePage(entryData: entryForReceipt),
-      ),
-    );
-
-    if (result == true && mounted) {
-      _showMessage(AppLocalizations.of(context).translate('receipt_saved'));
-    }
-  }
-
   Widget _entryCard(AppLocalizations t, Map<String, dynamic> entry) {
 
     final description = (entry['description'] ?? '').toString();
@@ -1420,11 +1396,6 @@ class _EntriesPageState extends State<EntriesPage> {
                     ),
                   ),
                 // Issue receipt button — always visible (not locked by fiscal month)
-                IconButton(
-                  tooltip: t.translate('issue_receipt'),
-                  icon: const Icon(Icons.receipt_outlined),
-                  onPressed: () => _openReceiptPage(entry),
-                ),
               ],
             ),
           ],

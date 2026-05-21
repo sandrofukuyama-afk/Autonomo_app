@@ -1,6 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+class AppRoles {
+  static const String member = 'member';
+  static const String admin = 'admin';
+
+  static const Set<String> supported = {
+    member,
+    admin,
+  };
+}
+
 class SignUpResult {
   final bool requiresEmailConfirmation;
   final String message;
@@ -39,6 +49,7 @@ class AuthService {
   String? _cachedLanguageUserId;
   String? _cachedFullName;
   String? _cachedBusinessName;
+  String? _cachedRole;
 
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
@@ -138,12 +149,13 @@ class AuthService {
         'id': user.id,
         'company_id': _cachedCompanyId,
         'language_code': _cachedLanguageCode ?? 'pt',
+        'role': _cachedRole ?? AppRoles.member,
       };
     }
 
     final profile = await _client
         .from('profiles')
-        .select('id, company_id, language_code, full_name')
+        .select('id, company_id, language_code, full_name, role')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -154,6 +166,7 @@ class AuthService {
     final String? companyId = profile['company_id']?.toString();
     final String languageCode = (profile['language_code'] ?? 'pt').toString();
     final String fullName = (profile['full_name'] ?? '').toString();
+    final String role = _normalizeRole(profile['role']);
 
     if (companyId == null) {
       throw Exception('Usuário não possui empresa vinculada.');
@@ -174,6 +187,7 @@ class AuthService {
     _cachedLanguageUserId = user.id;
     _cachedFullName = fullName;
     _cachedBusinessName = businessName;
+    _cachedRole = role;
 
     return {
       'id': user.id,
@@ -181,6 +195,7 @@ class AuthService {
       'language_code': _cachedLanguageCode,
       'full_name': _cachedFullName,
       'business_name': _cachedBusinessName,
+      'role': _cachedRole,
     };
   }
 
@@ -213,6 +228,16 @@ class AuthService {
     return languageCode;
   }
 
+  Future<String> getCurrentRole({bool forceRefresh = false}) async {
+    final profile = await getCurrentProfile(forceRefresh: forceRefresh);
+    return _normalizeRole(profile['role']);
+  }
+
+  Future<bool> isCurrentUserAdmin({bool forceRefresh = false}) async {
+    final role = await getCurrentRole(forceRefresh: forceRefresh);
+    return role == AppRoles.admin;
+  }
+
   Future<void> updateCurrentLanguageCode(String languageCode) async {
     final user = currentUser;
 
@@ -241,6 +266,15 @@ class AuthService {
     _cachedLanguageUserId = null;
     _cachedFullName = null;
     _cachedBusinessName = null;
+    _cachedRole = null;
+  }
+
+  String _normalizeRole(dynamic value) {
+    final normalized = (value ?? '').toString().trim().toLowerCase();
+    if (AppRoles.supported.contains(normalized)) {
+      return normalized;
+    }
+    return AppRoles.member;
   }
 
   Future<void> signOut() async {
