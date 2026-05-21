@@ -64,16 +64,15 @@ class _ClientFormPageState extends State<ClientFormPage> {
 
     setState(() => _isFetchingAddress = true);
     try {
-      final url = Uri.parse('https://zipcloud.ibsnet.co.jp/api/search?zipcode=$zip');
+      final url = Uri.parse('https://postcode.teraren.com/postcodes/$zip.json');
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['status'] == 200 && data['results'] != null && data['results'].isNotEmpty) {
-          final result = data['results'][0];
+        if (data['prefecture_roman'] != null) {
           setState(() {
-            _provinceController.text = result['address1'] ?? '';
-            _cityController.text = result['address2'] ?? '';
-            _neighborhoodController.text = result['address3'] ?? '';
+            _provinceController.text = data['prefecture_roman'] ?? '';
+            _cityController.text = data['city_roman'] ?? '';
+            _neighborhoodController.text = data['suburb_roman'] ?? '';
           });
         } else {
           if (!mounted) return;
@@ -81,6 +80,11 @@ class _ClientFormPageState extends State<ClientFormPage> {
             const SnackBar(content: Text('Endereço não encontrado para este CEP.')),
           );
         }
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Endereço não encontrado para este CEP.')),
+        );
       }
     } catch (e) {
       if (!mounted) return;
