@@ -194,8 +194,33 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
           }
         }
       }
+      _calculateInstallmentValue();
       _invalidatePdfCache();
     });
+  }
+
+  void _calculateInstallmentValue() {
+    if (_paymentCondition != 'parcelado') return;
+    
+    final amount = double.tryParse(_amountCtrl.text.replaceAll(',', '')) ?? 0.0;
+    final taxAmount = double.tryParse(_taxAmountCtrl.text.replaceAll(',', '')) ?? 0.0;
+    final total = amount + taxAmount;
+    
+    final downPayment = double.tryParse(_downPaymentCtrl.text.replaceAll(',', '')) ?? 0.0;
+    final installmentsCountStr = _installmentsCountCtrl.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final installmentsCount = int.tryParse(installmentsCountStr) ?? 0;
+    
+    if (installmentsCount > 0) {
+      final value = (total - downPayment) / installmentsCount;
+      if (value > 0) {
+        // avoid changing if user is typing a decimal manually, but for JPY it's usually 0 decimals
+        _installmentValueCtrl.text = value.toStringAsFixed(0);
+      } else {
+        _installmentValueCtrl.text = '';
+      }
+    } else {
+      _installmentValueCtrl.text = '';
+    }
   }
 
   String? _buildCombinedNotes() {
@@ -505,7 +530,10 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
                     icon: Icons.attach_money,
                     keyboardType: TextInputType.number,
                     validator: _requiredValidator,
-                    onChanged: (_) => _invalidatePdfCache(),
+                    onChanged: (_) {
+                      _calculateInstallmentValue();
+                      _invalidatePdfCache();
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -515,7 +543,10 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
                     label: t.translate('tax_rate'),
                     icon: Icons.percent,
                     keyboardType: TextInputType.number,
-                    onChanged: (_) => _invalidatePdfCache(),
+                    onChanged: (_) {
+                      _calculateInstallmentValue();
+                      _invalidatePdfCache();
+                    },
                   ),
                 ),
               ],
@@ -540,7 +571,10 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
                       label: 'Valor Entrada',
                       icon: Icons.payments_outlined,
                       keyboardType: TextInputType.number,
-                      onChanged: (_) => _invalidatePdfCache(),
+                      onChanged: (_) {
+                        _calculateInstallmentValue();
+                        _invalidatePdfCache();
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -550,7 +584,10 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
                       label: 'Parcelas',
                       icon: Icons.format_list_numbered,
                       keyboardType: TextInputType.number,
-                      onChanged: (_) => _invalidatePdfCache(),
+                      onChanged: (_) {
+                        _calculateInstallmentValue();
+                        _invalidatePdfCache();
+                      },
                     ),
                   ),
                 ],
@@ -873,6 +910,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
           if ((value == 'faturado' || value == 'parcelado') && _dueDate == null) {
             _dueDate = DateTime.now().add(const Duration(days: 30));
           }
+          _calculateInstallmentValue();
           _invalidatePdfCache();
         });
       },
