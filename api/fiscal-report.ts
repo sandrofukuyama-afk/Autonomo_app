@@ -1,5 +1,5 @@
-import PDFDocument from 'pdfkit';
-import sharp from 'sharp';
+import PDFDocument = require('pdfkit');
+import sharp = require('sharp');
 
 type EntryRow = {
   id?: string | number;
@@ -885,7 +885,7 @@ export default {
         return json({ success: false, error: 'Modo de relatório inválido.' }, 400);
       }
 
-      if (companyId.trim().isEmpty) {
+      if (companyId.trim().length === 0) {
         return json({ success: false, error: 'companyId obrigatório.' }, 400);
       }
 
@@ -907,7 +907,7 @@ export default {
       const pdf = await buildPdf(entries, expenses, year, effectiveFilingType);
       const fileName = `autonomo_fiscal_${year}.pdf`;
 
-      return new Response(pdf, {
+      return new Response(Buffer.from(pdf), {
         status: 200,
         headers: {
           'content-type': 'application/pdf',
