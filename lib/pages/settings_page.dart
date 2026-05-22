@@ -1390,32 +1390,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 );
               },
             ),
-            _settingsShortcutCard(
-              icon: Icons.account_balance_wallet_outlined,
-              title: 'Contas a Receber',
-              subtitle: 'Acompanhar faturados e parcelas em aberto',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const AccountsReceivablePage(),
-                  ),
-                );
-              },
-            ),
-            _settingsShortcutCard(
-              icon: Icons.receipt_long_outlined,
-              title: _text('receipt_history', t),
-              subtitle: _text('view_receipts_desc', t),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ReceiptHistoryPage(),
-                  ),
-                );
-              },
-            ),
+
             const SizedBox(height: 18),
 
             // ── SMTP section ─────────────────────────────────────────────

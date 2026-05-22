@@ -11,6 +11,8 @@ import 'entries_page.dart';
 import 'expenses_page.dart';
 import 'expense_review_page.dart';
 import 'receipt_issue_page.dart';
+import 'receipt_history_page.dart';
+import 'accounts_receivable_page.dart';
 import 'clients_page.dart';
 import 'reports_page.dart';
 import 'settings_page.dart';
@@ -2545,6 +2547,28 @@ class _HomePageState extends State<HomePage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ClientsPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.account_balance_wallet_outlined, color: Colors.teal),
+            title: const Text('Contas a Receber'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AccountsReceivablePage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.history_outlined, color: Colors.brown),
+            title: Text(t.translate('receipt_history')),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ReceiptHistoryPage()),
               );
             },
           ),
