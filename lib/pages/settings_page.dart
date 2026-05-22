@@ -39,7 +39,6 @@ class _SettingsPageState extends State<SettingsPage> {
   final _city = TextEditingController();
   final _address1 = TextEditingController();
   final _address2 = TextEditingController();
-  final _occupation = TextEditingController();
   final _businessType = TextEditingController();
   final _invoiceNumber = TextEditingController();
   final _fiscalNotes = TextEditingController();
@@ -97,7 +96,6 @@ class _SettingsPageState extends State<SettingsPage> {
     _city.dispose();
     _address1.dispose();
     _address2.dispose();
-    _occupation.dispose();
     _businessType.dispose();
     _invoiceNumber.dispose();
     _fiscalNotes.dispose();
@@ -533,7 +531,6 @@ class _SettingsPageState extends State<SettingsPage> {
       _city.text = (data['city'] ?? '').toString();
       _address1.text = (data['address_line1'] ?? '').toString();
       _address2.text = (data['address_line2'] ?? '').toString();
-      _occupation.text = (data['occupation'] ?? '').toString();
       _businessType.text = (data['business_type'] ?? '').toString();
       _invoiceNumber.text = (data['invoice_registration_no'] ?? '').toString();
       _fiscalNotes.text = (data['fiscal_notes'] ?? '').toString();
@@ -765,7 +762,6 @@ class _SettingsPageState extends State<SettingsPage> {
             _address1.text.trim().isEmpty ? null : _address1.text.trim(),
         'address_line2':
             _address2.text.trim().isEmpty ? null : _address2.text.trim(),
-        'occupation': _occupation.text.trim(),
         'business_type':
             _businessType.text.trim().isEmpty ? null : _businessType.text.trim(),
         'language': _language,
@@ -1168,12 +1164,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   if (value == null) return;
                   setState(() => _bookkeepingMethod = value);
                 },
-              ),
-              _field(
-                t,
-                labelKey: 'occupation',
-                controller: _occupation,
-                validator: (value) => _requiredValidator(value, t),
               ),
               _field(
                 t,
