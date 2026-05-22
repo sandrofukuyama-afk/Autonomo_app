@@ -675,10 +675,6 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
             ],
             const SizedBox(height: 12),
             _itemTypeSelector(context, t),
-            if (_selectedItemType == 'service') ...[
-              const SizedBox(height: 12),
-              _serviceSelector(context, t),
-            ],
             const SizedBox(height: 12),
             _textField(
               controller: _descriptionCtrl,
