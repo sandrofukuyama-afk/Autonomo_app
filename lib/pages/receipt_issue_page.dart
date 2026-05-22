@@ -59,6 +59,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
   String _documentKind = 'ryoushuusho';
   String _selectedItemType = 'product';
   String? _selectedServiceId;
+  bool _createEntryOnSave = true;
   bool _loading = true;
   bool _saving = false;
   bool _sendingEmail = false;
@@ -82,6 +83,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
   @override
   void initState() {
     super.initState();
+    _createEntryOnSave = widget.entryData == null;
     _loadInitialData();
   }
 
@@ -535,6 +537,30 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     try {
       final data = _buildReceiptData();
       final schedules = _buildReceivableSchedules();
+      final shouldCreateEntry =
+          _documentKind == 'ryoushuusho' &&
+          _createEntryOnSave &&
+          widget.entryData == null;
+
+      if (shouldCreateEntry) {
+        await SupabaseService.instance.addEntry({
+          'date': DateFormat('yyyy-MM-dd').format(data.issueDate),
+          'description': data.description,
+          'category': _selectedItemType == 'service' ? 'service' : 'sale',
+          'amount': data.amount,
+          'payment_method': data.paymentMethod,
+          'tax_rate': null,
+          'tax_inclusion_type': 'unknown',
+          'tax_amount': data.taxAmount,
+          'qualified_invoice_issued': false,
+          'qualified_invoice_number': data.receiptNumber,
+          'customer_name': data.clientName,
+          'revenue_type': _selectedItemType == 'service' ? 'service' : 'product',
+          'fiscal_revenue_category': null,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+
       await SupabaseService.instance.saveReceipt({
         'entry_id': widget.entryData?['id'],
         'receipt_number': data.receiptNumber,
@@ -646,6 +672,27 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
             if (_documentKind == 'seikyuusho') ...[
               const SizedBox(height: 12),
               _dueDatePicker(context, t),
+            ],
+            if (_documentKind == 'ryoushuusho' && widget.entryData == null) ...[
+              const SizedBox(height: 12),
+              CheckboxListTile(
+                value: _createEntryOnSave,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _createEntryOnSave = value;
+                  });
+                },
+                title: Text(
+                  t.translate('receipt_launch_entry_title'),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  t.translate('receipt_launch_entry_description'),
+                ),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
             ],
             const SizedBox(height: 12),
             _itemTypeSelector(context, t),
@@ -1025,11 +1072,14 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         setState(() {
           _documentKind = value;
           if (value == 'seikyuusho') {
+            _createEntryOnSave = false;
             _dueDate ??= DateTime.now().add(const Duration(days: 30));
             final bankInfo = _companyProfile['bank_info'];
             if (bankInfo != null && bankInfo.isNotEmpty) {
               _notesCtrl.text = bankInfo;
             }
+          } else if (widget.entryData == null) {
+            _createEntryOnSave = true;
           }
           _invalidatePdfCache();
         });
