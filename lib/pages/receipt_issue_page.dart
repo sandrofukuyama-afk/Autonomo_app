@@ -673,27 +673,6 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               const SizedBox(height: 12),
               _dueDatePicker(context, t),
             ],
-            if (_documentKind == 'ryoushuusho' && widget.entryData == null) ...[
-              const SizedBox(height: 12),
-              CheckboxListTile(
-                value: _createEntryOnSave,
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() {
-                    _createEntryOnSave = value;
-                  });
-                },
-                title: Text(
-                  t.translate('receipt_launch_entry_title'),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(
-                  t.translate('receipt_launch_entry_description'),
-                ),
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ],
             const SizedBox(height: 12),
             _itemTypeSelector(context, t),
             if (_selectedItemType == 'service') ...[
@@ -884,6 +863,27 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               maxLines: 3,
               onChanged: (_) => _invalidatePdfCache(),
             ),
+            if (_documentKind == 'ryoushuusho' && widget.entryData == null) ...[
+              const SizedBox(height: 12),
+              CheckboxListTile(
+                value: _createEntryOnSave,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _createEntryOnSave = value;
+                  });
+                },
+                title: Text(
+                  t.translate('receipt_launch_entry_title'),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  t.translate('receipt_launch_entry_description'),
+                ),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
             const SizedBox(height: 32),
             _actionButtons(context, t),
             const SizedBox(height: 24),
