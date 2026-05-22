@@ -1,9 +1,7 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -462,12 +460,9 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
       }
 
       final bytes = await _generatePdf();
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/recibo_${_receiptNumberCtrl.text}.pdf');
-      await file.writeAsBytes(bytes);
-
+      final fileName = 'recibo_${_receiptNumberCtrl.text}.pdf';
       await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'application/pdf')],
+        [XFile.fromData(bytes, mimeType: 'application/pdf', name: fileName)],
         subject: 'Recibo ${_receiptNumberCtrl.text}',
       );
     } catch (e) {
