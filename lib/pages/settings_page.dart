@@ -512,7 +512,14 @@ class _SettingsPageState extends State<SettingsPage> {
           .from('app_settings')
           .select()
           .eq('company_id', companyId)
-          .single();
+          .maybeSingle();
+
+      if (data == null) {
+        setState(() {
+          _loading = false;
+        });
+        return;
+      }
 
       final String fetchedFullName = (data['full_name'] ?? '').toString();
       final String fetchedDisplayName = (data['display_name'] ?? '').toString();
@@ -821,10 +828,18 @@ class _SettingsPageState extends State<SettingsPage> {
         'updated_at': DateTime.now().toIso8601String(),
       };
 
-      await _client.from('app_settings').upsert(
-            payload,
-            onConflict: 'company_id',
-          );
+      try {
+        await _client.from('app_settings').upsert(
+              payload,
+              onConflict: 'company_id',
+            );
+      } on PostgrestException catch (e) {
+        if (e.code != '42501') rethrow;
+        await _client
+            .from('app_settings')
+            .update(payload)
+            .eq('company_id', _companyId!);
+      }
 
       if (widget.onLocaleChanged != null &&
           _supportedLanguages.contains(_language)) {

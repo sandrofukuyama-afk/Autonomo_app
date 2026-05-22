@@ -50,11 +50,21 @@ class SupabaseService {
         .eq('company_id', companyId)
         .maybeSingle();
 
-    if (row == null) {
-      throw Exception('Configurações da empresa não encontradas.');
-    }
+    if (row != null) return row;
 
-    return row;
+    return {
+      'company_id': companyId,
+      'language': 'pt',
+      'currency': 'JPY',
+      'filing_type': 'white_return',
+      'consumption_tax_status': 'exempt',
+      'bookkeeping_method': 'simple',
+      'fiscal_year_start_month': 1,
+      'invoice_registered': false,
+      'handles_reduced_tax_rate': true,
+      'use_two_tenths_special_rule': false,
+      'closed_fiscal_months': <String>[],
+    };
   }
 
   Future<List<String>> getClosedFiscalMonths() async {
@@ -1799,7 +1809,6 @@ class SupabaseService {
       'down_payment_amount': data['down_payment_amount'] ?? 0,
       'installments_count': data['installments_count'] ?? 1,
       'installment_value': data['installment_value'],
-      'updated_at': DateTime.now().toIso8601String(),
     };
 
     await _client
@@ -1907,7 +1916,8 @@ class SupabaseService {
   }) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
 
-    await _client.from('app_settings').update({
+    final payload = {
+      'company_id': companyId,
       'smtp_enabled': enabled,
       'smtp_host': host.trim().isEmpty ? null : host.trim(),
       'smtp_port': port,
@@ -1916,7 +1926,20 @@ class SupabaseService {
       'smtp_sender_name': senderName.trim().isEmpty ? null : senderName.trim(),
       'smtp_use_ssl': useSSL,
       'updated_at': DateTime.now().toIso8601String(),
-    }).eq('company_id', companyId);
+    };
+
+    try {
+      await _client.from('app_settings').upsert(
+            payload,
+            onConflict: 'company_id',
+          );
+    } on PostgrestException catch (e) {
+      if (e.code != '42501') rethrow;
+      await _client
+          .from('app_settings')
+          .update(payload)
+          .eq('company_id', companyId);
+    }
   }
 
   // ==========================================

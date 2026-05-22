@@ -131,6 +131,10 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
       _clients = List<Map<String, dynamic>>.from(results[3] as List);
 
       if (entry != null) {
+        if (entry['receipt_number'] != null &&
+            entry['receipt_number'].toString().trim().isNotEmpty) {
+          _receiptNumberCtrl.text = entry['receipt_number'].toString();
+        }
         _descriptionCtrl.text = (entry['description'] ?? '').toString();
         final amount = double.tryParse((entry['amount'] ?? 0).toString()) ?? 0;
         final taxAmount = double.tryParse((entry['tax_amount'] ?? 0).toString()) ?? 0;
