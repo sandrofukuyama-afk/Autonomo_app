@@ -39,6 +39,7 @@ class _HomePageState extends State<HomePage> {
   String? _businessName;
   String? _fullName;
   bool _isAdmin = false;
+  bool _isTestModeEnabled = false;
   String? _error;
 
   int _pendingExpenseReviews = 0;
@@ -67,7 +68,17 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _isTestModeEnabled = SupabaseService.instance.isTestModeEnabled;
     _initializeDashboard();
+  }
+
+  Future<void> _setTestModeEnabled(bool value) async {
+    await SupabaseService.instance.setTestModeEnabled(value);
+    if (!mounted) return;
+
+    setState(() {
+      _isTestModeEnabled = SupabaseService.instance.isTestModeEnabled;
+    });
   }
 
   Future<void> _initializeDashboard() async {
@@ -2326,12 +2337,8 @@ class _HomePageState extends State<HomePage> {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(_adminText(t, 'test_mode_description')),
-                  value: SupabaseService.instance.isTestModeEnabled,
-                  onChanged: (val) {
-                    setState(() {
-                      SupabaseService.instance.setTestModeEnabled(val);
-                    });
-                  },
+                  value: _isTestModeEnabled,
+                  onChanged: _setTestModeEnabled,
                   activeColor: Colors.amber.shade900,
                   contentPadding: EdgeInsets.zero,
                 ),
