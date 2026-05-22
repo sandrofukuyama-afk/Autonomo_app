@@ -66,6 +66,8 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
   String _language = 'pt';
   List<Map<String, dynamic>> _services = [];
   List<Map<String, dynamic>> _clients = [];
+  List<Map<String, dynamic>> _clientSuggestions = [];
+  bool _showNoClientWarning = false;
 
   Uint8List? _cachedPdfBytes;
   String? _cachedFormat;
@@ -225,6 +227,42 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     } else {
       _installmentValueCtrl.text = '';
     }
+  }
+
+  void _onClientNameChanged(String value) {
+    final query = value.trim().toLowerCase();
+    if (query.isEmpty) {
+      setState(() {
+        _clientSuggestions = [];
+        _showNoClientWarning = false;
+      });
+      _invalidatePdfCache();
+      return;
+    }
+
+    final matches = _clients.where((c) {
+      final name = (c['name'] ?? '').toString().trim().toLowerCase();
+      return name.startsWith(query);
+    }).toList();
+
+    setState(() {
+      _clientSuggestions = matches.take(5).toList();
+      _showNoClientWarning = matches.isEmpty;
+      if (matches.length == 1) {
+        _clientEmailCtrl.text = (matches.first['email'] ?? '').toString();
+      }
+    });
+    _invalidatePdfCache();
+  }
+
+  void _selectClientSuggestion(Map<String, dynamic> client) {
+    setState(() {
+      _clientNameCtrl.text = (client['name'] ?? '').toString();
+      _clientEmailCtrl.text = (client['email'] ?? '').toString();
+      _clientSuggestions = [];
+      _showNoClientWarning = false;
+    });
+    _invalidatePdfCache();
   }
 
   DateTime _normalizeDate(DateTime value) {
@@ -795,45 +833,50 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               ),
             ),
             const SizedBox(height: 12),
-            if (_clients.isNotEmpty) ...[
-              DropdownButtonFormField<Map<String, dynamic>>(
-                decoration: InputDecoration(
-                  labelText: 'Selecionar Cliente (Opcional)',
-                  prefixIcon: const Icon(Icons.contacts_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  filled: true,
-                ),
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('Nenhum (Digitar manualmente)'),
-                  ),
-                  ..._clients.map((c) => DropdownMenuItem(
-                        value: c,
-                        child: Text(c['name'] ?? ''),
-                      )),
-                ],
-                onChanged: (client) {
-                  setState(() {
-                    if (client != null) {
-                      _clientNameCtrl.text = client['name'] ?? '';
-                      _clientEmailCtrl.text = client['email'] ?? '';
-                    } else {
-                      _clientNameCtrl.text = '';
-                      _clientEmailCtrl.text = '';
-                    }
-                  });
-                  _invalidatePdfCache();
-                },
-              ),
-              const SizedBox(height: 12),
-            ],
             _textField(
               controller: _clientNameCtrl,
               label: t.translate('client_name'),
               icon: Icons.person,
-              onChanged: (_) => _invalidatePdfCache(),
+              onChanged: _onClientNameChanged,
             ),
+            if (_clientSuggestions.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Card(
+                margin: EdgeInsets.zero,
+                child: Column(
+                  children: _clientSuggestions.map((client) {
+                    final name = (client['name'] ?? '').toString();
+                    final email = (client['email'] ?? '').toString();
+                    return ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.person_search_outlined),
+                      title: Text(name),
+                      subtitle: email.isEmpty ? null : Text(email),
+                      onTap: () => _selectClientSuggestion(client),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+            if (_showNoClientWarning) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.orange.shade700),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Não há cliente cadastrado com esse início de nome.',
+                      style: TextStyle(
+                        color: Colors.orange.shade700,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 12),
             _textField(
               controller: _clientEmailCtrl,
