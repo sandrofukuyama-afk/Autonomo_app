@@ -695,10 +695,10 @@ class _SettingsPageState extends State<SettingsPage> {
         throw Exception('Endereço não encontrado para este CEP.');
       }
       final data = json.decode(response.body) as Map<String, dynamic>;
-      final pref = (data['prefecture'] ?? data['prefecture_roman'] ?? '')
+      final pref = (data['prefecture_roman'] ?? data['prefecture'] ?? '')
           .toString();
-      final city = (data['city'] ?? data['city_roman'] ?? '').toString();
-      final suburb = (data['suburb'] ?? data['suburb_roman'] ?? '').toString();
+      final city = (data['city_roman'] ?? data['city'] ?? '').toString();
+      final suburb = (data['suburb_roman'] ?? data['suburb'] ?? '').toString();
 
       if (!mounted) return;
       setState(() {
@@ -828,17 +828,19 @@ class _SettingsPageState extends State<SettingsPage> {
         'updated_at': DateTime.now().toIso8601String(),
       };
 
-      try {
-        await _client.from('app_settings').upsert(
-              payload,
-              onConflict: 'company_id',
-            );
-      } on PostgrestException catch (e) {
-        if (e.code != '42501') rethrow;
-        await _client
-            .from('app_settings')
-            .update(payload)
-            .eq('company_id', _companyId!);
+      final updatePayload = Map<String, dynamic>.from(payload)
+        ..remove('company_id');
+      final updated = await _client
+          .from('app_settings')
+          .update(updatePayload)
+          .eq('company_id', _companyId!)
+          .select('company_id')
+          .maybeSingle();
+
+      if (updated == null) {
+        throw Exception(
+          'Não foi possível salvar: registro de app_settings não encontrado para esta empresa.',
+        );
       }
 
       if (widget.onLocaleChanged != null &&
