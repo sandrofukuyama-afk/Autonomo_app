@@ -523,13 +523,16 @@ class _SettingsPageState extends State<SettingsPage> {
 
       final String fetchedFullName = (data['full_name'] ?? '').toString();
       final String fetchedDisplayName = (data['display_name'] ?? '').toString();
+      final currentEmail =
+          (AuthService.instance.currentUser?.email ?? '').trim().toLowerCase();
+      final isSantechUser = currentEmail == 'santechjp@hotmail.com';
 
       if (fetchedFullName.isEmpty) {
         _fullName.text = await AuthService.instance.getCurrentFullName();
       } else {
         _fullName.text = fetchedFullName;
       }
-      if (_fullName.text.trim().isEmpty) {
+      if (isSantechUser && _fullName.text.trim().isEmpty) {
         _fullName.text = 'Fukuyama Sandro';
       }
 
@@ -538,27 +541,27 @@ class _SettingsPageState extends State<SettingsPage> {
       } else {
         _displayName.text = fetchedDisplayName;
       }
-      if (_displayName.text.trim().isEmpty) {
+      if (isSantechUser && _displayName.text.trim().isEmpty) {
         _displayName.text = 'Santech Eletronics & Developer';
       }
       _phone.text = (data['phone'] ?? '').toString();
-      if (_phone.text.trim().isEmpty) {
+      if (isSantechUser && _phone.text.trim().isEmpty) {
         _phone.text = '080-4198-2875';
       }
       _postalCode.text = (data['postal_code'] ?? '').toString();
-      if (_postalCode.text.trim().isEmpty) {
+      if (isSantechUser && _postalCode.text.trim().isEmpty) {
         _postalCode.text = '3730861';
       }
       _prefecture.text = (data['prefecture'] ?? '').toString();
-      if (_prefecture.text.trim().isEmpty) {
+      if (isSantechUser && _prefecture.text.trim().isEmpty) {
         _prefecture.text = '群馬県';
       }
       _city.text = (data['city'] ?? '').toString();
-      if (_city.text.trim().isEmpty) {
+      if (isSantechUser && _city.text.trim().isEmpty) {
         _city.text = '太田市';
       }
       _address1.text = (data['address_line1'] ?? '').toString();
-      if (_address1.text.trim().isEmpty) {
+      if (isSantechUser && _address1.text.trim().isEmpty) {
         _address1.text = '南矢島町907-1';
       }
       _address2.text = (data['address_line2'] ?? '').toString();
