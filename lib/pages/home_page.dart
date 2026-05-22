@@ -2329,7 +2329,7 @@ class _HomePageState extends State<HomePage> {
                   value: SupabaseService.instance.isTestModeEnabled,
                   onChanged: (val) {
                     setState(() {
-                      SupabaseService.instance.isTestModeEnabled = val;
+                      SupabaseService.instance.setTestModeEnabled(val);
                     });
                   },
                   activeColor: Colors.amber.shade900,

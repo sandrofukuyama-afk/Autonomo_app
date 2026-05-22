@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:autonomo_app/data/auth_service.dart';
+import 'package:autonomo_app/data/supabase_service.dart';
 import 'package:autonomo_app/l10n/app_localizations.dart';
 import 'package:autonomo_app/pages/auth_page.dart';
 import 'package:autonomo_app/pages/home_page.dart';
@@ -27,6 +28,8 @@ Future<void> main() async {
             authFlowType: AuthFlowType.implicit,
           ),
         );
+
+    await SupabaseService.instance.init();
 
     runApp(const MyApp());
 }

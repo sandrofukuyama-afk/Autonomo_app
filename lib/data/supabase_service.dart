@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'auth_service.dart';
 
@@ -10,6 +11,18 @@ class SupabaseService {
 
   final SupabaseClient _client = Supabase.instance.client;
   bool isTestModeEnabled = false;
+  static const String _testModeKey = 'app_test_mode_enabled';
+
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    isTestModeEnabled = prefs.getBool(_testModeKey) ?? false;
+  }
+
+  Future<void> setTestModeEnabled(bool value) async {
+    isTestModeEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_testModeKey, value);
+  }
 
   static const List<String> _defaultEntryCategories = [
     'service',
