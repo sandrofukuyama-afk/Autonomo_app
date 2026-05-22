@@ -821,10 +821,10 @@ class _SettingsPageState extends State<SettingsPage> {
         'updated_at': DateTime.now().toIso8601String(),
       };
 
-      await _client
-          .from('app_settings')
-          .update(payload)
-          .eq('company_id', _companyId!);
+      await _client.from('app_settings').upsert(
+            payload,
+            onConflict: 'company_id',
+          );
 
       if (widget.onLocaleChanged != null &&
           _supportedLanguages.contains(_language)) {
