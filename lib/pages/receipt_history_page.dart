@@ -14,6 +14,7 @@ class ReceiptHistoryPage extends StatefulWidget {
 class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
   List<Map<String, dynamic>> _receipts = [];
   bool _loading = true;
+  String _selectedKind = 'ryoushuusho';
 
   @override
   void initState() {
@@ -59,6 +60,70 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
       default:
         return 'À vista';
     }
+  }
+
+  int _countByKind(String kind) {
+    return _receipts
+        .where((r) => (r['document_kind'] ?? 'ryoushuusho').toString() == kind)
+        .length;
+  }
+
+  List<Map<String, dynamic>> _filteredReceipts() {
+    return _receipts
+        .where((r) => (r['document_kind'] ?? 'ryoushuusho').toString() == _selectedKind)
+        .toList();
+  }
+
+  Widget _kindCard({
+    required BuildContext context,
+    required AppLocalizations t,
+    required String kind,
+    required IconData icon,
+  }) {
+    final selected = _selectedKind == kind;
+    final cs = Theme.of(context).colorScheme;
+    final count = _countByKind(kind);
+
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => setState(() => _selectedKind = kind),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: selected ? cs.primaryContainer : cs.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? cs.primary : cs.outlineVariant,
+              width: selected ? 1.6 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: selected ? cs.primary : cs.onSurfaceVariant),
+              const SizedBox(height: 8),
+              Text(
+                t.translate('document_kind_$kind'),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: selected ? cs.onPrimaryContainer : cs.onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: selected ? cs.primary : cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showDetails(Map<String, dynamic> receipt) {
@@ -114,6 +179,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    final filtered = _filteredReceipts();
 
     if (_loading) {
       return Scaffold(
@@ -130,36 +196,66 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
           ? Center(
               child: Text(t.translate('no_receipts_yet')),
             )
-          : ListView.separated(
+          : ListView(
               padding: const EdgeInsets.all(16),
-              itemCount: _receipts.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final receipt = _receipts[index];
-                return Card(
-                  child: ListTile(
-                    onTap: () => _showDetails(receipt),
-                    contentPadding: const EdgeInsets.all(16),
-                    title: Text(
-                      (receipt['receipt_number'] ?? '').toString(),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+              children: [
+                Row(
+                  children: [
+                    _kindCard(
+                      context: context,
+                      t: t,
+                      kind: 'ryoushuusho',
+                      icon: Icons.receipt_long_outlined,
                     ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text((receipt['description'] ?? '-').toString()),
-                          const SizedBox(height: 6),
-                          Text('${_formatDate(receipt['issue_date'])} • ${_formatAmount(receipt['amount'])}'),
-                        ],
+                    const SizedBox(width: 12),
+                    _kindCard(
+                      context: context,
+                      t: t,
+                      kind: 'seikyuusho',
+                      icon: Icons.request_quote_outlined,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (filtered.isEmpty)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        '${t.translate('no_receipts_yet')} (${t.translate('document_kind_$_selectedKind')})',
                       ),
                     ),
-                    trailing: const Icon(Icons.chevron_right),
-                  ),
-                );
-              },
+                  )
+                else
+                  ...filtered.map((receipt) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Card(
+                        child: ListTile(
+                          onTap: () => _showDetails(receipt),
+                          contentPadding: const EdgeInsets.all(16),
+                          title: Text(
+                            (receipt['receipt_number'] ?? '').toString(),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text((receipt['description'] ?? '-').toString()),
+                                const SizedBox(height: 6),
+                                Text('${_formatDate(receipt['issue_date'])} • ${_formatAmount(receipt['amount'])}'),
+                              ],
+                            ),
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                        ),
+                      ),
+                    );
+                  }),
+              ],
             ),
     );
   }
