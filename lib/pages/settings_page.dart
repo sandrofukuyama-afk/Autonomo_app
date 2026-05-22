@@ -1,7 +1,6 @@
 import 'settings_categories_page.dart';
 import 'accounts_receivable_page.dart';
 import 'receipt_history_page.dart';
-import 'settings_services_page.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -1367,20 +1366,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 );
               },
             ),
-            _settingsShortcutCard(
-              icon: Icons.design_services_outlined,
-              title: _text('service_catalog', t),
-              subtitle: _text('service_catalog_desc', t),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const SettingsServicesPage(),
-                  ),
-                );
-              },
-            ),
-
             const SizedBox(height: 18),
 
             // ── SMTP section ─────────────────────────────────────────────
