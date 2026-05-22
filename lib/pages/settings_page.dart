@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'settings_categories_page.dart';
 import 'accounts_receivable_page.dart';
 import 'receipt_history_page.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/auth_service.dart';
@@ -63,6 +66,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _smtpUseSSL = false;
   bool _smtpTestingConnection = false;
   bool _smtpPasswordVisible = false;
+  bool _fetchingPostalAddress = false;
 
   static const List<String> _supportedLanguages = ['pt', 'en', 'ja', 'es'];
   static const List<String> _supportedCurrencies = ['JPY'];
@@ -672,6 +676,41 @@ class _SettingsPageState extends State<SettingsPage> {
     return null;
   }
 
+  Future<void> _fetchAddressFromPostalCode() async {
+    final zip = _postalCode.text.replaceAll(RegExp(r'[^0-9]'), '').trim();
+    if (zip.length < 5) return;
+
+    setState(() => _fetchingPostalAddress = true);
+    try {
+      final url = Uri.parse('https://postcode.teraren.com/postcodes/$zip.json');
+      final response = await http.get(url);
+      if (response.statusCode != 200) {
+        throw Exception('Endereço não encontrado para este CEP.');
+      }
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final pref = (data['prefecture'] ?? data['prefecture_roman'] ?? '')
+          .toString();
+      final city = (data['city'] ?? data['city_roman'] ?? '').toString();
+      final suburb = (data['suburb'] ?? data['suburb_roman'] ?? '').toString();
+
+      if (!mounted) return;
+      setState(() {
+        if (pref.isNotEmpty) _prefecture.text = pref;
+        if (city.isNotEmpty) _city.text = city;
+        if (suburb.isNotEmpty && _address1.text.trim().isEmpty) {
+          _address1.text = suburb;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao buscar endereço: $e')));
+    } finally {
+      if (mounted) setState(() => _fetchingPostalAddress = false);
+    }
+  }
+
   Future<void> _closeCurrentMonth() async {
     final t = AppLocalizations.of(context);
 
@@ -746,7 +785,8 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _saving = true);
 
     try {
-      await _client.from('app_settings').update({
+      final payload = {
+        'company_id': _companyId!,
         'full_name': _fullName.text.trim(),
         'display_name': _displayName.text.trim().isEmpty
             ? null
@@ -779,7 +819,12 @@ class _SettingsPageState extends State<SettingsPage> {
             ? null
             : _fiscalNotes.text.trim(),
         'updated_at': DateTime.now().toIso8601String(),
-      }).eq('company_id', _companyId!);
+      };
+
+      await _client.from('app_settings').upsert(
+            payload,
+            onConflict: 'company_id',
+          );
 
       if (widget.onLocaleChanged != null &&
           _supportedLanguages.contains(_language)) {
@@ -873,6 +918,8 @@ class _SettingsPageState extends State<SettingsPage> {
     int maxLines = 1,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    Widget? suffixIcon,
+    void Function(String)? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -880,6 +927,7 @@ class _SettingsPageState extends State<SettingsPage> {
         controller: controller,
         maxLines: maxLines,
         keyboardType: keyboardType,
+        onChanged: onChanged,
         validator: validator,
         autovalidateMode: _submitted
             ? AutovalidateMode.onUserInteraction
@@ -889,6 +937,7 @@ class _SettingsPageState extends State<SettingsPage> {
           helperText: helperKey == null ? null : _text(helperKey, t),
           border: const OutlineInputBorder(),
           alignLabelWithHint: maxLines > 1,
+          suffixIcon: suffixIcon,
         ),
       ),
     );
@@ -1066,6 +1115,26 @@ class _SettingsPageState extends State<SettingsPage> {
                 controller: _postalCode,
                 keyboardType: TextInputType.text,
                 validator: (value) => _postalValidator(value, t),
+                onChanged: (value) {
+                  final zip = value.replaceAll(RegExp(r'[^0-9]'), '');
+                  if (zip.length == 7) {
+                    _fetchAddressFromPostalCode();
+                  }
+                },
+                suffixIcon: _fetchingPostalAddress
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : IconButton(
+                        tooltip: 'Buscar endereço',
+                        onPressed: _fetchAddressFromPostalCode,
+                        icon: const Icon(Icons.search),
+                      ),
               ),
               _field(
                 t,
