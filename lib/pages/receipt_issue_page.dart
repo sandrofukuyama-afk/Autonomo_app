@@ -110,6 +110,11 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         if (parsed != null) {
           _issueDate = parsed;
         }
+      } else if (entry?['issue_date'] != null) {
+        final parsed = DateTime.tryParse(entry!['issue_date'].toString());
+        if (parsed != null) {
+          _issueDate = parsed;
+        }
       }
 
       final results = await Future.wait([
@@ -133,8 +138,33 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         _taxAmountCtrl.text = taxAmount == 0 ? '' : taxAmount.toStringAsFixed(0);
         _paymentMethod = _normalizePayment(entry['payment_method']);
         _selectedItemType = _inferItemType(entry);
-        if (entry['customer_name'] != null) {
-          _clientNameCtrl.text = entry['customer_name'].toString();
+        _documentKind = (entry['document_kind'] ?? _documentKind).toString();
+        _selectedServiceId = entry['service_id']?.toString();
+        _clientNameCtrl.text =
+            (entry['client_name'] ?? entry['customer_name'] ?? '').toString();
+        _clientEmailCtrl.text = (entry['client_email'] ?? '').toString();
+        _paymentCondition = (entry['payment_condition'] ?? _paymentCondition).toString();
+        final downPayment = double.tryParse(
+          (entry['down_payment_amount'] ?? 0).toString(),
+        );
+        if (downPayment != null && downPayment > 0) {
+          _downPaymentCtrl.text = downPayment.toStringAsFixed(0);
+        }
+        final installmentsCount = int.tryParse(
+          (entry['installments_count'] ?? 0).toString(),
+        );
+        if (installmentsCount != null && installmentsCount > 0) {
+          _installmentsCountCtrl.text = installmentsCount.toString();
+        }
+        final installmentValue = double.tryParse(
+          (entry['installment_value'] ?? 0).toString(),
+        );
+        if (installmentValue != null && installmentValue > 0) {
+          _installmentValueCtrl.text = installmentValue.toStringAsFixed(0);
+        }
+        if (entry['due_date'] != null) {
+          final parsedDue = DateTime.tryParse(entry['due_date'].toString());
+          if (parsedDue != null) _dueDate = parsedDue;
         }
       }
     } catch (e) {
@@ -151,6 +181,10 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
   }
 
   String _inferItemType(Map<String, dynamic> entry) {
+    final itemType = (entry['item_type'] ?? '').toString().toLowerCase();
+    if (itemType == 'service' || itemType == 'product') {
+      return itemType;
+    }
     final category = (entry['category'] ?? '').toString().toLowerCase();
     if (category.contains('service') || category.contains('serv')) {
       return 'service';
@@ -594,8 +628,8 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         });
       }
 
-      await SupabaseService.instance.saveReceipt({
-        'entry_id': widget.entryData?['id'],
+      final payload = {
+        'entry_id': widget.entryData?['entry_id'] ?? widget.entryData?['id'],
         'receipt_number': data.receiptNumber,
         'issue_date': DateFormat('yyyy-MM-dd').format(data.issueDate),
         'due_date':
@@ -626,7 +660,13 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         'company_address': data.companyAddress,
         'company_phone': data.companyPhone,
         'invoice_number': data.invoiceNumber,
-      });
+      };
+      final receiptId = widget.entryData?['receipt_id']?.toString();
+      if (receiptId != null && receiptId.isNotEmpty) {
+        await SupabaseService.instance.updateReceipt(receiptId, payload);
+      } else {
+        await SupabaseService.instance.saveReceipt(payload);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

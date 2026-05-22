@@ -14,6 +14,7 @@ import 'receipt_issue_page.dart';
 import 'receipt_history_page.dart';
 import 'accounts_receivable_page.dart';
 import 'clients_page.dart';
+import 'client_history_page.dart';
 import 'reports_page.dart';
 import 'settings_page.dart';
 
@@ -2554,6 +2555,17 @@ class _HomePageState extends State<HomePage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ClientsPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.manage_search_outlined, color: Colors.indigo),
+            title: const Text('Histórico do Cliente'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ClientHistoryPage()),
               );
             },
           ),

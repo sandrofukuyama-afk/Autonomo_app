@@ -1747,6 +1747,96 @@ class SupabaseService {
     return rows.map((r) => Map<String, dynamic>.from(r as Map)).toList();
   }
 
+  Future<void> deleteReceipt(String id) async {
+    if (isTestModeEnabled) return;
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    await _client
+        .from('receipt_payment_schedules')
+        .delete()
+        .eq('receipt_id', id)
+        .eq('company_id', companyId);
+
+    await _client
+        .from('receipts')
+        .delete()
+        .eq('id', id)
+        .eq('company_id', companyId);
+  }
+
+  Future<void> updateReceipt(String id, Map<String, dynamic> data) async {
+    if (isTestModeEnabled) return;
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+    final paymentCondition = _normalizePaymentCondition(data['payment_condition']);
+    final schedules = (data['receivable_schedules'] as List?)
+            ?.whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList() ??
+        const <Map<String, dynamic>>[];
+
+    final payload = {
+      'entry_id': data['entry_id'],
+      'receipt_number': data['receipt_number'],
+      'issue_date': data['issue_date'],
+      'document_kind': data['document_kind'] ?? 'ryoushuusho',
+      'item_type': data['item_type'] ?? 'product',
+      'service_id': data['service_id'],
+      'client_name': data['client_name'],
+      'client_email': data['client_email'],
+      'description': data['description'],
+      'amount': data['amount'],
+      'tax_amount': data['tax_amount'] ?? 0,
+      'payment_method': _normalizePaymentMethod(data['payment_method']),
+      'notes': data['notes'],
+      'format': data['format'] ?? 'a4',
+      'language': data['language'] ?? 'pt',
+      'issued_by': data['issued_by'],
+      'company_address': data['company_address'],
+      'company_phone': data['company_phone'],
+      'invoice_number': data['invoice_number'],
+      'due_date': data['due_date'],
+      'payment_condition': paymentCondition,
+      'down_payment_amount': data['down_payment_amount'] ?? 0,
+      'installments_count': data['installments_count'] ?? 1,
+      'installment_value': data['installment_value'],
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+
+    await _client
+        .from('receipts')
+        .update(payload)
+        .eq('id', id)
+        .eq('company_id', companyId);
+
+    await _client
+        .from('receipt_payment_schedules')
+        .delete()
+        .eq('receipt_id', id)
+        .eq('company_id', companyId);
+
+    if (schedules.isNotEmpty) {
+      await _client.from('receipt_payment_schedules').insert(
+        schedules
+            .map(
+              (item) => {
+                'company_id': companyId,
+                'receipt_id': id,
+                'installment_number': item['installment_number'],
+                'due_date': item['due_date'],
+                'amount': item['amount'],
+                'status': item['status'] ?? 'pending',
+                'payment_method': _normalizePaymentMethod(
+                  item['payment_method'] ?? data['payment_method'],
+                ),
+                'notes': item['notes'],
+                'created_at': DateTime.now().toIso8601String(),
+              },
+            )
+            .toList(),
+      );
+    }
+  }
+
   /// Checks if a given entry already has at least one receipt issued.
   Future<bool> entryHasReceipt(String entryId) async {
     final companyId = await AuthService.instance.getCurrentCompanyId();
