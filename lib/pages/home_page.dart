@@ -2622,6 +2622,17 @@ class _HomePageState extends State<HomePage> {
                     _openExpensesPage();
                   },
                 ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.blue,
+                    child: Icon(Icons.receipt, color: Colors.white),
+                  ),
+                  title: Text(t.translate('issue_receipt'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openReceiptIssuePage();
+                  },
+                ),
               ],
             ),
           ),
