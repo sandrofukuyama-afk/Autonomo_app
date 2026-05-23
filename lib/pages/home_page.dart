@@ -3,10 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../data/auth_service.dart';
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
+import '../services/app_update_service.dart';
 import 'entries_page.dart';
 import 'expenses_page.dart';
 import 'expense_review_page.dart';
@@ -70,6 +72,7 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> _recentExpenses = [];
   List<String> _closedFiscalMonths = [];
   bool _closingFiscalMonth = false;
+  AppUpdateInfo? _appUpdateInfo;
 
   @override
   void initState() {
@@ -102,6 +105,7 @@ class _HomePageState extends State<HomePage> {
       await _loadFiscalDashboard(companyId);
       await _loadClosedFiscalMonths(companyId);
       await _loadAnnualFiscalDashboard(companyId);
+      await _checkForAppUpdates();
 
       if (!mounted) return;
 
@@ -121,6 +125,89 @@ class _HomePageState extends State<HomePage> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _checkForAppUpdates() async {
+    try {
+      final info = await AppUpdateService.instance.checkForUpdates();
+      if (!mounted) return;
+      setState(() => _appUpdateInfo = info);
+      if (info?.forceUpdate == true) {
+        _showForceUpdateDialog(info!);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _openUpdateUrl() async {
+    final url = _appUpdateInfo?.storeUrl;
+    if (url == null || url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _showForceUpdateDialog(AppUpdateInfo info) async {
+    final t = AppLocalizations.of(context);
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: Text(t.translate('update_required')),
+        content: Text(
+          '${t.translate('app_update_available')} ${info.currentVersion} -> ${info.targetVersion}',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: _openUpdateUrl,
+            child: Text(t.translate('update_now')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUpdateBanner() {
+    final t = AppLocalizations.of(context);
+    final info = _appUpdateInfo;
+    if (info == null || !info.hasUpdate) return const SizedBox.shrink();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.system_update_alt_rounded, color: Colors.orange),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    t.translate('app_update_available'),
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${t.translate('current_version')}: ${info.currentVersion} • ${t.translate('new_version')}: ${info.targetVersion}',
+            ),
+            if ((info.message ?? '').isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(info.message!),
+            ],
+            if ((info.storeUrl ?? '').isNotEmpty) ...[
+              const SizedBox(height: 10),
+              FilledButton.icon(
+                onPressed: _openUpdateUrl,
+                icon: const Icon(Icons.open_in_new),
+                label: Text(t.translate('update_now')),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _loadDashboard(String companyId) async {
@@ -2494,6 +2581,10 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.all(16),
         children: [
           _buildHeroCard(),
+          if (_appUpdateInfo != null) ...[
+            const SizedBox(height: 12),
+            _buildUpdateBanner(),
+          ],
           if (_isAdmin) ...[
             const SizedBox(height: 14),
             _buildAdminAccessBanner(),
@@ -2556,6 +2647,10 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.all(16),
       children: [
         _buildHeroCard(),
+        if (_appUpdateInfo != null) ...[
+          const SizedBox(height: 12),
+          _buildUpdateBanner(),
+        ],
         if (_isAdmin) ...[
           const SizedBox(height: 14),
           _buildAdminAccessBanner(),

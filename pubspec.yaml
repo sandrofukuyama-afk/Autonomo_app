@@ -24,6 +24,8 @@ dependencies:
   share_plus: ^10.0.3
   mailer: ^6.1.2
   flutter_secure_storage: ^9.2.4
+  package_info_plus: ^8.0.2
+  url_launcher: ^6.3.0
 
   shared_preferences: any
   http: any
