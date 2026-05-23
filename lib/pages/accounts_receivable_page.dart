@@ -15,6 +15,8 @@ class AccountsReceivablePage extends StatefulWidget {
 class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  DateTime _selectedMonth =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   @override
   void initState() {
@@ -98,6 +100,87 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
     if (key == 'Sem vencimento') return key;
     if (key.isEmpty) return key;
     return '${key[0].toUpperCase()}${key.substring(1)}';
+  }
+
+  Future<void> _pickMonth() async {
+    final initialYear = _selectedMonth.year;
+    final initialMonth = _selectedMonth.month;
+    int selectedYear = initialYear;
+    int selectedMonth = initialMonth;
+
+    final result = await showDialog<DateTime>(
+      context: context,
+      builder: (dialogContext) {
+        final years = List<int>.generate(101, (index) => 2000 + index);
+        return AlertDialog(
+          title: const Text('Selecionar mês'),
+          content: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: selectedMonth,
+                      decoration: const InputDecoration(labelText: 'Mês'),
+                      items: List.generate(12, (index) {
+                        final month = index + 1;
+                        return DropdownMenuItem<int>(
+                          value: month,
+                          child: Text(month.toString().padLeft(2, '0')),
+                        );
+                      }),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setStateDialog(() => selectedMonth = value);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: selectedYear,
+                      decoration: const InputDecoration(labelText: 'Ano'),
+                      items: years
+                          .map(
+                            (year) => DropdownMenuItem<int>(
+                              value: year,
+                              child: Text(year.toString()),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setStateDialog(() => selectedYear = value);
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(
+                  DateTime(selectedYear, selectedMonth, 1),
+                );
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == null || !mounted) return;
+    setState(() {
+      _selectedMonth = DateTime(result.year, result.month, 1);
+    });
   }
 
   Future<void> _printSettlementReceipt(Map<String, dynamic> item) async {
@@ -330,8 +413,15 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredItems = _items.where((item) {
+      final dueDate = _parseDate(item['due_date']);
+      if (dueDate == null) return false;
+      return dueDate.year == _selectedMonth.year &&
+          dueDate.month == _selectedMonth.month;
+    }).toList();
+
     final groupedItems = <String, List<Map<String, dynamic>>>{};
-    for (final item in _items) {
+    for (final item in filteredItems) {
       final key = _monthGroupKey(item);
       groupedItems.putIfAbsent(key, () => <Map<String, dynamic>>[]).add(item);
     }
@@ -389,7 +479,41 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  if (_items.isEmpty)
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: _pickMonth,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_month_outlined),
+                          const SizedBox(width: 10),
+                          Text(
+                            _monthGroupLabel(
+                              DateFormat(
+                                'MMMM/yyyy',
+                                'pt_BR',
+                              ).format(_selectedMonth),
+                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const Spacer(),
+                          const Icon(Icons.expand_more),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (filteredItems.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -397,7 +521,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                         color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       ),
                       child: const Text(
-                        'Nenhum recebimento faturado ou parcelado encontrado.',
+                        'Nenhum recebimento encontrado para o mês selecionado.',
                         textAlign: TextAlign.center,
                       ),
                     )
