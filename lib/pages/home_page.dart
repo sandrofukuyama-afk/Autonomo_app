@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -322,7 +322,7 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    return '${negative ? '-' : ''}¥${buffer.toString()}';
+    return '${negative ? '-' : ''}Â¥${buffer.toString()}';
   }
 
   String _formatDate(dynamic value) {
@@ -332,6 +332,45 @@ class _HomePageState extends State<HomePage> {
       return raw.substring(0, 10);
     }
     return raw;
+  }
+
+  String _entryCategoryLabel(AppLocalizations t, dynamic value) {
+    final code = (value ?? '').toString().trim().toLowerCase();
+    switch (code) {
+      case 'service':
+        return t.translate('entry_category_service');
+      case 'sale':
+      case 'product':
+        return t.translate('entry_category_sale');
+      case 'commission':
+        return t.translate('entry_category_commission');
+      case 'refund':
+        return t.translate('entry_category_refund');
+      case 'other':
+        return t.translate('entry_category_other');
+      default:
+        return code.isEmpty ? t.translate('no_category') : code;
+    }
+  }
+
+  String _expenseCategoryLabel(AppLocalizations t, dynamic value) {
+    final code = (value ?? '').toString().trim().toLowerCase();
+    switch (code) {
+      case 'food':
+      case 'transport':
+      case 'housing':
+      case 'entertainment':
+      case 'health':
+      case 'other':
+        return t.translate('category_$code');
+      case 'rent':
+        return t.translate('category_housing');
+      case 'services':
+      case 'fees':
+        return t.translate('category_other');
+      default:
+        return code.isEmpty ? t.translate('no_category') : code;
+    }
   }
 
   String _currentMonthLabel() {
@@ -711,7 +750,7 @@ class _HomePageState extends State<HomePage> {
   String _receiptShortcutSubtitle() {
     switch (widget.currentLocale?.languageCode) {
       case 'ja':
-        return 'PDF領収書を作成して保存';
+        return 'PDFé ˜åŽæ›¸ã‚’ä½œæˆã—ã¦ä¿å­˜';
       case 'es':
         return 'Crear y guardar recibos en PDF';
       case 'en':
@@ -808,9 +847,9 @@ class _HomePageState extends State<HomePage> {
     text = text.replaceAll('## ', '');
     text = text.replaceAll('# ', '');
     text =
-        text.replaceAllMapped(RegExp(r'^\s*-\s+', multiLine: true), (_) => '• ');
+        text.replaceAllMapped(RegExp(r'^\s*-\s+', multiLine: true), (_) => 'â€¢ ');
     text =
-        text.replaceAllMapped(RegExp(r'^\s*\*\s+', multiLine: true), (_) => '• ');
+        text.replaceAllMapped(RegExp(r'^\s*\*\s+', multiLine: true), (_) => 'â€¢ ');
     text = text.replaceAllMapped(
       RegExp(r'^\s*(\d+)\.\s+\*\*(.+?)\*\*', multiLine: true),
       (m) => '${m.group(1)}. ${m.group(2)}',
@@ -1693,7 +1732,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${_formatDate(item['entry_date'])} • ${(item['category'] ?? t.translate('no_category')).toString()}',
+                      '${_formatDate(item['entry_date'])} • ${_entryCategoryLabel(t, item['category'])}',
                       style: TextStyle(
                         color: Colors.grey.shade700,
                         fontSize: 12,
@@ -1761,7 +1800,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${_formatDate(item['expense_date'])} • ${storeName.isNotEmpty ? storeName : (item['category'] ?? t.translate('no_category')).toString()}',
+                      '${_formatDate(item['expense_date'])} • ${storeName.isNotEmpty ? storeName : _expenseCategoryLabel(t, item['category'])}',
                       style: TextStyle(
                         color: Colors.grey.shade700,
                         fontSize: 12,
@@ -1999,8 +2038,9 @@ class _HomePageState extends State<HomePage> {
   Widget _buildReceivablesMonthSection() {
     final width = MediaQuery.of(context).size.width;
     final compact = width < 700;
+    final t = AppLocalizations.of(context);
     final seikyushoValue =
-        '${_monthSeikyushoDueCount} • ${_formatYen(_monthSeikyushoDueTotal)}';
+        '${_monthSeikyushoDueCount} - ${_formatYen(_monthSeikyushoDueTotal)}';
 
     if (compact) {
       return Column(
@@ -2009,7 +2049,7 @@ class _HomePageState extends State<HomePage> {
             icon: Icons.account_balance_wallet_outlined,
             iconColor: Colors.orange.shade800,
             iconBackground: Colors.orange.shade100,
-            title: 'A receber no mês',
+            title: t.translate('receivable_due_this_month'),
             value: _formatYen(_monthReceivableTotal),
           ),
           const SizedBox(height: 10),
@@ -2017,7 +2057,7 @@ class _HomePageState extends State<HomePage> {
             icon: Icons.request_quote_outlined,
             iconColor: Colors.blue.shade800,
             iconBackground: Colors.blue.shade100,
-            title: 'Seikyusho vencendo no mês',
+            title: t.translate('seikyusho_due_this_month'),
             value: seikyushoValue,
           ),
         ],
@@ -2031,7 +2071,7 @@ class _HomePageState extends State<HomePage> {
             icon: Icons.account_balance_wallet_outlined,
             iconColor: Colors.orange.shade800,
             iconBackground: Colors.orange.shade100,
-            title: 'A receber no mês',
+            title: t.translate('receivable_due_this_month'),
             value: _formatYen(_monthReceivableTotal),
           ),
         ),
@@ -2041,7 +2081,7 @@ class _HomePageState extends State<HomePage> {
             icon: Icons.request_quote_outlined,
             iconColor: Colors.blue.shade800,
             iconBackground: Colors.blue.shade100,
-            title: 'Seikyusho vencendo no mês',
+            title: t.translate('seikyusho_due_this_month'),
             value: seikyushoValue,
           ),
         ),
@@ -2466,8 +2506,8 @@ class _HomePageState extends State<HomePage> {
           _buildSummaryGrid(),
           const SizedBox(height: 12),
           _buildSectionCard(
-            title: 'Contas a Receber (Mês vigente)',
-            subtitle: 'Valor pendente e seikyushos com vencimento neste mês',
+            title: t.translate('receivables_current_month_title'),
+            subtitle: t.translate('receivables_current_month_subtitle'),
             child: _buildReceivablesMonthSection(),
           ),
           const SizedBox(height: 12),
@@ -2528,8 +2568,8 @@ class _HomePageState extends State<HomePage> {
         _buildSummaryGrid(),
         const SizedBox(height: 12),
         _buildSectionCard(
-          title: 'Contas a Receber (Mês vigente)',
-          subtitle: 'Valor pendente e seikyushos com vencimento neste mês',
+          title: t.translate('receivables_current_month_title'),
+          subtitle: t.translate('receivables_current_month_subtitle'),
           child: _buildReceivablesMonthSection(),
         ),
         const SizedBox(height: 12),
@@ -2651,7 +2691,7 @@ class _HomePageState extends State<HomePage> {
           ),
           ListTile(
             leading: const Icon(Icons.manage_search_outlined, color: Colors.indigo),
-            title: const Text('Histórico do Cliente'),
+            title: Text(t.translate('client_history')),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -2662,7 +2702,7 @@ class _HomePageState extends State<HomePage> {
           ),
           ListTile(
             leading: const Icon(Icons.account_balance_wallet_outlined, color: Colors.teal),
-            title: const Text('Contas a Receber'),
+            title: Text(t.translate('accounts_receivable')),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -2692,11 +2732,11 @@ class _HomePageState extends State<HomePage> {
           ),
           ExpansionTile(
             leading: const Icon(Icons.folder_open_outlined, color: Colors.blueGrey),
-            title: const Text('Cadastro'),
+            title: Text(t.translate('registry')),
             children: [
               ListTile(
                 leading: const Icon(Icons.category_outlined, color: Colors.indigo),
-                title: const Text('Categorias'),
+                title: Text(t.translate('categories')),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -2728,7 +2768,7 @@ class _HomePageState extends State<HomePage> {
           ),
           ListTile(
             leading: const Icon(Icons.logout_outlined),
-            title: Text(t.translate('logout') == 'logout' ? 'Sair' : t.translate('logout')),
+            title: Text(t.translate('logout')),
             onTap: () {
               Navigator.pop(context);
               _handleLogout();
@@ -2875,3 +2915,5 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
+
