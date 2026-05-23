@@ -14,6 +14,7 @@ class AccountsReceivablePage extends StatefulWidget {
 
 class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
   List<Map<String, dynamic>> _items = [];
+  List<Map<String, dynamic>> _issuedSeikyusho = [];
   bool _loading = true;
   DateTime _selectedMonth =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
@@ -29,9 +30,17 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
     setState(() => _loading = true);
     try {
       final rows = await SupabaseService.instance.getReceiptPaymentSchedules();
+      final receipts = await SupabaseService.instance.getAllReceipts();
+      final seikyusho = receipts
+          .where(
+            (r) => (r['document_kind'] ?? '').toString().toLowerCase() == 'seikyuusho',
+          )
+          .map((r) => Map<String, dynamic>.from(r))
+          .toList();
       if (!mounted) return;
       setState(() {
         _items = rows;
+        _issuedSeikyusho = seikyusho;
         _loading = false;
       });
     } catch (e) {
@@ -445,6 +454,12 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
           return true;
       }
     }).toList();
+    final issuedSeikyushoThisMonth = _issuedSeikyusho.where((receipt) {
+      final issueDate = _parseDate(receipt['issue_date']);
+      if (issueDate == null) return false;
+      return issueDate.year == _selectedMonth.year &&
+          issueDate.month == _selectedMonth.month;
+    }).toList();
 
     final groupedItems = <String, List<Map<String, dynamic>>>{};
     for (final item in visibleItems) {
@@ -668,6 +683,105 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                         }),
                       ];
                     }),
+                  if (issuedSeikyushoThisMonth.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(4, 4, 4, 10),
+                      child: Text(
+                        'Seikyusho emitido',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    ...issuedSeikyushoThisMonth.map((receipt) {
+                      final clientName =
+                          (receipt['client_name'] ?? '-').toString();
+                      final description =
+                          (receipt['description'] ?? '-').toString();
+                      final receiptNumber =
+                          (receipt['receipt_number'] ?? '-').toString();
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          receiptNumber,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          clientName,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade700,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: const Text(
+                                      'Emitido',
+                                      style: TextStyle(
+                                        color: Colors.blue,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(description),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _infoChip(
+                                    Icons.calendar_today_outlined,
+                                    'Emissão ${_formatDate(receipt['issue_date'])}',
+                                  ),
+                                  _infoChip(
+                                    Icons.event_outlined,
+                                    'Vence em ${_formatDate(receipt['due_date'])}',
+                                  ),
+                                  _infoChip(
+                                    Icons.currency_yen,
+                                    _formatAmount(receipt['amount']),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
                 ],
               ),
             ),
