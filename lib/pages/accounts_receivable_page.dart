@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 
 import '../data/supabase_service.dart';
+import '../l10n/app_localizations.dart';
 import '../services/receipt_pdf_service.dart';
 
 class AccountsReceivablePage extends StatefulWidget {
@@ -113,6 +114,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
   }
 
   Future<void> _pickMonth() async {
+    final t = AppLocalizations.of(context);
     final initialYear = _selectedMonth.year;
     final initialMonth = _selectedMonth.month;
     int selectedYear = initialYear;
@@ -123,7 +125,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
       builder: (dialogContext) {
         final years = List<int>.generate(101, (index) => 2000 + index);
         return AlertDialog(
-          title: const Text('Selecionar mês'),
+          title: Text(t.translate('select_month')),
           content: StatefulBuilder(
             builder: (context, setStateDialog) {
               return Row(
@@ -132,7 +134,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                   Expanded(
                     child: DropdownButtonFormField<int>(
                       initialValue: selectedMonth,
-                      decoration: const InputDecoration(labelText: 'Mês'),
+                      decoration: InputDecoration(labelText: t.translate('month')),
                       items: List.generate(12, (index) {
                         final month = index + 1;
                         return DropdownMenuItem<int>(
@@ -150,7 +152,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                   Expanded(
                     child: DropdownButtonFormField<int>(
                       initialValue: selectedYear,
-                      decoration: const InputDecoration(labelText: 'Ano'),
+                      decoration: InputDecoration(labelText: t.translate('year')),
                       items: years
                           .map(
                             (year) => DropdownMenuItem<int>(
@@ -172,7 +174,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancelar'),
+              child: Text(t.translate('cancel')),
             ),
             FilledButton(
               onPressed: () {
@@ -180,7 +182,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                   DateTime(selectedYear, selectedMonth, 1),
                 );
               },
-              child: const Text('OK'),
+              child: Text(t.translate('ok')),
             ),
           ],
         );
@@ -231,21 +233,22 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
   }
 
   Future<void> _markAsPaid(Map<String, dynamic> item) async {
+    final t = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Confirmar recebimento'),
+        title: Text(t.translate('confirm_receipt')),
         content: Text(
-          'Dar baixa na parcela ${item['installment_number'] ?? '-'} no valor de ${_formatAmount(item['amount'])}?',
+          '${t.translate('mark_as_paid')} ${item['installment_number'] ?? '-'} - ${_formatAmount(item['amount'])}?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: Text(t.translate('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Dar baixa'),
+            child: Text(t.translate('mark_as_paid')),
           ),
         ],
       ),
@@ -403,18 +406,19 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
   }
 
   Widget _statusChip(Map<String, dynamic> item) {
+    final t = AppLocalizations.of(context);
     late final Color color;
     late final String label;
 
     if (_isPaid(item)) {
       color = Colors.green;
-      label = 'Pago';
+      label = t.translate('status_paid');
     } else if (_isOverdue(item)) {
       color = Colors.red;
-      label = 'Atrasado';
+      label = t.translate('status_overdue');
     } else {
       color = Colors.orange;
-      label = 'Pendente';
+      label = t.translate('status_pending');
     }
 
     return Container(
@@ -436,6 +440,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final filteredItems = _items.where((item) {
       final dueDate = _parseDate(item['due_date']);
       if (dueDate == null) return false;
@@ -482,12 +487,12 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Contas a Receber'),
+        title: Text(t.translate('accounts_receivable')),
         actions: [
           IconButton(
             onPressed: _loadItems,
             icon: const Icon(Icons.refresh),
-            tooltip: 'Atualizar',
+            tooltip: t.translate('update'),
           ),
         ],
       ),
@@ -502,21 +507,21 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                     children: [
                       _summaryCard(
                         color: Colors.orange,
-                        label: 'Em aberto',
+                        label: t.translate('status_open'),
                         value: _formatAmount(pendingTotal),
                         filterKey: 'pending',
                       ),
                       const SizedBox(width: 12),
                       _summaryCard(
                         color: Colors.green,
-                        label: 'Recebido',
+                        label: t.translate('status_received'),
                         value: _formatAmount(paidTotal),
                         filterKey: 'paid',
                       ),
                       const SizedBox(width: 12),
                       _summaryCard(
                         color: Colors.red,
-                        label: 'Atrasado',
+                        label: t.translate('status_overdue'),
                         value: _formatAmount(overdueTotal),
                         filterKey: 'overdue',
                       ),
@@ -564,8 +569,8 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                         borderRadius: BorderRadius.circular(18),
                         color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       ),
-                      child: const Text(
-                        'Nenhum recebimento para o filtro selecionado.',
+                      child: Text(
+                        t.translate('no_receivables_for_filter'),
                         textAlign: TextAlign.center,
                       ),
                     )
@@ -660,19 +665,19 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                                         FilledButton.icon(
                                           onPressed: () => _markAsPaid(item),
                                           icon: const Icon(Icons.check, size: 18),
-                                          label: const Text('Dar baixa'),
+                                          label: Text(t.translate('mark_as_paid')),
                                         ),
                                       if (!_isPaid(item)) const SizedBox(width: 8),
                                       OutlinedButton.icon(
                                         onPressed: () => _editDueDate(item),
                                         icon: const Icon(Icons.edit_calendar, size: 18),
-                                        label: const Text('Editar vencimento'),
+                                        label: Text(t.translate('edit_due_date')),
                                       ),
                                       if (_isPaid(item)) const SizedBox(width: 8),
                                       if (_isPaid(item))
                                         TextButton(
                                           onPressed: () => _reopenPayment(item),
-                                          child: const Text('Reabrir'),
+                                          child: Text(t.translate('reopen')),
                                         ),
                                     ],
                                   ),
@@ -685,10 +690,10 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                     }),
                   if (issuedSeikyushoThisMonth.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.fromLTRB(4, 4, 4, 10),
                       child: Text(
-                        'Seikyusho emitido',
+                        t.translate('issued_seikyusho'),
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -744,8 +749,8 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                                       color: Colors.blue.withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(999),
                                     ),
-                                    child: const Text(
-                                      'Emitido',
+                                    child: Text(
+                                      t.translate('issued'),
                                       style: TextStyle(
                                         color: Colors.blue,
                                         fontSize: 11,

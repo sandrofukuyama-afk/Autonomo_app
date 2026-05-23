@@ -2644,7 +2644,7 @@ class _HomePageState extends State<HomePage> {
           UserAccountsDrawerHeader(
             accountName: Text((_businessName != null && _businessName!.isNotEmpty)
                 ? _businessName!
-                : 'Autonomo App'),
+                : t.translate('app_name')),
             accountEmail: Text(email),
             currentAccountPicture: const CircleAvatar(
               backgroundColor: Colors.white,
@@ -2847,7 +2847,7 @@ class _HomePageState extends State<HomePage> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Autonomo App'),
+          title: Text(t.translate('app_name')),
           actions: [
             if (_isAdmin)
               IconButton(
@@ -2888,7 +2888,7 @@ class _HomePageState extends State<HomePage> {
         title: Text(
           (_businessName != null && _businessName!.isNotEmpty)
               ? _businessName!
-              : 'Autonomo App',
+              : t.translate('app_name'),
         ),
         actions: [
           if (_isAdmin)

@@ -60,13 +60,14 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
   }
 
   String _paymentConditionLabel(dynamic value) {
+    final t = AppLocalizations.of(context);
     switch ((value ?? '').toString()) {
       case 'faturado':
-        return 'Faturado';
+        return t.translate('payment_condition_billed');
       case 'parcelado':
-        return 'Parcelado';
+        return t.translate('payment_condition_installment');
       default:
-        return 'À vista';
+        return t.translate('payment_condition_cash');
     }
   }
 
@@ -96,6 +97,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
   }
 
   Future<void> _pickMonth() async {
+    final t = AppLocalizations.of(context);
     final initialYear = _selectedMonth.year;
     final initialMonth = _selectedMonth.month;
     int selectedYear = initialYear;
@@ -106,7 +108,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
       builder: (dialogContext) {
         final years = List<int>.generate(101, (index) => 2000 + index);
         return AlertDialog(
-          title: const Text('Selecionar mês'),
+          title: Text(t.translate('select_month')),
           content: StatefulBuilder(
             builder: (context, setStateDialog) {
               return Row(
@@ -115,7 +117,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
                   Expanded(
                     child: DropdownButtonFormField<int>(
                       initialValue: selectedMonth,
-                      decoration: const InputDecoration(labelText: 'Mês'),
+                      decoration: InputDecoration(labelText: t.translate('month')),
                       items: List.generate(12, (index) {
                         final month = index + 1;
                         return DropdownMenuItem<int>(
@@ -133,7 +135,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
                   Expanded(
                     child: DropdownButtonFormField<int>(
                       initialValue: selectedYear,
-                      decoration: const InputDecoration(labelText: 'Ano'),
+                      decoration: InputDecoration(labelText: t.translate('year')),
                       items: years
                           .map(
                             (year) => DropdownMenuItem<int>(
@@ -155,7 +157,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancelar'),
+              child: Text(t.translate('cancel')),
             ),
             FilledButton(
               onPressed: () {
@@ -163,7 +165,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
                   DateTime(selectedYear, selectedMonth, 1),
                 );
               },
-              child: const Text('OK'),
+              child: Text(t.translate('ok')),
             ),
           ],
         );
@@ -541,7 +543,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
                                             borderRadius: BorderRadius.circular(999),
                                           ),
                                           child: Text(
-                                            'QUITADO',
+                                            t.translate('settled'),
                                             style: TextStyle(
                                               color: Colors.green.shade900,
                                               fontSize: 11,
@@ -564,23 +566,23 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
                                     children: [
                                       _actionButton(
                                         icon: Icons.check_circle_outline,
-                                        label: 'Quitar',
+                                        label: t.translate('settle'),
                                         color: paid ? Colors.green.shade800 : null,
                                         onPressed: () => _markAsPaid(receipt),
                                       ),
                                       _actionButton(
                                         icon: Icons.print_outlined,
-                                        label: 'Imprimir',
+                                        label: t.translate('print_receipt'),
                                         onPressed: () => _printReceipt(receipt),
                                       ),
                                       _actionButton(
                                         icon: Icons.edit_outlined,
-                                        label: 'Editar',
+                                        label: t.translate('edit'),
                                         onPressed: () => _editReceipt(receipt),
                                       ),
                                       _actionButton(
                                         icon: Icons.visibility_outlined,
-                                        label: 'Ver',
+                                        label: t.translate('view'),
                                         onPressed: () => _showDetails(receipt),
                                       ),
                                     ],

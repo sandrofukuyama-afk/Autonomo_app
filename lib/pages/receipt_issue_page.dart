@@ -894,7 +894,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               Icons.person_outline,
               trailing: TextButton.icon(
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Novo Cliente'),
+                label: Text(t.translate('new_client')),
                 onPressed: () async {
                   await Navigator.push(
                     context,
@@ -948,7 +948,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Não há cliente cadastrado com esse início de nome.',
+                      t.translate('no_client_name_match'),
                       style: TextStyle(
                         color: Colors.orange.shade700,
                         fontSize: 12.5,
@@ -972,7 +972,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               const SizedBox(height: 12),
               _textField(
                 controller: _clientPhoneCtrl,
-                label: 'Telefone do Cliente',
+                label: t.translate('client_phone'),
                 icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
                 onChanged: (_) => _invalidatePdfCache(),
@@ -981,7 +981,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               const SizedBox(height: 12),
               _textField(
                 controller: _clientAddressCtrl,
-                label: 'Endereço do Cliente',
+                label: t.translate('client_address'),
                 icon: Icons.location_on_outlined,
                 maxLines: 2,
                 onChanged: (_) => _invalidatePdfCache(),
@@ -1119,7 +1119,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
       borderRadius: BorderRadius.circular(12),
       child: InputDecorator(
         decoration: InputDecoration(
-          labelText: 'Data de Vencimento', // Or add to localizations: t.translate('due_date')
+          labelText: t.translate('due_date'),
           prefixIcon: const Icon(Icons.event),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           filled: true,
@@ -1303,15 +1303,15 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     return DropdownButtonFormField<String>(
       initialValue: _paymentCondition,
       decoration: InputDecoration(
-        labelText: 'Condição de Pagamento', // You could use t.translate('payment_condition')
+        labelText: t.translate('payment_condition'),
         prefixIcon: const Icon(Icons.handshake_outlined),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
       ),
-      items: const [
-        DropdownMenuItem(value: 'a_vista', child: Text('À vista')),
-        DropdownMenuItem(value: 'faturado', child: Text('Faturado')),
-        DropdownMenuItem(value: 'parcelado', child: Text('Parcelado')),
+      items: [
+        DropdownMenuItem(value: 'a_vista', child: Text(t.translate('payment_condition_cash'))),
+        DropdownMenuItem(value: 'faturado', child: Text(t.translate('payment_condition_billed'))),
+        DropdownMenuItem(value: 'parcelado', child: Text(t.translate('payment_condition_installment'))),
       ],
       onChanged: (value) {
         if (value == null) return;

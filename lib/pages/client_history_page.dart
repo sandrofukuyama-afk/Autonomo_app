@@ -85,6 +85,7 @@ class _ClientHistoryPageState extends State<ClientHistoryPage> {
   }
 
   ReceiptData _receiptDataFromRow(Map<String, dynamic> r) {
+    final t = AppLocalizations.of(context);
     final issueDate =
         DateTime.tryParse((r['issue_date'] ?? '').toString()) ?? DateTime.now();
     final dueDate = DateTime.tryParse((r['due_date'] ?? '').toString());
@@ -103,7 +104,7 @@ class _ClientHistoryPageState extends State<ClientHistoryPage> {
       currency: 'JPY',
       paymentMethod: (r['payment_method'] ?? 'cash').toString(),
       issuedBy:
-          (r['issued_by'] ?? _companyProfile['name'] ?? 'Autonomo App')
+          (r['issued_by'] ?? _companyProfile['name'] ?? t.translate('app_name'))
               .toString(),
       companyAddress:
           (r['company_address'] ?? _companyProfile['address'])?.toString(),
@@ -190,21 +191,22 @@ class _ClientHistoryPageState extends State<ClientHistoryPage> {
   }
 
   Future<void> _deleteReceipt(Map<String, dynamic> row) async {
+    final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Excluir documento'),
+        title: Text(t.translate('delete_document')),
         content: Text(
-          'Deseja excluir ${(row['receipt_number'] ?? '').toString()}?',
+          '${t.translate('delete_document')}: ${(row['receipt_number'] ?? '').toString()}?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: Text(t.translate('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Excluir'),
+            child: Text(t.translate('delete')),
           ),
         ],
       ),
@@ -240,7 +242,7 @@ class _ClientHistoryPageState extends State<ClientHistoryPage> {
             Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),
             if (items.isEmpty)
-              const Text('Sem registros.')
+              Text(t.translate('no_records'))
             else
               ...items.map((row) {
                 final kind = (row['document_kind'] ?? 'ryoushuusho').toString();
@@ -276,17 +278,17 @@ class _ClientHistoryPageState extends State<ClientHistoryPage> {
                             OutlinedButton.icon(
                               onPressed: () => _printReceipt(row),
                               icon: const Icon(Icons.print_outlined, size: 16),
-                              label: const Text('Imprimir'),
+                              label: Text(t.translate('print_receipt')),
                             ),
                             OutlinedButton.icon(
                               onPressed: () => _editReceipt(row),
                               icon: const Icon(Icons.edit_outlined, size: 16),
-                              label: const Text('Editar'),
+                              label: Text(t.translate('edit')),
                             ),
                             OutlinedButton.icon(
                               onPressed: () => _deleteReceipt(row),
                               icon: const Icon(Icons.delete_outline, size: 16),
-                              label: const Text('Deletar'),
+                              label: Text(t.translate('delete')),
                             ),
                           ],
                         ),
@@ -312,14 +314,14 @@ class _ClientHistoryPageState extends State<ClientHistoryPage> {
     final purchases = _purchasesForClient();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Histórico do Cliente')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context).translate('client_history'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           DropdownButtonFormField<String>(
             initialValue: _selectedClientName,
             decoration: InputDecoration(
-              labelText: 'Selecionar Cliente',
+              labelText: AppLocalizations.of(context).translate('select_client'),
               prefixIcon: const Icon(Icons.person_search_outlined),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               filled: true,
@@ -336,23 +338,23 @@ class _ClientHistoryPageState extends State<ClientHistoryPage> {
           ),
           const SizedBox(height: 16),
           if (_selectedClientName == null)
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(14),
-                child: Text('Selecione um cliente para visualizar o histórico.'),
+                padding: const EdgeInsets.all(14),
+                child: Text(AppLocalizations.of(context).translate('select_client_to_view_history')),
               ),
             )
           else if (filtered.isEmpty)
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(14),
-                child: Text('Nenhum histórico encontrado para este cliente.'),
+                padding: const EdgeInsets.all(14),
+                child: Text(AppLocalizations.of(context).translate('no_history_for_client')),
               ),
             )
           else ...[
-            _historySection(context, 'Serviços', services),
+            _historySection(context, AppLocalizations.of(context).translate('services'), services),
             const SizedBox(height: 12),
-            _historySection(context, 'Compras', purchases),
+            _historySection(context, AppLocalizations.of(context).translate('purchases'), purchases),
           ],
         ],
       ),
