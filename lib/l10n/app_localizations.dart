@@ -112,8 +112,8 @@ class AppLocalizations {
       'member_role_label': 'Membro',
       'admin_access_title': 'Acesso administrativo ativo',
       'admin_access_description':
-          'Esta conta possui permissÃµes administrativas no aplicativo.',
-      'access_level_label': 'NÃ­vel de acesso',
+          'Esta conta possui permissões administrativas no aplicativo.',
+      'access_level_label': 'Nível de acesso',
 
       'financial_dashboard': 'Dashboard financeiro',
       'month_summary': 'Resumo do mês',
@@ -1112,7 +1112,7 @@ class AppLocalizations {
       'member_role_label': 'Miembro',
       'admin_access_title': 'Acceso administrativo activo',
       'admin_access_description':
-          'Esta cuenta tiene permisos administrativos en la aplicaciÃ³n.',
+          'Esta cuenta tiene permisos administrativos en la aplicación.',
       'access_level_label': 'Nivel de acceso',
 
       'financial_dashboard': 'Panel financiero',

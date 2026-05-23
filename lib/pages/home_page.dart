@@ -409,7 +409,7 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    return '${negative ? '-' : ''}Â¥${buffer.toString()}';
+    return '${negative ? '-' : ''}¥${buffer.toString()}';
   }
 
   String _formatDate(dynamic value) {
