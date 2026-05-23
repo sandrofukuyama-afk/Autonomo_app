@@ -22,7 +22,6 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
   String _selectedKind = 'ryoushuusho';
   DateTime _selectedMonth =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
-  final Set<String> _paidReceiptIds = <String>{};
 
   @override
   void initState() {
@@ -92,8 +91,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
   }
 
   bool _isReceiptPaid(Map<String, dynamic> receipt) {
-    final id = (receipt['id'] ?? '').toString();
-    if (id.isNotEmpty && _paidReceiptIds.contains(id)) return true;
+    if (receipt['is_paid'] == true) return true;
     return (receipt['entry_id'] ?? '').toString().trim().isNotEmpty;
   }
 
@@ -121,40 +119,13 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
     }
 
     try {
-      final issueDate = DateTime.tryParse((receipt['issue_date'] ?? '').toString());
-      final date = issueDate == null
-          ? DateFormat('yyyy-MM-dd').format(DateTime.now())
-          : DateFormat('yyyy-MM-dd').format(issueDate);
-      final amount = double.tryParse((receipt['amount'] ?? '0').toString()) ?? 0;
-
-      await SupabaseService.instance.addEntry({
-        'date': date,
-        'description': (receipt['description'] ?? '').toString(),
-        'category': ((receipt['item_type'] ?? 'product').toString() == 'service')
-            ? 'service'
-            : 'sale',
-        'amount': amount,
-        'payment_method': (receipt['payment_method'] ?? 'cash').toString(),
-        'tax_rate': null,
-        'tax_inclusion_type': 'unknown',
-        'tax_amount':
-            double.tryParse((receipt['tax_amount'] ?? '0').toString()) ?? 0,
-        'qualified_invoice_issued': false,
-        'qualified_invoice_number': receipt['receipt_number'],
-        'customer_name': receipt['client_name'],
-        'revenue_type':
-            ((receipt['item_type'] ?? 'product').toString() == 'service')
-                ? 'service'
-                : 'product',
-        'fiscal_revenue_category': null,
-        'created_at': DateTime.now().toIso8601String(),
-      });
-
+      final id = (receipt['id'] ?? '').toString();
+      if (id.isEmpty) {
+        throw Exception('Recibo inválido para quitação.');
+      }
+      await SupabaseService.instance.markReceiptAsPaid(id);
+      await _loadReceipts();
       if (!mounted) return;
-      setState(() {
-        final id = (receipt['id'] ?? '').toString();
-        if (id.isNotEmpty) _paidReceiptIds.add(id);
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Recibo quitado e enviado para Entradas.')),
       );

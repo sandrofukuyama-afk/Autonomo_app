@@ -1803,6 +1803,71 @@ class SupabaseService {
     return rows.map((r) => Map<String, dynamic>.from(r as Map)).toList();
   }
 
+  Future<void> markReceiptAsPaid(String receiptId) async {
+    if (isTestModeEnabled) return;
+    final companyId = await AuthService.instance.getCurrentCompanyId();
+
+    final Map<String, dynamic>? receipt = await _client
+        .from('receipts')
+        .select()
+        .eq('company_id', companyId)
+        .eq('id', receiptId)
+        .maybeSingle();
+
+    if (receipt == null) {
+      throw Exception('Recibo não encontrado.');
+    }
+
+    final alreadyPaid = receipt['is_paid'] == true;
+    if (alreadyPaid) return;
+
+    final issueDate = (receipt['issue_date'] ?? '').toString();
+    await _assertFiscalMonthOpen(
+      dateValue: issueDate,
+      errorMessage:
+          'Este mês fiscal está fechado. Não é possível quitar este recibo.',
+    );
+
+    final amount = double.tryParse((receipt['amount'] ?? '0').toString()) ?? 0;
+    final taxAmount =
+        double.tryParse((receipt['tax_amount'] ?? '0').toString()) ?? 0;
+    final itemType = (receipt['item_type'] ?? 'product').toString();
+
+    final Map<String, dynamic> insertedEntry = await _client
+        .from('entries_v2')
+        .insert({
+          'company_id': companyId,
+          'entry_date': issueDate,
+          'description': (receipt['description'] ?? '').toString(),
+          'category': itemType == 'service' ? 'service' : 'sale',
+          'amount': amount,
+          'payment_method': _normalizePaymentMethod(receipt['payment_method']),
+          'tax_rate': null,
+          'tax_inclusion_type': 'unknown',
+          'tax_amount': taxAmount,
+          'qualified_invoice_issued': false,
+          'qualified_invoice_number': receipt['receipt_number'],
+          'customer_name': receipt['client_name'],
+          'revenue_type': itemType == 'service' ? 'service' : 'product',
+          'fiscal_revenue_category': null,
+          'created_at': DateTime.now().toIso8601String(),
+        })
+        .select('id')
+        .single();
+
+    final entryId = (insertedEntry['id'] ?? '').toString();
+
+    await _client
+        .from('receipts')
+        .update({
+          'is_paid': true,
+          'paid_at': DateTime.now().toIso8601String(),
+          'entry_id': entryId.isEmpty ? receipt['entry_id'] : entryId,
+        })
+        .eq('company_id', companyId)
+        .eq('id', receiptId);
+  }
+
   Future<void> deleteReceipt(String id) async {
     if (isTestModeEnabled) return;
     final companyId = await AuthService.instance.getCurrentCompanyId();
