@@ -49,6 +49,9 @@ class _HomePageState extends State<HomePage> {
   double _monthEntriesTotal = 0;
   double _monthExpensesTotal = 0;
   double _monthProfit = 0;
+  double _monthReceivableTotal = 0;
+  int _monthSeikyushoDueCount = 0;
+  double _monthSeikyushoDueTotal = 0;
 
   double _fiscalMonthExpenses = 0;
   double _deductibleExpenses = 0;
@@ -156,6 +159,12 @@ class _HomePageState extends State<HomePage> {
         .eq('company_id', companyId)
         .order('expense_date', ascending: false)
         .limit(5);
+    final List<dynamic> monthSchedules = await _client
+        .from('receipt_payment_schedules')
+        .select('amount, status, due_date, receipts!inner(document_kind)')
+        .eq('company_id', companyId)
+        .gte('due_date', startIso)
+        .lt('due_date', endIso);
 
     double entriesTotal = 0;
     for (final item in entries) {
@@ -170,6 +179,32 @@ class _HomePageState extends State<HomePage> {
     _monthEntriesTotal = entriesTotal;
     _monthExpensesTotal = expensesTotal;
     _monthProfit = entriesTotal - expensesTotal;
+    _monthReceivableTotal = 0;
+    _monthSeikyushoDueCount = 0;
+    _monthSeikyushoDueTotal = 0;
+
+    for (final raw in monthSchedules) {
+      final item = Map<String, dynamic>.from(raw as Map);
+      final status = (item['status'] ?? '').toString().toLowerCase();
+      final amount = _toDouble(item['amount']);
+
+      if (status != 'paid') {
+        _monthReceivableTotal += amount;
+      }
+
+      final receipt = item['receipts'];
+      Map<String, dynamic> receiptMap = {};
+      if (receipt is Map) {
+        receiptMap = Map<String, dynamic>.from(receipt);
+      } else if (receipt is List && receipt.isNotEmpty && receipt.first is Map) {
+        receiptMap = Map<String, dynamic>.from(receipt.first as Map);
+      }
+
+      if ((receiptMap['document_kind'] ?? '').toString() == 'seikyuusho') {
+        _monthSeikyushoDueCount += 1;
+        _monthSeikyushoDueTotal += amount;
+      }
+    }
 
     _recentEntries = recentEntries
         .map((e) => Map<String, dynamic>.from(e as Map))
@@ -1958,6 +1993,59 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildReceivablesMonthSection() {
+    final width = MediaQuery.of(context).size.width;
+    final compact = width < 700;
+    final seikyushoValue =
+        '${_monthSeikyushoDueCount} • ${_formatYen(_monthSeikyushoDueTotal)}';
+
+    if (compact) {
+      return Column(
+        children: [
+          _buildFiscalSummaryCard(
+            icon: Icons.account_balance_wallet_outlined,
+            iconColor: Colors.orange.shade800,
+            iconBackground: Colors.orange.shade100,
+            title: 'A receber no mês',
+            value: _formatYen(_monthReceivableTotal),
+          ),
+          const SizedBox(height: 10),
+          _buildFiscalSummaryCard(
+            icon: Icons.request_quote_outlined,
+            iconColor: Colors.blue.shade800,
+            iconBackground: Colors.blue.shade100,
+            title: 'Seikyusho vencendo no mês',
+            value: seikyushoValue,
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: _buildFiscalSummaryCard(
+            icon: Icons.account_balance_wallet_outlined,
+            iconColor: Colors.orange.shade800,
+            iconBackground: Colors.orange.shade100,
+            title: 'A receber no mês',
+            value: _formatYen(_monthReceivableTotal),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _buildFiscalSummaryCard(
+            icon: Icons.request_quote_outlined,
+            iconColor: Colors.blue.shade800,
+            iconBackground: Colors.blue.shade100,
+            title: 'Seikyusho vencendo no mês',
+            value: seikyushoValue,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildClosedMonthsChips() {
     final t = AppLocalizations.of(context);
 
@@ -2377,6 +2465,12 @@ class _HomePageState extends State<HomePage> {
           _buildSummaryGrid(),
           const SizedBox(height: 12),
           _buildSectionCard(
+            title: 'Contas a Receber (Mês vigente)',
+            subtitle: 'Valor pendente e seikyushos com vencimento neste mês',
+            child: _buildReceivablesMonthSection(),
+          ),
+          const SizedBox(height: 12),
+          _buildSectionCard(
             title: t.translate('fiscal_dashboard'),
             subtitle: t.translate('current_month_tax_overview'),
             child: _buildFiscalDashboardSection(),
@@ -2438,6 +2532,12 @@ class _HomePageState extends State<HomePage> {
         ],
         const SizedBox(height: 16),
         _buildSummaryGrid(),
+        const SizedBox(height: 12),
+        _buildSectionCard(
+          title: 'Contas a Receber (Mês vigente)',
+          subtitle: 'Valor pendente e seikyushos com vencimento neste mês',
+          child: _buildReceivablesMonthSection(),
+        ),
         const SizedBox(height: 12),
         _buildSectionCard(
           title: t.translate('fiscal_dashboard'),
