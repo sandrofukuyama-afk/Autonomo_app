@@ -80,6 +80,15 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     'other',
   ];
 
+  List<_FormatOption> _availableFormatsForKind(String kind) {
+    if (kind == 'reshiito') {
+      return _formats
+          .where((f) => f.value != 'a5' && f.value != 'a4')
+          .toList();
+    }
+    return _formats;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1152,6 +1161,10 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
           value: 'ryoushuusho',
           child: Text(t.translate('document_kind_ryoushuusho')),
         ),
+        DropdownMenuItem(
+          value: 'reshiito',
+          child: Text(t.translate('document_kind_reshiito')),
+        ),
       ],
       onChanged: (value) {
         if (value == null) return;
@@ -1166,6 +1179,13 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
             }
           } else if (widget.entryData == null) {
             _createEntryOnSave = true;
+          }
+          final allowedFormats = _availableFormatsForKind(value);
+          final selectedStillAllowed = allowedFormats.any(
+            (format) => format.value == _selectedFormat,
+          );
+          if (!selectedStillAllowed && allowedFormats.isNotEmpty) {
+            _selectedFormat = allowedFormats.first.value;
           }
           _invalidatePdfCache();
         });
@@ -1259,11 +1279,12 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
 
   Widget _formatSelector(BuildContext context, AppLocalizations t) {
     final cs = Theme.of(context).colorScheme;
+    final availableFormats = _availableFormatsForKind(_documentKind);
 
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: _formats.map((format) {
+      children: availableFormats.map((format) {
         final isSelected = _selectedFormat == format.value;
         return GestureDetector(
           onTap: () => setState(() {
