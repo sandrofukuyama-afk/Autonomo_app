@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 
@@ -74,7 +74,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
   }
 
   String _formatAmount(dynamic value) {
-    return '¥${_toDouble(value).toStringAsFixed(0)}';
+    return '\u00A5${_toDouble(value).toStringAsFixed(0)}';
   }
 
   String _formatDate(dynamic value) {
@@ -197,7 +197,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Baixa concluída, mas não foi possível imprimir o recibo: $e')),
+            SnackBar(content: Text('Baixa concluÃ­da, mas nÃ£o foi possÃ­vel imprimir o recibo: $e')),
           );
         }
       }
@@ -534,3 +534,4 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
     );
   }
 }
+
