@@ -1,8 +1,13 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
 
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
+import '../services/receipt_pdf_service.dart';
+import 'receipt_issue_page.dart';
 
 class ReceiptHistoryPage extends StatefulWidget {
   const ReceiptHistoryPage({super.key});
@@ -15,6 +20,9 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
   List<Map<String, dynamic>> _receipts = [];
   bool _loading = true;
   String _selectedKind = 'ryoushuusho';
+  DateTime _selectedMonth =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
+  final Set<String> _paidReceiptIds = <String>{};
 
   @override
   void initState() {
@@ -48,7 +56,8 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
   String _formatAmount(dynamic value) {
     final amount = double.tryParse((value ?? '').toString());
     if (amount == null) return '¥0';
-    return '¥${amount.toStringAsFixed(0)}';
+    final formatter = NumberFormat('#,##0', 'en_US');
+    return '¥${formatter.format(amount)}';
   }
 
   String _paymentConditionLabel(dynamic value) {
@@ -69,9 +78,159 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
   }
 
   List<Map<String, dynamic>> _filteredReceipts() {
-    return _receipts
-        .where((r) => (r['document_kind'] ?? 'ryoushuusho').toString() == _selectedKind)
-        .toList();
+    return _receipts.where((r) {
+      final kindMatches =
+          (r['document_kind'] ?? 'ryoushuusho').toString() == _selectedKind;
+      if (!kindMatches) return false;
+
+      final parsed = DateTime.tryParse((r['issue_date'] ?? '').toString());
+      if (parsed == null) return false;
+
+      return parsed.year == _selectedMonth.year &&
+          parsed.month == _selectedMonth.month;
+    }).toList();
+  }
+
+  bool _isReceiptPaid(Map<String, dynamic> receipt) {
+    final id = (receipt['id'] ?? '').toString();
+    if (id.isNotEmpty && _paidReceiptIds.contains(id)) return true;
+    return (receipt['entry_id'] ?? '').toString().trim().isNotEmpty;
+  }
+
+  Future<void> _pickMonth() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedMonth,
+      firstDate: DateTime(2000, 1, 1),
+      lastDate: DateTime(2100, 12, 31),
+      helpText: 'Selecionar mês',
+    );
+
+    if (picked == null || !mounted) return;
+    setState(() {
+      _selectedMonth = DateTime(picked.year, picked.month, 1);
+    });
+  }
+
+  Future<void> _markAsPaid(Map<String, dynamic> receipt) async {
+    if (_isReceiptPaid(receipt)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Este recibo já está quitado.')),
+      );
+      return;
+    }
+
+    try {
+      final issueDate = DateTime.tryParse((receipt['issue_date'] ?? '').toString());
+      final date = issueDate == null
+          ? DateFormat('yyyy-MM-dd').format(DateTime.now())
+          : DateFormat('yyyy-MM-dd').format(issueDate);
+      final amount = double.tryParse((receipt['amount'] ?? '0').toString()) ?? 0;
+
+      await SupabaseService.instance.addEntry({
+        'date': date,
+        'description': (receipt['description'] ?? '').toString(),
+        'category': ((receipt['item_type'] ?? 'product').toString() == 'service')
+            ? 'service'
+            : 'sale',
+        'amount': amount,
+        'payment_method': (receipt['payment_method'] ?? 'cash').toString(),
+        'tax_rate': null,
+        'tax_inclusion_type': 'unknown',
+        'tax_amount':
+            double.tryParse((receipt['tax_amount'] ?? '0').toString()) ?? 0,
+        'qualified_invoice_issued': false,
+        'qualified_invoice_number': receipt['receipt_number'],
+        'customer_name': receipt['client_name'],
+        'revenue_type':
+            ((receipt['item_type'] ?? 'product').toString() == 'service')
+                ? 'service'
+                : 'product',
+        'fiscal_revenue_category': null,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      if (!mounted) return;
+      setState(() {
+        final id = (receipt['id'] ?? '').toString();
+        if (id.isNotEmpty) _paidReceiptIds.add(id);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Recibo quitado e enviado para Entradas.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao quitar recibo: $e')),
+      );
+    }
+  }
+
+  ReceiptData _toReceiptData(Map<String, dynamic> receipt) {
+    final issueDate =
+        DateTime.tryParse((receipt['issue_date'] ?? '').toString()) ??
+            DateTime.now();
+    final dueDate = DateTime.tryParse((receipt['due_date'] ?? '').toString());
+    final amount = double.tryParse((receipt['amount'] ?? '0').toString()) ?? 0;
+    final taxAmount =
+        double.tryParse((receipt['tax_amount'] ?? '0').toString()) ?? 0;
+
+    return ReceiptData(
+      receiptNumber: (receipt['receipt_number'] ?? '').toString(),
+      issueDate: issueDate,
+      dueDate: dueDate,
+      documentKind: (receipt['document_kind'] ?? 'ryoushuusho').toString(),
+      description: (receipt['description'] ?? '').toString(),
+      amount: amount,
+      taxAmount: taxAmount,
+      currency: 'JPY',
+      paymentMethod: (receipt['payment_method'] ?? 'cash').toString(),
+      issuedBy: '',
+      companyAddress: null,
+      companyPhone: null,
+      invoiceNumber: null,
+      clientName: (receipt['client_name'] ?? '').toString().isEmpty
+          ? null
+          : (receipt['client_name'] ?? '').toString(),
+      clientEmail: (receipt['client_email'] ?? '').toString().isEmpty
+          ? null
+          : (receipt['client_email'] ?? '').toString(),
+      notes: (receipt['notes'] ?? '').toString().isEmpty
+          ? null
+          : (receipt['notes'] ?? '').toString(),
+      language: (receipt['language'] ?? 'pt').toString(),
+    );
+  }
+
+  Future<void> _printReceipt(Map<String, dynamic> receipt) async {
+    final data = _toReceiptData(receipt);
+    final format = (receipt['format'] ?? 'a4').toString();
+
+    late final Uint8List bytes;
+    switch (format) {
+      case 'thermal_58':
+        bytes = await ReceiptPdfService.buildThermal58(data);
+        break;
+      case 'thermal_80':
+        bytes = await ReceiptPdfService.buildThermal80(data);
+        break;
+      case 'a5':
+        bytes = await ReceiptPdfService.buildA5(data);
+        break;
+      default:
+        bytes = await ReceiptPdfService.buildA4(data);
+    }
+
+    await Printing.layoutPdf(onLayout: (_) => Future.value(bytes));
+  }
+
+  Future<void> _editReceipt(Map<String, dynamic> receipt) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ReceiptIssuePage(entryData: receipt),
+      ),
+    );
+    await _loadReceipts();
   }
 
   String _monthGroupKey(Map<String, dynamic> receipt) {
@@ -137,6 +296,20 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
     );
   }
 
+  Widget _actionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    Color? color,
+  }) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16, color: color),
+      label: Text(label, style: TextStyle(color: color)),
+      style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+    );
+  }
+
   void _showDetails(Map<String, dynamic> receipt) {
     final t = AppLocalizations.of(context);
     final itemType = (receipt['item_type'] ?? 'product').toString();
@@ -152,21 +325,35 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('${t.translate('receipt_date')}: ${_formatDate(receipt['issue_date'])}'),
+                Text(
+                  '${t.translate('receipt_date')}: ${_formatDate(receipt['issue_date'])}',
+                ),
                 const SizedBox(height: 8),
-                Text('${t.translate('document_kind')}: ${t.translate('document_kind_$documentKind')}'),
+                Text(
+                  '${t.translate('document_kind')}: ${t.translate('document_kind_$documentKind')}',
+                ),
                 const SizedBox(height: 8),
-                Text('${t.translate('receipt_item_type')}: ${t.translate('receipt_item_$itemType')}'),
+                Text(
+                  '${t.translate('receipt_item_type')}: ${t.translate('receipt_item_$itemType')}',
+                ),
                 const SizedBox(height: 8),
-                Text('${t.translate('description')}: ${(receipt['description'] ?? '-').toString()}'),
+                Text(
+                  '${t.translate('description')}: ${(receipt['description'] ?? '-').toString()}',
+                ),
                 const SizedBox(height: 8),
                 Text('${t.translate('value')}: ${_formatAmount(receipt['amount'])}'),
                 const SizedBox(height: 8),
-                Text('${t.translate('client_name')}: ${(receipt['client_name'] ?? '-').toString()}'),
+                Text(
+                  '${t.translate('client_name')}: ${(receipt['client_name'] ?? '-').toString()}',
+                ),
                 const SizedBox(height: 8),
-                Text('${t.translate('client_email')}: ${(receipt['client_email'] ?? '-').toString()}'),
+                Text(
+                  '${t.translate('client_email')}: ${(receipt['client_email'] ?? '-').toString()}',
+                ),
                 const SizedBox(height: 8),
-                Text('${t.translate('payment_method')}: ${(receipt['payment_method'] ?? '-').toString()}'),
+                Text(
+                  '${t.translate('payment_method')}: ${(receipt['payment_method'] ?? '-').toString()}',
+                ),
                 const SizedBox(height: 8),
                 Text('Condição: ${_paymentConditionLabel(receipt['payment_condition'])}'),
                 const SizedBox(height: 8),
@@ -233,12 +420,43 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: _pickMonth,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_month_outlined),
+                        const SizedBox(width: 10),
+                        Text(
+                          _monthGroupLabel(
+                            DateFormat('MMMM/yyyy', 'pt_BR').format(_selectedMonth),
+                          ),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const Spacer(),
+                        const Icon(Icons.expand_more),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 if (filtered.isEmpty)
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Text(
-                        '${t.translate('no_receipts_yet')} (${t.translate('document_kind_$_selectedKind')})',
+                        'Nenhum recibo em ${_monthGroupLabel(DateFormat('MMMM/yyyy', 'pt_BR').format(_selectedMonth))} (${t.translate('document_kind_$_selectedKind')})',
                       ),
                     ),
                   )
@@ -256,29 +474,82 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
                         ),
                       ),
                       ...entry.value.map((receipt) {
+                        final paid = _isReceiptPaid(receipt);
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Card(
-                            child: ListTile(
-                              onTap: () => _showDetails(receipt),
-                              contentPadding: const EdgeInsets.all(16),
-                              title: Text(
-                                (receipt['receipt_number'] ?? '').toString(),
-                                style: const TextStyle(fontWeight: FontWeight.w700),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          (receipt['receipt_number'] ?? '').toString(),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      if (paid)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.shade100,
+                                            borderRadius: BorderRadius.circular(999),
+                                          ),
+                                          child: Text(
+                                            'QUITADO',
+                                            style: TextStyle(
+                                              color: Colors.green.shade900,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text((receipt['description'] ?? '-').toString()),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${_formatDate(receipt['issue_date'])} • ${_formatAmount(receipt['amount'])}',
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      _actionButton(
+                                        icon: Icons.check_circle_outline,
+                                        label: 'Quitar',
+                                        color: paid ? Colors.green.shade800 : null,
+                                        onPressed: () => _markAsPaid(receipt),
+                                      ),
+                                      _actionButton(
+                                        icon: Icons.print_outlined,
+                                        label: 'Imprimir',
+                                        onPressed: () => _printReceipt(receipt),
+                                      ),
+                                      _actionButton(
+                                        icon: Icons.edit_outlined,
+                                        label: 'Editar',
+                                        onPressed: () => _editReceipt(receipt),
+                                      ),
+                                      _actionButton(
+                                        icon: Icons.visibility_outlined,
+                                        label: 'Ver',
+                                        onPressed: () => _showDetails(receipt),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text((receipt['description'] ?? '-').toString()),
-                                    const SizedBox(height: 6),
-                                    Text('${_formatDate(receipt['issue_date'])} • ${_formatAmount(receipt['amount'])}'),
-                                  ],
-                                ),
-                              ),
-                              trailing: const Icon(Icons.chevron_right),
                             ),
                           ),
                         );
@@ -290,4 +561,3 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
     );
   }
 }
-
