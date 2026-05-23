@@ -96,17 +96,83 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
   }
 
   Future<void> _pickMonth() async {
-    final picked = await showDatePicker(
+    final initialYear = _selectedMonth.year;
+    final initialMonth = _selectedMonth.month;
+    int selectedYear = initialYear;
+    int selectedMonth = initialMonth;
+
+    final result = await showDialog<DateTime>(
       context: context,
-      initialDate: _selectedMonth,
-      firstDate: DateTime(2000, 1, 1),
-      lastDate: DateTime(2100, 12, 31),
-      helpText: 'Selecionar mês',
+      builder: (dialogContext) {
+        final years = List<int>.generate(101, (index) => 2000 + index);
+        return AlertDialog(
+          title: const Text('Selecionar mês'),
+          content: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: selectedMonth,
+                      decoration: const InputDecoration(labelText: 'Mês'),
+                      items: List.generate(12, (index) {
+                        final month = index + 1;
+                        return DropdownMenuItem<int>(
+                          value: month,
+                          child: Text(month.toString().padLeft(2, '0')),
+                        );
+                      }),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setStateDialog(() => selectedMonth = value);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: selectedYear,
+                      decoration: const InputDecoration(labelText: 'Ano'),
+                      items: years
+                          .map(
+                            (year) => DropdownMenuItem<int>(
+                              value: year,
+                              child: Text(year.toString()),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setStateDialog(() => selectedYear = value);
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(
+                  DateTime(selectedYear, selectedMonth, 1),
+                );
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
     );
 
-    if (picked == null || !mounted) return;
+    if (result == null || !mounted) return;
     setState(() {
-      _selectedMonth = DateTime(picked.year, picked.month, 1);
+      _selectedMonth = DateTime(result.year, result.month, 1);
     });
   }
 
