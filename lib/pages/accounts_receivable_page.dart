@@ -197,7 +197,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Baixa concluÃ­da, mas nÃ£o foi possÃ­vel imprimir o recibo: $e')),
+            SnackBar(content: Text('Baixa concluída, mas não foi possível imprimir o recibo: $e')),
           );
         }
       }

@@ -58,7 +58,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
       case 'parcelado':
         return 'Parcelado';
       default:
-        return 'Ã€ vista';
+        return 'À vista';
     }
   }
 
@@ -168,7 +168,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
                 const SizedBox(height: 8),
                 Text('${t.translate('payment_method')}: ${(receipt['payment_method'] ?? '-').toString()}'),
                 const SizedBox(height: 8),
-                Text('CondiÃ§Ã£o: ${_paymentConditionLabel(receipt['payment_condition'])}'),
+                Text('Condição: ${_paymentConditionLabel(receipt['payment_condition'])}'),
                 const SizedBox(height: 8),
                 Text('Vencimento: ${_formatDate(receipt['due_date'])}'),
                 const SizedBox(height: 8),
@@ -274,7 +274,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
                                   children: [
                                     Text((receipt['description'] ?? '-').toString()),
                                     const SizedBox(height: 6),
-                                    Text('${_formatDate(receipt['issue_date'])} â€¢ ${_formatAmount(receipt['amount'])}'),
+                                    Text('${_formatDate(receipt['issue_date'])} • ${_formatAmount(receipt['amount'])}'),
                                   ],
                                 ),
                               ),
