@@ -17,6 +17,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
   bool _loading = true;
   DateTime _selectedMonth =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
+  String _statusFilter = 'all';
 
   @override
   void initState() {
@@ -348,32 +349,45 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
     required Color color,
     required String label,
     required String value,
+    required String filterKey,
   }) {
+    final selected = _statusFilter == filterKey;
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.15)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          setState(() {
+            _statusFilter = _statusFilter == filterKey ? 'all' : filterKey;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: selected ? 0.16 : 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: color.withValues(alpha: selected ? 0.45 : 0.15),
+              width: selected ? 1.6 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-          ],
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -419,9 +433,21 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
       return dueDate.year == _selectedMonth.year &&
           dueDate.month == _selectedMonth.month;
     }).toList();
+    final visibleItems = filteredItems.where((item) {
+      switch (_statusFilter) {
+        case 'pending':
+          return !_isPaid(item) && !_isOverdue(item);
+        case 'paid':
+          return _isPaid(item);
+        case 'overdue':
+          return _isOverdue(item);
+        default:
+          return true;
+      }
+    }).toList();
 
     final groupedItems = <String, List<Map<String, dynamic>>>{};
-    for (final item in filteredItems) {
+    for (final item in visibleItems) {
       final key = _monthGroupKey(item);
       groupedItems.putIfAbsent(key, () => <Map<String, dynamic>>[]).add(item);
     }
@@ -463,18 +489,21 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                         color: Colors.orange,
                         label: 'Em aberto',
                         value: _formatAmount(pendingTotal),
+                        filterKey: 'pending',
                       ),
                       const SizedBox(width: 12),
                       _summaryCard(
                         color: Colors.green,
                         label: 'Recebido',
                         value: _formatAmount(paidTotal),
+                        filterKey: 'paid',
                       ),
                       const SizedBox(width: 12),
                       _summaryCard(
                         color: Colors.red,
                         label: 'Atrasado',
                         value: _formatAmount(overdueTotal),
+                        filterKey: 'overdue',
                       ),
                     ],
                   ),
@@ -513,7 +542,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  if (filteredItems.isEmpty)
+                  if (visibleItems.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -521,7 +550,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                         color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       ),
                       child: const Text(
-                        'Nenhum recebimento encontrado para o mês selecionado.',
+                        'Nenhum recebimento para o filtro selecionado.',
                         textAlign: TextAlign.center,
                       ),
                     )
