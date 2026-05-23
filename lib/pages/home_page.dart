@@ -38,6 +38,7 @@ class _HomePageState extends State<HomePage> {
   bool _loading = true;
   String? _companyId;
   String? _businessName;
+  // ignore: unused_field
   String? _fullName;
   bool _isAdmin = false;
   bool _isTestModeEnabled = false;
@@ -615,6 +616,7 @@ class _HomePageState extends State<HomePage> {
     _estimatedTaxImpact = _deductibleExpenses * 0.30;
   }
 
+  // ignore: unused_element
   String _languageLabel(AppLocalizations t, String code) {
     switch (code) {
       case 'pt':
@@ -973,7 +975,7 @@ class _HomePageState extends State<HomePage> {
           Text(
             t.translate('current_result'),
             style: TextStyle(
-              color: Colors.white.withOpacity(0.85),
+              color: Colors.white.withValues(alpha: 0.85),
               fontSize: 14,
             ),
           ),
@@ -1030,9 +1032,9 @@ class _HomePageState extends State<HomePage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.14),
+        color: Colors.white.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.10)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1130,7 +1132,7 @@ class _HomePageState extends State<HomePage> {
                       decoration: BoxDecoration(
                         color: currentClosed
                             ? Colors.red.shade100
-                            : Colors.white.withOpacity(0.72),
+                            : Colors.white.withValues(alpha: 0.72),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
@@ -1430,7 +1432,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundColor: color.withOpacity(0.12),
+                    backgroundColor: color.withValues(alpha: 0.12),
                     child: Icon(icon, color: color),
                   ),
                   const SizedBox(width: 12),
@@ -2103,7 +2105,7 @@ class _HomePageState extends State<HomePage> {
                     decoration: BoxDecoration(
                       color: currentClosed
                           ? Colors.green.shade100
-                          : Colors.white.withOpacity(0.7),
+                          : Colors.white.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
@@ -2340,7 +2342,7 @@ class _HomePageState extends State<HomePage> {
                   subtitle: Text(_adminText(t, 'test_mode_description')),
                   value: _isTestModeEnabled,
                   onChanged: _setTestModeEnabled,
-                  activeColor: Colors.amber.shade900,
+                  activeThumbColor: Colors.amber.shade900,
                   contentPadding: EdgeInsets.zero,
                 ),
               ],

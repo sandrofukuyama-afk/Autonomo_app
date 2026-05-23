@@ -317,7 +317,7 @@ class _ClientHistoryPageState extends State<ClientHistoryPage> {
         padding: const EdgeInsets.all(16),
         children: [
           DropdownButtonFormField<String>(
-            value: _selectedClientName,
+            initialValue: _selectedClientName,
             decoration: InputDecoration(
               labelText: 'Selecionar Cliente',
               prefixIcon: const Icon(Icons.person_search_outlined),

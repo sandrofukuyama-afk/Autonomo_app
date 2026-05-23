@@ -593,7 +593,7 @@ class _ReportsPageState extends State<ReportsPage> {
         children: [
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: _period,
+              initialValue: _period,
               decoration: InputDecoration(
                 labelText: _tr(
                   context,
@@ -647,7 +647,7 @@ class _ReportsPageState extends State<ReportsPage> {
             SizedBox(
               width: 130,
               child: DropdownButtonFormField<int>(
-                value: _year,
+                initialValue: _year,
                 decoration: InputDecoration(
                   labelText: _tr(
                     context,

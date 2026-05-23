@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:html' as html;
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../data/supabase_service.dart';
 import '../l10n/app_localizations.dart';
@@ -54,19 +54,18 @@ class _EntriesPageState extends State<EntriesPage> {
   }
 
   Future<Map<String, String>> _translateCategoryWithAi(String text) async {
-    final request = await html.HttpRequest.request(
-      'https://autonomojp.vercel.app/api/ai-help',
-      method: 'POST',
-      sendData: jsonEncode({
+    final response = await http.post(
+      Uri.parse('https://autonomojp.vercel.app/api/ai-help'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
         'mode': 'translate_category',
         'text': text,
       }),
-      requestHeaders: {
-        'Content-Type': 'application/json',
-      },
     );
 
-    final raw = request.responseText ?? '';
+    final raw = response.body;
     Map<String, dynamic> data = {};
 
     if (raw.isNotEmpty) {
@@ -822,7 +821,7 @@ class _EntriesPageState extends State<EntriesPage> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _isCustomCategoryMode ? _addCategoryValue : _category,
+                          initialValue: _isCustomCategoryMode ? _addCategoryValue : _category,
                           decoration: _fieldDecoration(t.translate('category')),
                           items: _categoryItems(t),
                           onChanged: (value) async {
@@ -899,7 +898,7 @@ class _EntriesPageState extends State<EntriesPage> {
                         ],
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _paymentMethod,
+                          initialValue: _paymentMethod,
                           decoration: _fieldDecoration(
                             t.translate('payment_method'),
                           ),
@@ -1113,7 +1112,7 @@ class _EntriesPageState extends State<EntriesPage> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _category,
+                          initialValue: _category,
                           decoration: _fieldDecoration(t.translate('category')),
                           items: _categoryItems(t)
                               .where((item) => item.value != _addCategoryValue)
@@ -1127,7 +1126,7 @@ class _EntriesPageState extends State<EntriesPage> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _paymentMethod,
+                          initialValue: _paymentMethod,
                           decoration: _fieldDecoration(
                             t.translate('payment_method'),
                           ),

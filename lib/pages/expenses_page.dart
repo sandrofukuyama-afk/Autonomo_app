@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'dart:html' as html;
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/supabase_service.dart';
@@ -17,6 +17,7 @@ class ExpensesPage extends StatefulWidget {
 }
 
 class _ExpensesPageState extends State<ExpensesPage> {
+  // ignore: unused_field
   final SupabaseClient _client = Supabase.instance.client;
 
   static const String _addCategoryValue = '__add_new_category__';
@@ -48,7 +49,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
   DateTime _selectedDate = DateTime.now();
   String _category = 'other';
-  String _taxType = 'external';
   double _taxAmount = 0;
   String _paymentMethod = 'cash';
   String _taxInclusionType = 'external';
@@ -372,17 +372,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
   }
 
   Future<Map<String, String>> _translateCategoryWithAi(String text) async {
-    final request = await html.HttpRequest.request(
-      '${_apiBaseUrl()}/api/ai-help',
-      method: 'POST',
-      sendData: jsonEncode({
+    final response = await http.post(
+      Uri.parse('${_apiBaseUrl()}/api/ai-help'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
         'mode': 'translate_category',
         'text': text,
       }),
-      requestHeaders: {'Content-Type': 'application/json'},
     );
 
-    final raw = request.responseText ?? '';
+    final raw = response.body;
     Map<String, dynamic> data = {};
     if (raw.isNotEmpty) {
       try {
@@ -1024,6 +1023,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
     return rate.toStringAsFixed(1);
   }
 
+  // ignore: unused_element
   Future<void> _applyOCRSuggestions({
     required String expenseId,
     required StateSetter setStateDialog,
@@ -1418,7 +1418,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
     _isCustomCategoryMode = false;
     _customCategoryController.clear();
     _category = 'other';
-    _taxType = 'external';
     _taxAmount = 0;
     _paymentMethod = 'cash';
     _taxInclusionType = 'external';
@@ -1493,7 +1492,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _isCustomCategoryMode ? _addCategoryValue : _category,
+                          initialValue: _isCustomCategoryMode ? _addCategoryValue : _category,
                           decoration: _fieldDecoration(_tr('category')),
                           items: _expenseCategoryItems(),
                           onChanged: (value) async {
@@ -1547,7 +1546,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _paymentMethod,
+                          initialValue: _paymentMethod,
                           decoration: _fieldDecoration(_tr('payment_method')),
                           items: [
                             DropdownMenuItem(
@@ -1596,7 +1595,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         _quickTaxRateButtons(setStateDialog),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _taxInclusionType,
+                          initialValue: _taxInclusionType,
                           decoration: _fieldDecoration(_tr('tax_type')),
                           items: [
                             DropdownMenuItem(
@@ -1611,7 +1610,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           onChanged: (value) {
                             setStateDialog(() {
                               _taxInclusionType = value ?? 'external';
-                              _taxType = _taxInclusionType;
                             });
                           },
                         ),
@@ -1781,9 +1779,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
     _isCustomCategoryMode = false;
     _customCategoryController.clear();
     _category = _normalizeCategoryForUi((expense['category'] ?? 'other').toString());
-    _taxType = _uiTaxInclusionType(
-      (expense['tax_type'] ?? 'external').toString(),
-    );
     _taxAmount = expense['tax_amount'] is num
         ? (expense['tax_amount'] as num).toDouble()
         : double.tryParse((expense['tax_amount'] ?? '0').toString()) ?? 0;
@@ -1866,7 +1861,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _category,
+                          initialValue: _category,
                           decoration: _fieldDecoration(_tr('category')),
                           items: _expenseCategoryItems()
                               .where((item) => item.value != _addCategoryValue)
@@ -1890,7 +1885,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _paymentMethod,
+                          initialValue: _paymentMethod,
                           decoration: _fieldDecoration(_tr('payment_method')),
                           items: [
                             DropdownMenuItem(
@@ -1939,7 +1934,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         _quickTaxRateButtons(setStateDialog),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _taxInclusionType,
+                          initialValue: _taxInclusionType,
                           decoration: _fieldDecoration(_tr('tax_type')),
                           items: [
                             DropdownMenuItem(
@@ -1954,7 +1949,6 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           onChanged: (value) {
                             setStateDialog(() {
                               _taxInclusionType = value ?? 'external';
-                              _taxType = _taxInclusionType;
                             });
                           },
                         ),

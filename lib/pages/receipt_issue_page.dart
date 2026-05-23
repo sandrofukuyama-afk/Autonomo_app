@@ -1104,7 +1104,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
 
   Widget _itemTypeSelector(BuildContext context, AppLocalizations t) {
     return DropdownButtonFormField<String>(
-      value: _selectedItemType,
+      initialValue: _selectedItemType,
       decoration: InputDecoration(
         labelText: t.translate('receipt_item_type'),
         prefixIcon: const Icon(Icons.category_outlined),
@@ -1136,7 +1136,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
 
   Widget _documentKindSelector(BuildContext context, AppLocalizations t) {
     return DropdownButtonFormField<String>(
-      value: _documentKind,
+      initialValue: _documentKind,
       decoration: InputDecoration(
         labelText: t.translate('document_kind'),
         prefixIcon: const Icon(Icons.description_outlined),
@@ -1173,9 +1173,10 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     );
   }
 
+  // ignore: unused_element
   Widget _serviceSelector(BuildContext context, AppLocalizations t) {
     return DropdownButtonFormField<String>(
-      value: _selectedServiceId,
+      initialValue: _selectedServiceId,
       decoration: InputDecoration(
         labelText: t.translate('choose_service'),
         prefixIcon: const Icon(Icons.design_services_outlined),
@@ -1203,7 +1204,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
 
   Widget _paymentSelector(BuildContext context, AppLocalizations t) {
     return DropdownButtonFormField<String>(
-      value: _paymentMethod,
+      initialValue: _paymentMethod,
       decoration: InputDecoration(
         labelText: t.translate('payment_method'),
         prefixIcon: const Icon(Icons.payment),
@@ -1230,7 +1231,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
 
   Widget _paymentConditionSelector(BuildContext context, AppLocalizations t) {
     return DropdownButtonFormField<String>(
-      value: _paymentCondition,
+      initialValue: _paymentCondition,
       decoration: InputDecoration(
         labelText: 'Condição de Pagamento', // You could use t.translate('payment_condition')
         prefixIcon: const Icon(Icons.handshake_outlined),

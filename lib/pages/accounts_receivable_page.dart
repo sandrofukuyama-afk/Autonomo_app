@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 
@@ -74,7 +74,12 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
   }
 
   String _formatAmount(dynamic value) {
-    return '\u00A5${_toDouble(value).toStringAsFixed(0)}';
+    final formatter = NumberFormat.currency(
+      locale: 'ja_JP',
+      symbol: '¥',
+      decimalDigits: 0,
+    );
+    return formatter.format(_toDouble(value));
   }
 
   String _formatDate(dynamic value) {
@@ -265,9 +270,9 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.15)),
+          border: Border.all(color: color.withValues(alpha: 0.15)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,7 +314,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -470,7 +475,7 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                                         'Vence em ${_formatDate(item['due_date'])}',
                                       ),
                                       _infoChip(
-                                        Icons.attach_money,
+                                        Icons.currency_yen,
                                         _formatAmount(item['amount']),
                                       ),
                                       if (_isPaid(item))
