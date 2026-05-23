@@ -852,10 +852,7 @@ class _SettingsPageState extends State<SettingsPage> {
         'updated_at': DateTime.now().toIso8601String(),
       };
 
-      await _client.from('app_settings').upsert(
-            payload,
-            onConflict: 'company_id',
-          );
+      await SupabaseService.instance.saveAppSettings(payload);
 
       if (widget.onLocaleChanged != null &&
           _supportedLanguages.contains(_language)) {

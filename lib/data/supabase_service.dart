@@ -67,6 +67,50 @@ class SupabaseService {
     };
   }
 
+  Future<void> saveAppSettings(Map<String, dynamic> payload) async {
+    final companyId =
+        (payload['company_id'] ?? await AuthService.instance.getCurrentCompanyId())
+            .toString();
+    final normalizedPayload = Map<String, dynamic>.from(payload)
+      ..['company_id'] = companyId;
+    final updatePayload = Map<String, dynamic>.from(normalizedPayload)
+      ..remove('company_id');
+
+    try {
+      await _client.from('app_settings').upsert(
+            normalizedPayload,
+            onConflict: 'company_id',
+          );
+      return;
+    } on PostgrestException catch (e) {
+      final message = e.message.toLowerCase();
+      final canFallback =
+          e.code == '42501' ||
+          e.code == '42P10' ||
+          message.contains('on conflict') ||
+          message.contains('no unique') ||
+          message.contains('there is no unique');
+      if (!canFallback) rethrow;
+    }
+
+    final existing = await _client
+        .from('app_settings')
+        .select('company_id')
+        .eq('company_id', companyId)
+        .limit(1)
+        .maybeSingle();
+
+    if (existing != null) {
+      await _client
+          .from('app_settings')
+          .update(updatePayload)
+          .eq('company_id', companyId);
+      return;
+    }
+
+    await _client.from('app_settings').insert(normalizedPayload);
+  }
+
   Future<List<String>> getClosedFiscalMonths() async {
     final settings = await getAppSettings();
     final raw = settings['closed_fiscal_months'];
@@ -1928,18 +1972,7 @@ class SupabaseService {
       'updated_at': DateTime.now().toIso8601String(),
     };
 
-    try {
-      await _client.from('app_settings').upsert(
-            payload,
-            onConflict: 'company_id',
-          );
-    } on PostgrestException catch (e) {
-      if (e.code != '42501') rethrow;
-      await _client
-          .from('app_settings')
-          .update(payload)
-          .eq('company_id', companyId);
-    }
+    await saveAppSettings(payload);
   }
 
   // ==========================================
