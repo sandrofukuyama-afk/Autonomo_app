@@ -852,20 +852,10 @@ class _SettingsPageState extends State<SettingsPage> {
         'updated_at': DateTime.now().toIso8601String(),
       };
 
-      final updatePayload = Map<String, dynamic>.from(payload)
-        ..remove('company_id');
-      final updated = await _client
-          .from('app_settings')
-          .update(updatePayload)
-          .eq('company_id', _companyId!)
-          .select('company_id')
-          .maybeSingle();
-
-      if (updated == null) {
-        throw Exception(
-          'Não foi possível salvar: registro de app_settings não encontrado para esta empresa.',
-        );
-      }
+      await _client.from('app_settings').upsert(
+            payload,
+            onConflict: 'company_id',
+          );
 
       if (widget.onLocaleChanged != null &&
           _supportedLanguages.contains(_language)) {
@@ -1774,3 +1764,4 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 }
+
