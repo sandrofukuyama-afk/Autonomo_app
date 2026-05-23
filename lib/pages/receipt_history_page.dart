@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../data/supabase_service.dart';
@@ -47,8 +47,8 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
 
   String _formatAmount(dynamic value) {
     final amount = double.tryParse((value ?? '').toString());
-    if (amount == null) return 'JPY 0';
-    return 'JPY ${amount.toStringAsFixed(0)}';
+    if (amount == null) return '¥0';
+    return '¥${amount.toStringAsFixed(0)}';
   }
 
   String _paymentConditionLabel(dynamic value) {
@@ -58,7 +58,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
       case 'parcelado':
         return 'Parcelado';
       default:
-        return 'À vista';
+        return 'Ã€ vista';
     }
   }
 
@@ -72,6 +72,17 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
     return _receipts
         .where((r) => (r['document_kind'] ?? 'ryoushuusho').toString() == _selectedKind)
         .toList();
+  }
+
+  String _monthGroupKey(Map<String, dynamic> receipt) {
+    final parsed = DateTime.tryParse((receipt['issue_date'] ?? '').toString());
+    if (parsed == null) return 'Sem data';
+    return DateFormat('MMMM/yyyy', 'pt_BR').format(parsed);
+  }
+
+  String _monthGroupLabel(String key) {
+    if (key == 'Sem data' || key.isEmpty) return key;
+    return '${key[0].toUpperCase()}${key.substring(1)}';
   }
 
   Widget _kindCard({
@@ -157,7 +168,7 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
                 const SizedBox(height: 8),
                 Text('${t.translate('payment_method')}: ${(receipt['payment_method'] ?? '-').toString()}'),
                 const SizedBox(height: 8),
-                Text('Condição: ${_paymentConditionLabel(receipt['payment_condition'])}'),
+                Text('CondiÃ§Ã£o: ${_paymentConditionLabel(receipt['payment_condition'])}'),
                 const SizedBox(height: 8),
                 Text('Vencimento: ${_formatDate(receipt['due_date'])}'),
                 const SizedBox(height: 8),
@@ -180,6 +191,11 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final filtered = _filteredReceipts();
+    final groupedReceipts = <String, List<Map<String, dynamic>>>{};
+    for (final receipt in filtered) {
+      final key = _monthGroupKey(receipt);
+      groupedReceipts.putIfAbsent(key, () => <Map<String, dynamic>>[]).add(receipt);
+    }
 
     if (_loading) {
       return Scaffold(
@@ -227,36 +243,51 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
                     ),
                   )
                 else
-                  ...filtered.map((receipt) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Card(
-                        child: ListTile(
-                          onTap: () => _showDetails(receipt),
-                          contentPadding: const EdgeInsets.all(16),
-                          title: Text(
-                            (receipt['receipt_number'] ?? '').toString(),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                  ...groupedReceipts.entries.expand((entry) {
+                    return [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
+                        child: Text(
+                          _monthGroupLabel(entry.key),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
                           ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text((receipt['description'] ?? '-').toString()),
-                                const SizedBox(height: 6),
-                                Text('${_formatDate(receipt['issue_date'])} • ${_formatAmount(receipt['amount'])}'),
-                              ],
-                            ),
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
                         ),
                       ),
-                    );
+                      ...entry.value.map((receipt) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Card(
+                            child: ListTile(
+                              onTap: () => _showDetails(receipt),
+                              contentPadding: const EdgeInsets.all(16),
+                              title: Text(
+                                (receipt['receipt_number'] ?? '').toString(),
+                                style: const TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text((receipt['description'] ?? '-').toString()),
+                                    const SizedBox(height: 6),
+                                    Text('${_formatDate(receipt['issue_date'])} â€¢ ${_formatAmount(receipt['amount'])}'),
+                                  ],
+                                ),
+                              ),
+                              trailing: const Icon(Icons.chevron_right),
+                            ),
+                          ),
+                        );
+                      }),
+                    ];
                   }),
               ],
             ),
     );
   }
 }
+

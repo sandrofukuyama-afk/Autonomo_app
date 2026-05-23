@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
 
 import '../data/supabase_service.dart';
+import '../services/receipt_pdf_service.dart';
 
 class AccountsReceivablePage extends StatefulWidget {
   const AccountsReceivablePage({super.key});
@@ -72,13 +74,62 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
   }
 
   String _formatAmount(dynamic value) {
-    return 'JPY ${_toDouble(value).toStringAsFixed(0)}';
+    return '¥${_toDouble(value).toStringAsFixed(0)}';
   }
 
   String _formatDate(dynamic value) {
     final parsed = _parseDate(value);
     if (parsed == null) return '-';
     return DateFormat('dd/MM/yyyy').format(parsed);
+  }
+
+  String _monthGroupKey(Map<String, dynamic> item) {
+    final dueDate = _parseDate(item['due_date']);
+    if (dueDate == null) return 'Sem vencimento';
+    return DateFormat('MMMM/yyyy', 'pt_BR').format(dueDate);
+  }
+
+  String _monthGroupLabel(String key) {
+    if (key == 'Sem vencimento') return key;
+    if (key.isEmpty) return key;
+    return '${key[0].toUpperCase()}${key.substring(1)}';
+  }
+
+  Future<void> _printSettlementReceipt(Map<String, dynamic> item) async {
+    final receipt = _receiptOf(item);
+    final profile = await SupabaseService.instance.getCompanyProfile();
+    final now = DateTime.now();
+    final receiptNumber = (receipt['receipt_number'] ?? '-').toString();
+    final installmentNumber = (item['installment_number'] ?? '-').toString();
+    final paidAmount = _toDouble(item['paid_amount'] ?? item['amount']);
+    final paymentMethod = (item['payment_method'] ?? receipt['payment_method'] ?? 'cash')
+        .toString();
+    final clientName = (receipt['client_name'] ?? '').toString().trim();
+    final baseDescription = (receipt['description'] ?? '').toString().trim();
+
+    final data = ReceiptData(
+      receiptNumber: '${receiptNumber}_P$installmentNumber',
+      issueDate: now,
+      dueDate: _parseDate(item['due_date']),
+      documentKind: 'ryoushuusho',
+      description: baseDescription.isEmpty
+          ? 'Baixa da parcela $installmentNumber do recibo $receiptNumber'
+          : '$baseDescription - Baixa parcela $installmentNumber',
+      amount: paidAmount,
+      taxAmount: 0,
+      currency: 'JPY',
+      paymentMethod: paymentMethod,
+      issuedBy: profile['name'] ?? '',
+      companyAddress: profile['address'],
+      companyPhone: profile['phone'],
+      invoiceNumber: profile['invoice_number'],
+      clientName: clientName.isEmpty ? null : clientName,
+      notes: 'Recebimento confirmado em ${DateFormat('dd/MM/yyyy').format(now)}',
+      language: (profile['language'] ?? 'pt').toString(),
+    );
+
+    final bytes = await ReceiptPdfService.buildA4(data);
+    await Printing.layoutPdf(onLayout: (_) async => bytes);
   }
 
   Future<void> _markAsPaid(Map<String, dynamic> item) async {
@@ -105,11 +156,51 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
     if (confirmed != true) return;
 
     try {
+      final receipt = _receiptOf(item);
+      final paidValue = _toDouble(item['amount']);
+      final installmentNumber = item['installment_number'] ?? '-';
+      final receiptNumber = (receipt['receipt_number'] ?? '-').toString();
+      final baseDescription = (receipt['description'] ?? '').toString().trim();
+      final paymentMethod = (item['payment_method'] ??
+              receipt['payment_method'] ??
+              'cash')
+          .toString();
+      final itemType = (receipt['item_type'] ?? 'product').toString();
+
       await SupabaseService.instance.markReceiptPaymentScheduleAsPaid(
         item['id'].toString(),
-        paymentMethod: (item['payment_method'] ?? '').toString(),
-        paidAmount: _toDouble(item['amount']),
+        paymentMethod: paymentMethod,
+        paidAmount: paidValue,
       );
+
+      await SupabaseService.instance.addEntry({
+        'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        'description': baseDescription.isEmpty
+            ? 'Recebimento do recibo $receiptNumber - Parcela $installmentNumber'
+            : '$baseDescription - Parcela $installmentNumber',
+        'category': itemType == 'service' ? 'service' : 'sale',
+        'amount': paidValue,
+        'payment_method': paymentMethod,
+        'tax_rate': null,
+        'tax_inclusion_type': 'unknown',
+        'tax_amount': null,
+        'qualified_invoice_issued': false,
+        'qualified_invoice_number': receiptNumber,
+        'customer_name': receipt['client_name'],
+        'revenue_type': itemType == 'service' ? 'service' : 'product',
+        'fiscal_revenue_category': null,
+        'created_at': DateTime.now().toIso8601String(),
+      );
+
+      try {
+        await _printSettlementReceipt(item);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Baixa concluída, mas não foi possível imprimir o recibo: $e')),
+          );
+        }
+      }
       await _loadItems();
     } catch (e) {
       if (!mounted) return;
@@ -227,6 +318,12 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
 
   @override
   Widget build(BuildContext context) {
+    final groupedItems = <String, List<Map<String, dynamic>>>{};
+    for (final item in _items) {
+      final key = _monthGroupKey(item);
+      groupedItems.putIfAbsent(key, () => <Map<String, dynamic>>[]).add(item);
+    }
+
     final pendingTotal = _items
         .where((item) => !_isPaid(item))
         .fold<double>(0.0, (sum, item) => sum + _toDouble(item['amount']));
@@ -293,103 +390,118 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
                       ),
                     )
                   else
-                    ..._items.map((item) {
-                      final receipt = _receiptOf(item);
-                      final clientName =
-                          (receipt['client_name'] ?? '-').toString();
-                      final description =
-                          (receipt['description'] ?? '-').toString();
-                      final receiptNumber =
-                          (receipt['receipt_number'] ?? '-').toString();
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          receiptNumber,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          clientName,
-                                          style: TextStyle(
-                                            color: Colors.grey.shade700,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  _statusChip(item),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Text(description),
-                              const SizedBox(height: 12),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  _infoChip(
-                                    Icons.receipt_long_outlined,
-                                    'Parcela ${item['installment_number'] ?? '-'}',
-                                  ),
-                                  _infoChip(
-                                    Icons.event_outlined,
-                                    'Vence em ${_formatDate(item['due_date'])}',
-                                  ),
-                                  _infoChip(
-                                    Icons.attach_money,
-                                    _formatAmount(item['amount']),
-                                  ),
-                                  if (_isPaid(item))
-                                    _infoChip(
-                                      Icons.check_circle_outline,
-                                      'Pago em ${_formatDate(item['paid_at'])}',
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  if (!_isPaid(item))
-                                    FilledButton.icon(
-                                      onPressed: () => _markAsPaid(item),
-                                      icon: const Icon(Icons.check, size: 18),
-                                      label: const Text('Dar baixa'),
-                                    ),
-                                  if (!_isPaid(item)) const SizedBox(width: 8),
-                                  OutlinedButton.icon(
-                                    onPressed: () => _editDueDate(item),
-                                    icon: const Icon(Icons.edit_calendar, size: 18),
-                                    label: const Text('Editar vencimento'),
-                                  ),
-                                  if (_isPaid(item)) const SizedBox(width: 8),
-                                  if (_isPaid(item))
-                                    TextButton(
-                                      onPressed: () => _reopenPayment(item),
-                                      child: const Text('Reabrir'),
-                                    ),
-                                ],
-                              ),
-                            ],
+                    ...groupedItems.entries.expand((entry) {
+                      final monthItems = entry.value;
+                      return [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
+                          child: Text(
+                            _monthGroupLabel(entry.key),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
-                      );
+                        ...monthItems.map((item) {
+                          final receipt = _receiptOf(item);
+                          final clientName =
+                              (receipt['client_name'] ?? '-').toString();
+                          final description =
+                              (receipt['description'] ?? '-').toString();
+                          final receiptNumber =
+                              (receipt['receipt_number'] ?? '-').toString();
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              receiptNumber,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              clientName,
+                                              style: TextStyle(
+                                                color: Colors.grey.shade700,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      _statusChip(item),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(description),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      _infoChip(
+                                        Icons.receipt_long_outlined,
+                                        'Parcela ${item['installment_number'] ?? '-'}',
+                                      ),
+                                      _infoChip(
+                                        Icons.event_outlined,
+                                        'Vence em ${_formatDate(item['due_date'])}',
+                                      ),
+                                      _infoChip(
+                                        Icons.attach_money,
+                                        _formatAmount(item['amount']),
+                                      ),
+                                      if (_isPaid(item))
+                                        _infoChip(
+                                          Icons.check_circle_outline,
+                                          'Pago em ${_formatDate(item['paid_at'])}',
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      if (!_isPaid(item))
+                                        FilledButton.icon(
+                                          onPressed: () => _markAsPaid(item),
+                                          icon: const Icon(Icons.check, size: 18),
+                                          label: const Text('Dar baixa'),
+                                        ),
+                                      if (!_isPaid(item)) const SizedBox(width: 8),
+                                      OutlinedButton.icon(
+                                        onPressed: () => _editDueDate(item),
+                                        icon: const Icon(Icons.edit_calendar, size: 18),
+                                        label: const Text('Editar vencimento'),
+                                      ),
+                                      if (_isPaid(item)) const SizedBox(width: 8),
+                                      if (_isPaid(item))
+                                        TextButton(
+                                          onPressed: () => _reopenPayment(item),
+                                          child: const Text('Reabrir'),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      ];
                     }),
                 ],
               ),

@@ -161,7 +161,7 @@ class _SettingsServicesPageState extends State<SettingsServicesPage> {
     if (value == null) return '-';
     final amount = double.tryParse(value.toString());
     if (amount == null) return '-';
-    return 'JPY ${amount.toStringAsFixed(0)}';
+    return '¥${amount.toStringAsFixed(0)}';
   }
 
   @override

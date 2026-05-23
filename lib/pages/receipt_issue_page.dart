@@ -470,6 +470,13 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     );
   }
 
+  double _entryAmountForLaunch(ReceiptData data) {
+    if (_paymentCondition == 'parcelado') {
+      return double.tryParse(_downPaymentCtrl.text.replaceAll(',', '')) ?? 0.0;
+    }
+    return data.amount;
+  }
+
   Future<Uint8List> _generatePdf() async {
     final data = _buildReceiptData();
 
@@ -612,13 +619,14 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
           _documentKind == 'ryoushuusho' &&
           _createEntryOnSave &&
           widget.entryData == null;
+      final entryAmount = _entryAmountForLaunch(data);
 
-      if (shouldCreateEntry) {
+      if (shouldCreateEntry && entryAmount > 0) {
         await SupabaseService.instance.addEntry({
           'date': DateFormat('yyyy-MM-dd').format(data.issueDate),
           'description': data.description,
           'category': _selectedItemType == 'service' ? 'service' : 'sale',
-          'amount': data.amount,
+          'amount': entryAmount,
           'payment_method': data.paymentMethod,
           'tax_rate': null,
           'tax_inclusion_type': 'unknown',

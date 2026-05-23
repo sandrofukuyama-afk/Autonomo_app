@@ -81,7 +81,7 @@ class _ClientHistoryPageState extends State<ClientHistoryPage> {
 
   String _fmtAmount(dynamic value) {
     final amount = double.tryParse((value ?? '').toString()) ?? 0;
-    return 'JPY ${amount.toStringAsFixed(0)}';
+    return '¥${amount.toStringAsFixed(0)}';
   }
 
   ReceiptData _receiptDataFromRow(Map<String, dynamic> r) {

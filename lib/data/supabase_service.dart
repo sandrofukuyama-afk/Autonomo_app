@@ -1686,7 +1686,9 @@ class SupabaseService {
               description,
               issue_date,
               amount,
-              payment_condition
+              payment_condition,
+              item_type,
+              payment_method
             )
           ''')
           .eq('company_id', companyId)
