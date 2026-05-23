@@ -44,6 +44,8 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
   final _taxAmountCtrl = TextEditingController();
   final _clientNameCtrl = TextEditingController();
   final _clientEmailCtrl = TextEditingController();
+  final _clientPhoneCtrl = TextEditingController();
+  final _clientAddressCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   final _downPaymentCtrl = TextEditingController();
   final _installmentsCountCtrl = TextEditingController();
@@ -104,6 +106,8 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
     _taxAmountCtrl.dispose();
     _clientNameCtrl.dispose();
     _clientEmailCtrl.dispose();
+    _clientPhoneCtrl.dispose();
+    _clientAddressCtrl.dispose();
     _notesCtrl.dispose();
     _downPaymentCtrl.dispose();
     _installmentsCountCtrl.dispose();
@@ -156,6 +160,8 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
         _clientNameCtrl.text =
             (entry['client_name'] ?? entry['customer_name'] ?? '').toString();
         _clientEmailCtrl.text = (entry['client_email'] ?? '').toString();
+        _clientPhoneCtrl.text = (entry['client_phone'] ?? '').toString();
+        _clientAddressCtrl.text = (entry['client_address'] ?? '').toString();
         _paymentCondition = (entry['payment_condition'] ?? _paymentCondition).toString();
         final downPayment = double.tryParse(
           (entry['down_payment_amount'] ?? 0).toString(),
@@ -296,7 +302,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
       _clientSuggestions = matches.take(5).toList();
       _showNoClientWarning = matches.isEmpty;
       if (matches.length == 1) {
-        _clientEmailCtrl.text = (matches.first['email'] ?? '').toString();
+        _fillClientFieldsFromRecord(matches.first);
       }
     });
     _invalidatePdfCache();
@@ -305,11 +311,25 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
   void _selectClientSuggestion(Map<String, dynamic> client) {
     setState(() {
       _clientNameCtrl.text = (client['name'] ?? '').toString();
-      _clientEmailCtrl.text = (client['email'] ?? '').toString();
+      _fillClientFieldsFromRecord(client);
       _clientSuggestions = [];
       _showNoClientWarning = false;
     });
     _invalidatePdfCache();
+  }
+
+  void _fillClientFieldsFromRecord(Map<String, dynamic> client) {
+    _clientEmailCtrl.text = (client['email'] ?? '').toString();
+    _clientPhoneCtrl.text = (client['phone'] ?? '').toString();
+
+    final addressParts = [
+      (client['province'] ?? '').toString().trim(),
+      (client['city'] ?? '').toString().trim(),
+      (client['neighborhood'] ?? '').toString().trim(),
+      (client['street_number'] ?? '').toString().trim(),
+      (client['apartment'] ?? '').toString().trim(),
+    ].where((part) => part.isNotEmpty).toList();
+    _clientAddressCtrl.text = addressParts.join(', ');
   }
 
   DateTime _normalizeDate(DateTime value) {
@@ -899,6 +919,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               label: t.translate('client_name'),
               icon: Icons.person,
               onChanged: _onClientNameChanged,
+              validator: _requiredForSeikyuushoValidator,
             ),
             if (_clientSuggestions.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -945,7 +966,28 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
               icon: Icons.email_outlined,
               keyboardType: TextInputType.emailAddress,
               onChanged: (_) => _invalidatePdfCache(),
+              validator: _requiredForSeikyuushoValidator,
             ),
+            if (_documentKind == 'seikyuusho') ...[
+              const SizedBox(height: 12),
+              _textField(
+                controller: _clientPhoneCtrl,
+                label: 'Telefone do Cliente',
+                icon: Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+                onChanged: (_) => _invalidatePdfCache(),
+                validator: _requiredForSeikyuushoValidator,
+              ),
+              const SizedBox(height: 12),
+              _textField(
+                controller: _clientAddressCtrl,
+                label: 'Endereço do Cliente',
+                icon: Icons.location_on_outlined,
+                maxLines: 2,
+                onChanged: (_) => _invalidatePdfCache(),
+                validator: _requiredForSeikyuushoValidator,
+              ),
+            ],
             const SizedBox(height: 24),
             _sectionHeader(context, t.translate('receipt_format'), Icons.tune),
             const SizedBox(height: 12),
@@ -1041,6 +1083,14 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
   }
 
   String? _requiredValidator(String? value) {
+    if ((value ?? '').trim().isEmpty) {
+      return AppLocalizations.of(context).translate('error_fill_mandatory_fields');
+    }
+    return null;
+  }
+
+  String? _requiredForSeikyuushoValidator(String? value) {
+    if (_documentKind != 'seikyuusho') return null;
     if ((value ?? '').trim().isEmpty) {
       return AppLocalizations.of(context).translate('error_fill_mandatory_fields');
     }
