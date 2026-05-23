@@ -158,14 +158,16 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
     try {
       final receipt = _receiptOf(item);
       final paidValue = _toDouble(item['amount']);
-      final installmentNumber = item['installment_number'] ?? '-';
+      final installmentNumber = (item['installment_number'] ?? '-').toString();
       final receiptNumber = (receipt['receipt_number'] ?? '-').toString();
       final baseDescription = (receipt['description'] ?? '').toString().trim();
-      final paymentMethod = (item['payment_method'] ??
-              receipt['payment_method'] ??
-              'cash')
-          .toString();
+      final paymentMethod =
+          (item['payment_method'] ?? receipt['payment_method'] ?? 'cash')
+              .toString();
       final itemType = (receipt['item_type'] ?? 'product').toString();
+      final entryDescription = baseDescription.isEmpty
+          ? 'Recebimento do recibo $receiptNumber - Parcela $installmentNumber'
+          : '$baseDescription - Parcela $installmentNumber';
 
       await SupabaseService.instance.markReceiptPaymentScheduleAsPaid(
         item['id'].toString(),
@@ -173,11 +175,9 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
         paidAmount: paidValue,
       );
 
-      await SupabaseService.instance.addEntry({
+      final entryPayload = <String, dynamic>{
         'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-        'description': baseDescription.isEmpty
-            ? 'Recebimento do recibo $receiptNumber - Parcela $installmentNumber'
-            : '$baseDescription - Parcela $installmentNumber',
+        'description': entryDescription,
         'category': itemType == 'service' ? 'service' : 'sale',
         'amount': paidValue,
         'payment_method': paymentMethod,
@@ -190,17 +190,24 @@ class _AccountsReceivablePageState extends State<AccountsReceivablePage> {
         'revenue_type': itemType == 'service' ? 'service' : 'product',
         'fiscal_revenue_category': null,
         'created_at': DateTime.now().toIso8601String(),
-      );
+      };
+
+      await SupabaseService.instance.addEntry(entryPayload);
 
       try {
         await _printSettlementReceipt(item);
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Baixa concluída, mas não foi possível imprimir o recibo: $e')),
+            SnackBar(
+              content: Text(
+                'Baixa concluida, mas nao foi possivel imprimir o recibo: $e',
+              ),
+            ),
           );
         }
       }
+
       await _loadItems();
     } catch (e) {
       if (!mounted) return;
