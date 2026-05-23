@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'settings_categories_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1363,6 +1362,8 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ]),
             const SizedBox(height: 12),
+            _buildSystemStatusCard(t),
+            const SizedBox(height: 12),
             _buildCard([
               _sectionHeader(
                 context,
@@ -1448,19 +1449,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   }).toList(),
                 ),
             ]),
-            _settingsShortcutCard(
-              icon: Icons.category,
-              title: _text('categories', t),
-              subtitle: _text('manage_categories_desc', t),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const SettingsCategoriesPage(),
-                  ),
-                );
-              },
-            ),
             const SizedBox(height: 18),
 
             // ── SMTP section ─────────────────────────────────────────────
@@ -1656,6 +1644,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  // ignore: unused_element
   Widget _settingsShortcutCard({
     required IconData icon,
     required String title,
@@ -1697,6 +1686,102 @@ class _SettingsPageState extends State<SettingsPage> {
         onTap: onTap,
       ),
     );
+  }
+
+  Widget _buildSystemStatusLine({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBackground,
+    required String title,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: iconBackground,
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    height: 1.15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSystemStatusCard(AppLocalizations t) {
+    final currentMonthClosed = _closedFiscalMonths.contains(_currentFiscalMonth);
+    final backupLabel = 'Ativo (diário)';
+    final databaseLabel = 'Conectado e isolado por empresa';
+    final fiscalLabel = currentMonthClosed
+        ? 'Mês fiscal protegido por fechamento'
+        : 'Bloqueio fiscal ativo para fechamento mensal';
+
+    return _buildCard([
+      _sectionHeader(
+        context,
+        t,
+        icon: Icons.shield_outlined,
+        titleKey: 'system_status',
+        subtitleKey: 'system_status_subtitle',
+      ),
+      const SizedBox(height: 16),
+      _buildSystemStatusLine(
+        icon: Icons.backup_outlined,
+        iconColor: Colors.blue.shade800,
+        iconBackground: Colors.blue.shade100,
+        title: 'Backup automático',
+        value: backupLabel,
+      ),
+      const SizedBox(height: 12),
+      _buildSystemStatusLine(
+        icon: Icons.storage_rounded,
+        iconColor: Colors.green.shade800,
+        iconBackground: Colors.green.shade100,
+        title: 'Banco de dados',
+        value: databaseLabel,
+      ),
+      const SizedBox(height: 12),
+      _buildSystemStatusLine(
+        icon: currentMonthClosed ? Icons.lock_outline : Icons.verified_user,
+        iconColor:
+            currentMonthClosed ? Colors.orange.shade800 : Colors.indigo.shade800,
+        iconBackground:
+            currentMonthClosed ? Colors.orange.shade100 : Colors.indigo.shade100,
+        title: 'Segurança fiscal',
+        value: fiscalLabel,
+      ),
+    ]);
   }
 
   Future<void> _saveSmtpSettings() async {

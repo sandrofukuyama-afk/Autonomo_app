@@ -17,6 +17,7 @@ import 'clients_page.dart';
 import 'client_history_page.dart';
 import 'reports_page.dart';
 import 'settings_page.dart';
+import 'settings_categories_page.dart';
 
 class HomePage extends StatefulWidget {
   final Locale? currentLocale;
@@ -1088,6 +1089,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildFiscalLockBanner() {
     final t = AppLocalizations.of(context);
     final currentClosed = _isCurrentFiscalMonthClosed();
@@ -1953,6 +1955,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildSystemStatusCard() {
     final t = AppLocalizations.of(context);
     final currentMonthClosed = _isCurrentFiscalMonthClosed();
@@ -2455,8 +2458,6 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 14),
             _buildAdminAccessBanner(),
           ],
-          const SizedBox(height: 14),
-          _buildFiscalLockBanner(),
           if (_pendingExpenseReviews > 0) ...[
             const SizedBox(height: 16),
             _buildExpenseReviewAlertCard(),
@@ -2482,11 +2483,6 @@ class _HomePageState extends State<HomePage> {
             child: _buildAnnualFiscalDashboardSection(),
           ),
           const SizedBox(height: 12),
-          _buildSectionCard(
-            title: t.translate('system_status'),
-            subtitle: t.translate('system_status_subtitle'),
-            child: _buildSystemStatusCard(),
-          ),
           const SizedBox(height: 14),
           _buildSectionCard(
             title: t.translate('quick_access'),
@@ -2524,8 +2520,6 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 14),
           _buildAdminAccessBanner(),
         ],
-        const SizedBox(height: 14),
-        _buildFiscalLockBanner(),
         if (_pendingExpenseReviews > 0) ...[
           const SizedBox(height: 16),
           _buildExpenseReviewAlertCard(),
@@ -2551,11 +2545,6 @@ class _HomePageState extends State<HomePage> {
           child: _buildAnnualFiscalDashboardSection(),
         ),
         const SizedBox(height: 12),
-        _buildSectionCard(
-          title: t.translate('system_status'),
-          subtitle: t.translate('system_status_subtitle'),
-          child: _buildSystemStatusCard(),
-        ),
         const SizedBox(height: 14),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2700,6 +2689,25 @@ class _HomePageState extends State<HomePage> {
               Navigator.pop(context);
               _openReportsPage();
             },
+          ),
+          ExpansionTile(
+            leading: const Icon(Icons.folder_open_outlined, color: Colors.blueGrey),
+            title: const Text('Cadastro'),
+            children: [
+              ListTile(
+                leading: const Icon(Icons.category_outlined, color: Colors.indigo),
+                title: const Text('Categorias'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsCategoriesPage(),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
           const Divider(),
           ListTile(
