@@ -231,6 +231,20 @@ class ReceiptPdfService {
   static const PdfColor _border = PdfColor.fromInt(0xFFE0E0E0);
   static const PdfColor _white = PdfColor.fromInt(0xFFFFFFFF);
 
+  static Future<pw.Font> _loadRegularFont(String language) async {
+    if (language == 'ja') {
+      return PdfGoogleFonts.notoSansJPRegular();
+    }
+    return PdfGoogleFonts.notoSansRegular();
+  }
+
+  static Future<pw.Font> _loadBoldFont(String language) async {
+    if (language == 'ja') {
+      return PdfGoogleFonts.notoSansJPBold();
+    }
+    return PdfGoogleFonts.notoSansBold();
+  }
+
   // ── number formatting ──────────────────────────────────────
   static String _fmt(double value, String currencyFmt) {
     final formatter = NumberFormat(currencyFmt);
@@ -292,7 +306,7 @@ class ReceiptPdfService {
     final l = _Labels.forLocale(data.language);
     final doc = pw.Document();
     const width = 57.5 * PdfPageFormat.mm;
-    final font = await PdfGoogleFonts.notoSansRegular();
+    final font = await _loadRegularFont(data.language);
 
     doc.addPage(pw.Page(
       pageFormat: PdfPageFormat(width, double.infinity, marginAll: 3 * PdfPageFormat.mm),
@@ -310,7 +324,7 @@ class ReceiptPdfService {
     final l = _Labels.forLocale(data.language);
     final doc = pw.Document();
     const width = 79.5 * PdfPageFormat.mm;
-    final font = await PdfGoogleFonts.notoSansRegular();
+    final font = await _loadRegularFont(data.language);
 
     doc.addPage(pw.Page(
       pageFormat: PdfPageFormat(width, double.infinity, marginAll: 4 * PdfPageFormat.mm),
@@ -416,8 +430,8 @@ class ReceiptPdfService {
   static Future<Uint8List> _buildPagedReceipt(ReceiptData data, PdfPageFormat format) async {
     final l = _Labels.forLocale(data.language);
     final doc = pw.Document();
-    final fontRegular = await PdfGoogleFonts.notoSansRegular();
-    final fontBold = await PdfGoogleFonts.notoSansBold();
+    final fontRegular = await _loadRegularFont(data.language);
+    final fontBold = await _loadBoldFont(data.language);
 
     doc.addPage(pw.Page(
       pageFormat: format,
