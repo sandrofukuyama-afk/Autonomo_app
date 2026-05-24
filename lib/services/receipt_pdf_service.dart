@@ -690,6 +690,27 @@ class ReceiptPdfService {
           ],
         ),
 
+        if (data.notes != null && data.notes!.trim().isNotEmpty) ...[
+          pw.SizedBox(height: 16),
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.all(10),
+            decoration: pw.BoxDecoration(
+              color: _lightGrey,
+              borderRadius: pw.BorderRadius.circular(4),
+              border: pw.Border.all(color: _border),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(l.notes, style: b(size: 10)),
+                pw.SizedBox(height: 4),
+                pw.Text(data.notes!, style: r(size: 10)),
+              ],
+            ),
+          ),
+        ],
+
         pw.Spacer(),
 
         // Bottom section: Breakdown and Issuer

@@ -494,7 +494,7 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
       clientEmail: _clientEmailCtrl.text.trim().isEmpty
           ? null
           : _clientEmailCtrl.text.trim(),
-      notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+      notes: _buildCombinedNotes(),
       language: _language,
     );
   }
