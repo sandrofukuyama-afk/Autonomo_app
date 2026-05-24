@@ -1857,15 +1857,29 @@ class SupabaseService {
 
     final entryId = (insertedEntry['id'] ?? '').toString();
 
-    await _client
-        .from('receipts')
-        .update({
-          'is_paid': true,
-          'paid_at': DateTime.now().toIso8601String(),
-          'entry_id': entryId.isEmpty ? receipt['entry_id'] : entryId,
-        })
-        .eq('company_id', companyId)
-        .eq('id', receiptId);
+    final fallbackEntryId = entryId.isEmpty ? receipt['entry_id'] : entryId;
+    try {
+      await _client
+          .from('receipts')
+          .update({
+            'is_paid': true,
+            'paid_at': DateTime.now().toIso8601String(),
+            'entry_id': fallbackEntryId,
+          })
+          .eq('company_id', companyId)
+          .eq('id', receiptId);
+    } on PostgrestException catch (e) {
+      // Backward compatibility: if payment-status columns are not yet migrated,
+      // at least persist the linked entry_id so the receipt is treated as paid.
+      if (e.code != 'PGRST204' && e.code != '42703') rethrow;
+      await _client
+          .from('receipts')
+          .update({
+            'entry_id': fallbackEntryId,
+          })
+          .eq('company_id', companyId)
+          .eq('id', receiptId);
+    }
   }
 
   Future<void> deleteReceipt(String id) async {
