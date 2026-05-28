@@ -26,6 +26,10 @@ class ReceiptData {
   final String? notes;
   final String language;
   final DateTime? dueDate;
+  final String? paymentCondition;
+  final double? downPayment;
+  final int? installmentsCount;
+  final double? installmentValue;
 
   const ReceiptData({
     required this.receiptNumber,
