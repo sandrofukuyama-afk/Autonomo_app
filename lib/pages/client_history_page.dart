@@ -116,6 +116,10 @@ class _ClientHistoryPageState extends State<ClientHistoryPage> {
       notes: (r['notes'] ?? '').toString(),
       language: language,
       dueDate: dueDate,
+      paymentCondition: (r['payment_condition'] ?? '').toString().isEmpty ? null : (r['payment_condition'] ?? '').toString(),
+      downPayment: double.tryParse((r['down_payment_amount'] ?? '').toString()),
+      installmentsCount: int.tryParse((r['installments_count'] ?? '').toString()),
+      installmentValue: double.tryParse((r['installment_value'] ?? '').toString()),
     );
   }
 

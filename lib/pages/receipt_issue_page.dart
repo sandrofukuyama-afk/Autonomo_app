@@ -496,6 +496,10 @@ class _ReceiptIssuePageState extends State<ReceiptIssuePage> {
           : _clientEmailCtrl.text.trim(),
       notes: _buildCombinedNotes(),
       language: _language,
+      paymentCondition: _paymentCondition,
+      downPayment: double.tryParse(_downPaymentCtrl.text.replaceAll(',', '')),
+      installmentsCount: int.tryParse(_installmentsCountCtrl.text.replaceAll(RegExp(r'[^0-9]'), '')),
+      installmentValue: double.tryParse(_installmentValueCtrl.text.replaceAll(',', '')),
     );
   }
 

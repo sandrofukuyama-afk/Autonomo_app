@@ -45,9 +45,20 @@ class ReceiptData {
     this.notes,
     this.language = 'pt',
     this.dueDate,
+    this.paymentCondition,
+    this.downPayment,
+    this.installmentsCount,
+    this.installmentValue,
   });
 
   double get total => amount + taxAmount;
+
+  double get amountReceived {
+    if (paymentCondition == 'parcelado' && downPayment != null) {
+      return downPayment!;
+    }
+    return total;
+  }
 }
 
 // ── SMTP config ──────────────────────────────────────────────────────────────
@@ -377,7 +388,13 @@ class ReceiptPdfService {
         pw.SizedBox(height: 4),
         pw.Center(child: pw.Text(dashedDivider(n), style: style())),
         pw.SizedBox(height: 4),
-        _thermalRow(isInvoice ? l.total : l.amountReceived, _fmt(data.total, l.currencyFmt), style, bold: true, size: tsB + 1),
+        _thermalRow(l.total, _fmt(data.total, l.currencyFmt), style, bold: true, size: tsB + 1),
+        if (!isInvoice) ...[
+          pw.SizedBox(height: 4),
+          pw.Center(child: pw.Text(dashedDivider(n), style: style())),
+          pw.SizedBox(height: 4),
+          _thermalRow(l.amountReceived, _fmt(data.amountReceived, l.currencyFmt), style, bold: true, size: tsB + 1),
+        ],
         pw.SizedBox(height: 4),
         pw.Center(child: pw.Text(dashedDivider(n), style: style())),
         pw.SizedBox(height: 4),
@@ -489,7 +506,7 @@ class ReceiptPdfService {
                   pw.SizedBox(height: 12),
                   pw.Text('${l.amountReceived}:', style: r(size: 10, color: _grey)),
                   pw.Text(
-                    _fmt(data.total, l.currencyFmt),
+                    _fmt(data.amountReceived, l.currencyFmt),
                     style: b(size: 20),
                   ),
                 ],
@@ -653,7 +670,7 @@ class ReceiptPdfService {
             mainAxisAlignment: pw.MainAxisAlignment.center,
             children: [
               pw.Text('${l.amountReceived}: ', style: b(size: 14, color: _accent)),
-              pw.Text('${_fmt(data.total, l.currencyFmt)} -', style: b(size: 28, color: _accent)),
+              pw.Text('${_fmt(data.amountReceived, l.currencyFmt)} -', style: b(size: 28, color: _accent)),
             ],
           ),
         ),
@@ -728,6 +745,8 @@ class ReceiptPdfService {
                 children: [
                   _pagedTotalRow(l.amount, _fmt(data.amount, l.currencyFmt), r, r),
                   if (data.taxAmount > 0) _pagedTotalRow(l.tax, _fmt(data.taxAmount, l.currencyFmt), r, r),
+                  pw.Divider(color: _border),
+                  _pagedTotalRow(l.total, _fmt(data.total, l.currencyFmt), r, r, bold: b(size: 10)),
                 ],
               ),
             ),

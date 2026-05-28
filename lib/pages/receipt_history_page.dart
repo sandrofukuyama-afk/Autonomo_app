@@ -238,6 +238,10 @@ class _ReceiptHistoryPageState extends State<ReceiptHistoryPage> {
           ? null
           : (receipt['notes'] ?? '').toString(),
       language: (receipt['language'] ?? 'pt').toString(),
+      paymentCondition: (receipt['payment_condition'] ?? '').toString().isEmpty ? null : (receipt['payment_condition'] ?? '').toString(),
+      downPayment: double.tryParse((receipt['down_payment_amount'] ?? '').toString()),
+      installmentsCount: int.tryParse((receipt['installments_count'] ?? '').toString()),
+      installmentValue: double.tryParse((receipt['installment_value'] ?? '').toString()),
     );
   }
 
